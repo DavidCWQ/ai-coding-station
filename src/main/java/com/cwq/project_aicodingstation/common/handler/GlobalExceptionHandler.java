@@ -7,6 +7,7 @@ import com.cwq.project_aicodingstation.common.exception.BaseException;
 import com.cwq.project_aicodingstation.common.response.BaseResponse;
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -17,10 +18,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BaseException.class)
     public BaseResponse<?> handleBaseException(BaseException e) {
-        if (e.getType() == ErrorType.SYSTEM) {
-            log.error("System exception", e);
-        } else {
-            log.warn("Business exception: {}", e.getMessage());
+        ErrorType type = e.getType();
+        switch (type) { // logging strategy
+            case SYSTEM -> log.error("System exception", e);
+            case BUSINESS -> log.warn("Business exception: {}", e.getMessage());
+            case AUTH -> log.warn("Auth exception: {}", e.getMessage());
+            case CLIENT -> log.info("Client error: {}", e.getMessage());
+            default -> log.warn("Unhandled base exception: {}", e.getMessage());
         }
         return BaseResponse.error(e.getCode(), e.getMessage());
     }
