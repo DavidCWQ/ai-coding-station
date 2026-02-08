@@ -7,6 +7,7 @@ target/
 .mvn/
 mvnw
 mvnw.cmd
+/tmp/*
 
 ### STS ###
 .apt_generated
@@ -35,6 +36,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Confidential ###
+/src/main/resources/application.yml
 
 ### Others ###
 /README_PIC/
