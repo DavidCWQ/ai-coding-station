@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan("com.cwq.project_aicodingstation.user.mapper")
+@MapperScan({"com.cwq.project_aicodingstation.*.mapper"}) // 添加 Mapper 到 Spring Boot 扫描范围内
 public class ProjectAiCodingStationApplication {
 
     public static void main(String[] args) {
