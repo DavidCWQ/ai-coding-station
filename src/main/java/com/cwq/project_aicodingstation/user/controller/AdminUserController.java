@@ -57,9 +57,9 @@ public class AdminUserController {
      * @param deleteRequest 删除请求
      * @return {@code true} 删除成功，{@code false} 删除失败
      */
-    @DeleteMapping("/remove/")
+    @DeleteMapping("/remove")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Boolean> remove(@PathVariable DeleteRequest deleteRequest) {
+    public BaseResponse<Boolean> remove(@RequestBody DeleteRequest deleteRequest) {
         return ResultUtils.success(adminUserService.remove(deleteRequest));
     }
 

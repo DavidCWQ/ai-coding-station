@@ -7,8 +7,9 @@ import com.cwq.project_aicodingstation.user.dto.UserUpdateRequest;
 import com.cwq.project_aicodingstation.user.entity.SysUser;
 import com.cwq.project_aicodingstation.user.vo.UserVO;
 import com.mybatisflex.core.paginate.Page;
+import com.mybatisflex.core.service.IService;
 
-public interface AdminUserService {
+public interface AdminUserService extends IService<SysUser> {
 
     Long save(UserAddRequest request);
 

@@ -2,10 +2,16 @@ package com.cwq.project_aicodingstation.user.service;
 
 import com.cwq.project_aicodingstation.user.dto.UserLoginRequest;
 import com.cwq.project_aicodingstation.user.dto.UserRegisterRequest;
+import com.cwq.project_aicodingstation.user.entity.SysUser;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
+import com.cwq.project_aicodingstation.user.vo.UserVO;
+import com.mybatisflex.core.service.IService;
 import jakarta.servlet.http.HttpServletRequest;
 
-public interface UserService {
+import java.util.List;
+import java.util.Set;
+
+public interface UserService extends IService<SysUser> {
 
     Long userRegister(UserRegisterRequest request);
 
@@ -14,5 +20,8 @@ public interface UserService {
     boolean userLogout(HttpServletRequest request);
 
     UserLoginVO getUserLoginVO(HttpServletRequest request);
-}
 
+    UserVO getVOById(Long id);
+
+    List<UserVO> ListUserVOByIds(Set<Long> ids);
+}

@@ -29,11 +29,11 @@ public class CodeFileSaverExecutor {
      * @return 保存的目录
      */
     @SuppressWarnings("unchecked")
-    public <T> File executeSaver(T codeResult, CodeGenTypeEnum codeGenType) {
+    public <T> File executeSaver(T codeResult, CodeGenTypeEnum codeGenType, Long appId) {
         CodeFileSaverTemplate<T> saver = (CodeFileSaverTemplate<T>) saverMap.get(codeGenType);
         BusinessAssert.notNull(
                 saver, ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型: " + codeGenType
         );
-        return saver.saveCode(codeResult);
+        return saver.saveCode(codeResult, appId);
     }
 }

@@ -8,6 +8,7 @@ target/
 mvnw
 mvnw.cmd
 /tmp/*
+/bash/*
 
 ### STS ###
 .apt_generated

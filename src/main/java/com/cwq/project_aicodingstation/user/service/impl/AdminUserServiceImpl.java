@@ -1,6 +1,7 @@
 package com.cwq.project_aicodingstation.user.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.request.DeleteRequest;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
@@ -9,17 +10,24 @@ import com.cwq.project_aicodingstation.user.dto.UserAddRequest;
 import com.cwq.project_aicodingstation.user.dto.UserQueryRequest;
 import com.cwq.project_aicodingstation.user.dto.UserUpdateRequest;
 import com.cwq.project_aicodingstation.user.entity.SysUser;
+import com.cwq.project_aicodingstation.user.mapper.SysUserMapper;
 import com.cwq.project_aicodingstation.user.service.AdminUserService;
 import com.cwq.project_aicodingstation.user.service.SysUserService;
 import com.cwq.project_aicodingstation.user.vo.UserVO;
 import com.mybatisflex.core.paginate.Page;
+import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @Service
 @Transactional(rollbackFor = Exception.class)
-public class AdminUserServiceImpl implements AdminUserService {
+public class AdminUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements AdminUserService {
 
     @Resource
     private SysUserService sysUserService;
