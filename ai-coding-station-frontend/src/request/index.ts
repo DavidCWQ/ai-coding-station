@@ -15,13 +15,13 @@ export interface ApiResponse<T = any> {
 
 const BASE_URL = import.meta.env.VITE_APP_API_BASE_URL ?? 'http://localhost:8142/api'
 
-const myAxios: AxiosInstance = axios.create({
+const request: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 60_000,
   withCredentials: true,
 })
 
-myAxios.interceptors.request.use(
+request.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // 可在此统一附加 token、traceId 等
     return config
@@ -29,16 +29,12 @@ myAxios.interceptors.request.use(
   (error: AxiosError) => Promise.reject(error),
 )
 
-myAxios.interceptors.response.use(
+request.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
     const { data } = response
 
-    if (!data) {
-      return response
-    }
-
     // 未登录
-    if (data.code === 40100) {
+    if (data?.code === 40100) {
       const isGetLogin = response.request?.responseURL?.includes?.('user/get/login')
       const inLoginPage = window.location.pathname.includes('/user/login')
 
@@ -47,12 +43,8 @@ myAxios.interceptors.response.use(
         const redirect = encodeURIComponent(window.location.href)
         window.location.href = `/user/login?redirect=${redirect}`
       }
-
-      return response
-    }
-
-    // 统一错误提示（根据实际 code 定义）
-    if (data.code && data.code !== 0 && data.code !== 200) {
+    } else if (data?.code && data.code !== 0 && data.code !== 200) {
+      // 通用错误提示（根据项目约定调整成功 code）
       if (data.message) {
         message.error(data.message)
       }
@@ -71,4 +63,5 @@ myAxios.interceptors.response.use(
   },
 )
 
-export default myAxios
+export default request
+
