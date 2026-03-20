@@ -5,13 +5,18 @@ import { message } from 'ant-design-vue'
 import type { MenuProps } from 'ant-design-vue'
 
 import { appMenu, type AppMenuItem } from '@/config/menu'
+import { useLoginUserStore } from '@/stores/loginUser'
 
 const router = useRouter()
 const route = useRoute()
 
-const isAuthed = ref(false)
+const loginUserStore = useLoginUserStore()
+
 const mobileOpen = ref(false)
 const isMobile = ref(false)
+
+const loginUser = computed(() => loginUserStore.loginUser)
+const isAuthed = computed(() => loginUser.value !== null)
 
 const selectedKeys = computed(() => {
   const match = appMenu.find((m) => m.path === route.path)
@@ -37,7 +42,13 @@ const onMenuClick: MenuProps['onClick'] = (info) => {
 }
 
 const onLogin = () => {
-  message.info('未接入登录系统：这里可对接你的鉴权逻辑')
+  router.push('/user/login')
+}
+
+const onLogout = async () => {
+  await loginUserStore.logout()
+  message.success('已退出登录')
+  await router.push('/user/login')
 }
 
 onMounted(() => {
@@ -68,7 +79,13 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="global-header__right">
-        <template v-if="isAuthed">已登录</template>
+        <template v-if="isAuthed">
+          <a-avatar :src="loginUser?.userAvatar" size="small" />
+          <span class="global-header__username">
+            {{ loginUser?.userName || loginUser?.userAccount }}
+          </span>
+          <a-button type="link" class="global-header__logout" @click="onLogout">退出</a-button>
+        </template>
         <a-button v-else type="primary" @click="onLogin">登录</a-button>
         <a-button v-if="isMobile" type="text" class="global-header__mobile-btn" @click="mobileOpen = true">
           菜单
@@ -133,6 +150,19 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.global-header__username {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.global-header__logout {
+  padding: 0 4px;
 }
 
 .global-header__mobile-btn {
