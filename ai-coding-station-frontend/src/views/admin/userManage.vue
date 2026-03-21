@@ -54,11 +54,13 @@ const getErrorMessage = (err: unknown): string => {
 const fetchData = async () => {
   try {
     loading.value = true
+    const account = searchParams.userAccount.trim()
+    const name = searchParams.userName.trim()
     const res = await listUserVoByPage({
       pageNum: searchParams.pageNum,
       pageSize: searchParams.pageSize,
-      userAccount: searchParams.userAccount || undefined,
-      userName: searchParams.userName || undefined,
+      userAccount: account || undefined,
+      userName: name || undefined,
     })
     const page = res.data?.data
     data.value = page?.records ?? []
@@ -100,21 +102,23 @@ onMounted(() => {
 <template>
   <div class="user-manage">
     <a-card title="用户管理" :bordered="false">
-      <a-form layout="inline" class="user-manage__search" @finish="doSearch">
-        <a-form-item label="账号">
+      <a-form :model="searchParams" layout="inline" class="user-manage__search" @finish="doSearch">
+        <a-form-item label="账号" name="userAccount">
           <a-input
             v-model:value="searchParams.userAccount"
             allow-clear
             placeholder="账号"
             style="width: 180px"
+            @press-enter="doSearch"
           />
         </a-form-item>
-        <a-form-item label="用户名">
+        <a-form-item label="用户名" name="userName">
           <a-input
             v-model:value="searchParams.userName"
             allow-clear
             placeholder="用户名"
             style="width: 180px"
+            @press-enter="doSearch"
           />
         </a-form-item>
         <a-form-item>
