@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import type { MenuProps } from 'ant-design-vue'
+import { LogoutOutlined, UserOutlined } from '@ant-design/icons-vue'
 
 import { appMenu, type AppMenuItem } from '@/config/menu'
 import { useLoginUserStore } from '@/stores/loginUser'
@@ -16,7 +17,7 @@ const mobileOpen = ref(false)
 const isMobile = ref(false)
 
 const loginUser = computed(() => loginUserStore.loginUser)
-const isAuthed = computed(() => loginUser.value !== null)
+const isLoggedIn = computed(() => loginUserStore.isLoggedIn)
 
 const selectedKeys = computed(() => {
   const match = appMenu.find((m) => m.path === route.path)
@@ -29,6 +30,19 @@ const menuItems = computed<MenuProps['items']>(() =>
     label: m.label,
   })),
 )
+
+const userMenuItems = computed<MenuProps['items']>(() => [
+  {
+    key: 'profile',
+    icon: () => h(UserOutlined),
+    label: '个人主页',
+  },
+  {
+    key: 'logout',
+    icon: () => h(LogoutOutlined),
+    label: '退出登录',
+  },
+])
 
 const updateIsMobile = () => {
   isMobile.value = window.matchMedia('(max-width: 768px)').matches
@@ -46,9 +60,24 @@ const onLogin = () => {
 }
 
 const onLogout = async () => {
-  await loginUserStore.logout()
-  message.success('已退出登录')
+  const ok = await loginUserStore.logout()
+  if (ok) {
+    message.success('已退出登录')
+  } else {
+    message.error('注销请求失败，已清除本地登录状态')
+  }
   await router.push('/user/login')
+}
+
+const onUserMenuClick: MenuProps['onClick'] = async (info) => {
+  const key = String(info.key)
+  if (key === 'profile') {
+    await router.push('/user/profile')
+    return
+  }
+  if (key === 'logout') {
+    await onLogout()
+  }
 }
 
 onMounted(() => {
@@ -79,13 +108,19 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="global-header__right">
-        <template v-if="isAuthed">
-          <a-avatar :src="loginUser?.userAvatar" size="small" />
-          <span class="global-header__username">
-            {{ loginUser?.userName || loginUser?.userAccount }}
-          </span>
-          <a-button type="link" class="global-header__logout" @click="onLogout">退出</a-button>
-        </template>
+        <a-dropdown v-if="isLoggedIn" :trigger="['click']" placement="bottomRight">
+          <div class="global-header__user-trigger" role="button" tabindex="0">
+            <a-avatar :src="loginUser?.userAvatar">
+              {{ (loginUser?.userName || loginUser?.userAccount || '?').slice(0, 1).toUpperCase() }}
+            </a-avatar>
+            <span class="global-header__username">
+              {{ loginUser?.userName || loginUser?.userAccount }}
+            </span>
+          </div>
+          <template #overlay>
+            <a-menu :items="userMenuItems" @click="onUserMenuClick" />
+          </template>
+        </a-dropdown>
         <a-button v-else type="primary" @click="onLogin">登录</a-button>
         <a-button v-if="isMobile" type="text" class="global-header__mobile-btn" @click="mobileOpen = true">
           菜单
@@ -152,6 +187,21 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
+.global-header__user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 200px;
+  padding: 0 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.global-header__user-trigger:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
 .global-header__username {
   color: rgba(0, 0, 0, 0.88);
   font-size: 14px;
@@ -159,10 +209,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.global-header__logout {
-  padding: 0 4px;
+  text-transform: capitalize;
 }
 
 .global-header__mobile-btn {
@@ -183,4 +230,3 @@ onBeforeUnmount(() => {
   }
 }
 </style>
-

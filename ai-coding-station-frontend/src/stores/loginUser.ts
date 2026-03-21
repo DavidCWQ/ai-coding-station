@@ -10,8 +10,11 @@ export const useLoginUserStore = defineStore('loginUser', () => {
 
   let fetched = false
 
-  const fetchLoginUser = async (): Promise<API.LoginUserVO | null> => {
-    if (fetched && loginUser.value) {
+  const fetchLoginUser = async (options?: {
+    force?: boolean
+  }): Promise<API.LoginUserVO | null> => {
+    const force = options?.force === true
+    if (!force && fetched && loginUser.value) {
       return loginUser.value
     }
 
@@ -32,13 +35,16 @@ export const useLoginUserStore = defineStore('loginUser', () => {
     loginUser.value = user ?? null
   }
 
-  const logout = async () => {
+  const logout = async (): Promise<boolean> => {
+    let ok = false
     try {
       await userLogout()
+      ok = true
     } catch {
       // 即使后端 logout 失败，也保证前端状态清空
     }
     loginUser.value = null
+    return ok
   }
 
   return { loginUser, isLoggedIn, fetchLoginUser, setLoginUser, logout }

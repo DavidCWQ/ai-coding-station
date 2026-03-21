@@ -2,6 +2,7 @@ package com.cwq.project_aicodingstation.user.service;
 
 import com.cwq.project_aicodingstation.user.dto.UserLoginRequest;
 import com.cwq.project_aicodingstation.user.dto.UserRegisterRequest;
+import com.cwq.project_aicodingstation.user.dto.UserUpdateRequest;
 import com.cwq.project_aicodingstation.user.entity.SysUser;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import com.cwq.project_aicodingstation.user.vo.UserVO;
@@ -20,6 +21,8 @@ public interface UserService extends IService<SysUser> {
     boolean userLogout(HttpServletRequest request);
 
     UserLoginVO getUserLoginVO(HttpServletRequest request);
+
+    boolean updateMyProfile(UserUpdateRequest request, HttpServletRequest httpRequest);
 
     UserVO getVOById(Long id);
 

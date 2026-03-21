@@ -1,5 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router'
 
+import { useLoginUserStore } from '@/stores/loginUser'
+
 export const userRoutes: RouteRecordRaw[] = [
   {
     path: '/user/login',
@@ -15,9 +17,21 @@ export const userRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/user/profile',
-    name: 'user-profile',
+    name: 'UserProfile',
     component: () => import('@/views/user/profile.vue'),
-    meta: { layout: 'basic' },
+    meta: { title: '个人主页', layout: 'basic' },
+    beforeEnter: async (to) => {
+      const store = useLoginUserStore()
+      if (!store.loginUser?.id) {
+        await store.fetchLoginUser()
+      }
+      if (!store.loginUser?.id) {
+        return {
+          path: '/user/login',
+          query: { redirect: to.fullPath },
+        }
+      }
+    },
   },
 ]
 

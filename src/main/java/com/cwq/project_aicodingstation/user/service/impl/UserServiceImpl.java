@@ -3,8 +3,10 @@ package com.cwq.project_aicodingstation.user.service.impl;
 import cn.hutool.core.collection.CollUtil;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
+import com.cwq.project_aicodingstation.user.constant.UserConstant;
 import com.cwq.project_aicodingstation.user.dto.UserLoginRequest;
 import com.cwq.project_aicodingstation.user.dto.UserRegisterRequest;
+import com.cwq.project_aicodingstation.user.dto.UserUpdateRequest;
 import com.cwq.project_aicodingstation.user.entity.SysUser;
 import com.cwq.project_aicodingstation.user.mapper.SysUserMapper;
 import com.cwq.project_aicodingstation.user.service.SysUserService;
@@ -17,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -58,6 +61,36 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
     public UserLoginVO getUserLoginVO(HttpServletRequest request) {
         SysUser user = sysUserService.getLoginUser(request);
         return sysUserService.getUserLoginVO(user);
+    }
+
+    @Override
+    public boolean updateMyProfile(UserUpdateRequest request, HttpServletRequest httpRequest) {
+
+        // 1. 参数校验
+        BusinessAssert.notNull(request, ErrorCode.PARAMS_MISSING, "更新请求为空");
+        BusinessAssert.notBlank(request.getUserName(), ErrorCode.PARAMS_INVALID, "用户名不能为空");
+
+        SysUser current = sysUserService.getLoginUser(httpRequest);
+        BusinessAssert.failIf(
+                request.getId() != null && !request.getId().equals(current.getId()),
+                ErrorCode.PARAMS_ERROR, "无权修改其他用户资料"
+        );
+
+        // 2. 修改资料（昵称，头像，简介）
+        current.setUserName(request.getUserName().trim());
+        if (request.getUserAvatar() != null) {
+            current.setUserAvatar(request.getUserAvatar());
+        }
+        if (request.getUserProfile() != null) {
+            current.setUserProfile(request.getUserProfile());
+        }
+        current.setUpdateTime(LocalDateTime.now());
+        BusinessAssert.requireTrue(
+                sysUserService.updateById(current),
+                ErrorCode.SYSTEM_ERROR, "更新用户资料失败"
+        );
+
+        return true;
     }
 
     @Override

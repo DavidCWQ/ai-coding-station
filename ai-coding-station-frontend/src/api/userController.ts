@@ -47,3 +47,18 @@ export async function userRegister(
     ...(options || {}),
   });
 }
+
+/** 更新当前用户资料（需后端提供 POST /user/update） */
+export async function updateUser(
+  body: API.UserUpdateRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean>("/user/update", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}

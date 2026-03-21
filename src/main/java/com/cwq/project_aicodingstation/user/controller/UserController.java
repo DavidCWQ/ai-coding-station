@@ -4,6 +4,7 @@ import com.cwq.project_aicodingstation.common.response.BaseResponse;
 import com.cwq.project_aicodingstation.common.utils.ResultUtils;
 import com.cwq.project_aicodingstation.user.dto.UserLoginRequest;
 import com.cwq.project_aicodingstation.user.dto.UserRegisterRequest;
+import com.cwq.project_aicodingstation.user.dto.UserUpdateRequest;
 import com.cwq.project_aicodingstation.user.service.UserService;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import jakarta.annotation.Resource;
@@ -73,5 +74,14 @@ public class UserController {
     @GetMapping("/get/login")
     public BaseResponse<UserLoginVO> getLoginUser(HttpServletRequest httpRequest) {
         return ResultUtils.success(userService.getUserLoginVO(httpRequest));
+    }
+
+    /**
+     * 当前登录用户更新个人资料（用户名、头像、简介）
+     */
+    @PostMapping("/update")
+    public BaseResponse<Boolean> updateMyProfile(@RequestBody UserUpdateRequest request,
+                                                 HttpServletRequest httpRequest) {
+        return ResultUtils.success(userService.updateMyProfile(request, httpRequest));
     }
 }
