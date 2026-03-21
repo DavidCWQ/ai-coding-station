@@ -89,3 +89,6 @@ export async function update(
     ...(options || {}),
   });
 }
+
+/** 与业务命名对齐的别名 */
+export { listByPage as listUserVoByPage, remove as deleteUser }

@@ -12,6 +12,7 @@
     "openapi2ts": "openapi2ts"
   },
   "dependencies": {
+    "dayjs": "^1.11.13",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.13.6",
     "pinia": "^3.0.4",

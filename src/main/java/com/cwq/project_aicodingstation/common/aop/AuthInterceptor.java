@@ -62,10 +62,8 @@ public class AuthInterceptor {
         BusinessAssert.notNull(mustRoleEnum, ErrorCode.NO_PERMISSION, "无访问权限");
         BusinessAssert.notNull(userRoleEnum, ErrorCode.NO_PERMISSION, "无访问权限");
 
-        // 5. 管理员校验（可扩展）
-        boolean hasRole = UserRoleEnum.ADMIN.equals(mustRoleEnum);
-        boolean noAuth = !UserRoleEnum.ADMIN.equals(userRoleEnum);
-        BusinessAssert.requireTrue(hasRole && noAuth,
+        // 5. 用户角色必须与 @AuthCheck 要求的角色一致
+        BusinessAssert.requireTrue(mustRoleEnum.equals(userRoleEnum),
                 ErrorCode.NO_PERMISSION, "要求必须有管理员权限，但用户没有管理员权限"
         );
 

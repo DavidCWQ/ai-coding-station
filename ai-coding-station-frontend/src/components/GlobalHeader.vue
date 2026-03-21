@@ -6,6 +6,8 @@ import type { MenuProps } from 'ant-design-vue'
 import { LogoutOutlined, UserOutlined } from '@ant-design/icons-vue'
 
 import { appMenu, type AppMenuItem } from '@/config/menu'
+import { ACCESS_ENUM } from '@/access/accessEnum'
+import { checkAccess } from '@/access/checkAccess'
 import { useLoginUserStore } from '@/stores/loginUser'
 
 const router = useRouter()
@@ -19,13 +21,25 @@ const isMobile = ref(false)
 const loginUser = computed(() => loginUserStore.loginUser)
 const isLoggedIn = computed(() => loginUserStore.isLoggedIn)
 
+const visibleMenuItems = computed(() => {
+  const loginUser = loginUserStore.loginUser
+  return appMenu.filter((item) => {
+    const resolved = router.resolve(item.path)
+    const leaf = resolved.matched[resolved.matched.length - 1]
+    if (!leaf) return false
+    if (leaf.meta.hideInMenu) return false
+    const need = leaf.meta.access ?? ACCESS_ENUM.NOT_LOGIN
+    return checkAccess(loginUser, need)
+  })
+})
+
 const selectedKeys = computed(() => {
-  const match = appMenu.find((m) => m.path === route.path)
+  const match = visibleMenuItems.value.find((m) => m.path === route.path)
   return match ? [match.key] : []
 })
 
 const menuItems = computed<MenuProps['items']>(() =>
-  appMenu.map((m: AppMenuItem) => ({
+  visibleMenuItems.value.map((m: AppMenuItem) => ({
     key: m.key,
     label: m.label,
   })),
@@ -49,7 +63,7 @@ const updateIsMobile = () => {
 }
 
 const onMenuClick: MenuProps['onClick'] = (info) => {
-  const target = appMenu.find((m) => m.key === String(info.key))
+  const target = visibleMenuItems.value.find((m) => m.key === String(info.key))
   if (!target) return
   router.push(target.path)
   mobileOpen.value = false
