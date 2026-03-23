@@ -8,7 +8,7 @@ import ChatMessage from '@/components/app/ChatMessage.vue'
 import { deployApp, getApp } from '@/api/appController'
 import { streamChatGenCode } from '@/hooks/useSSEChat'
 import { apiLongId, appIdFromData } from '@/utils/appId'
-import { buildStaticPreviewUrl } from '@/utils/appPreview'
+import { waitForStaticPreviewReady } from '@/utils/appPreview'
 
 type ChatRow = {
   role: 'user' | 'assistant'
@@ -28,6 +28,7 @@ const inputText = ref('')
 const messages = ref<ChatRow[]>([])
 const listEl = ref<HTMLElement | null>(null)
 const previewUrl = ref('')
+const previewFailed = ref(false)
 const deployLoading = ref(false)
 
 let abortCtl: AbortController | null = null
@@ -94,8 +95,18 @@ const runStream = async (text: string) => {
     finishAssistant()
     const app = appVo.value
     if (app) {
+      previewFailed.value = false
+      previewUrl.value = ''
       const cg = app.codeGenType || 'html'
-      previewUrl.value = buildStaticPreviewUrl(cg, appIdFromData(app.id))
+      const ready = await waitForStaticPreviewReady(cg, appIdFromData(app.id), {
+        signal: abortCtl.signal,
+      })
+      if (ready.ok) {
+        previewUrl.value = ready.url
+      } else {
+        previewFailed.value = true
+        message.warning('预览暂不可用：文件尚未就绪或生成失败，可稍后重试或查看服务端日志')
+      }
     }
   } catch (e) {
     if ((e as Error).name === 'AbortError') return
@@ -146,6 +157,7 @@ watch(appId, async () => {
   didInitial = false
   messages.value = []
   previewUrl.value = ''
+  previewFailed.value = false
   await loadApp()
 })
 
@@ -163,7 +175,26 @@ onBeforeUnmount(() => {
     <a-spin :spinning="pageLoading">
       <template v-if="appVo">
         <header class="app-detail__header">
-          <a-button type="text" @click="router.push('/app')">← 返回</a-button>
+          <a-button type="text" class="app-detail__back" @click="router.push('/app')">
+            <span class="app-detail__back-inner">
+              <svg
+                class="app-detail__back-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M10 19L3 12l7-7M3 12h16"
+                  stroke="currentColor"
+                  stroke-width="2.25"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>返回</span>
+            </span>
+          </a-button>
           <span class="app-detail__name">{{ appVo.appName || '应用' }}</span>
           <a-button type="primary" :loading="deployLoading" @click="onDeploy">
             部署
@@ -190,6 +221,11 @@ onBeforeUnmount(() => {
           <div class="app-detail__preview">
             <div class="app-detail__preview-title">生成预览</div>
             <iframe v-if="previewUrl" class="app-detail__iframe" :src="previewUrl" title="preview" />
+            <a-empty v-else-if="previewFailed">
+              <template #description>
+                <span>未能加载静态预览（文件未就绪或服务异常）。可稍后发送一条消息重新生成，或检查服务端代码输出目录与日志。</span>
+              </template>
+            </a-empty>
             <a-empty v-else description="生成完成后将在此展示预览" />
           </div>
         </div>
@@ -217,6 +253,18 @@ onBeforeUnmount(() => {
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+.app-detail__back-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-detail__back-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .app-detail__name {

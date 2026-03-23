@@ -9,7 +9,7 @@ function emptyQueryBody(extra: Partial<API.AppQueryRequest> = {}): API.AppQueryR
   return {
     id: 0,
     pageNum: 1,
-    pageSize: 12,
+    pageSize: 10,
     ...extra,
   }
 }

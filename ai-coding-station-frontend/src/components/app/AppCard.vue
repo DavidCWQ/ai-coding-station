@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
@@ -17,9 +18,46 @@ const emit = defineEmits<{
   click: [appId: string]
 }>()
 
+// 稳定 hash（保证同一个 app 永远同一个渐变）
+const hash = (input: string | number) => {
+  const str = String(input || '')
+  let h = 0
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) - h + str.charCodeAt(i)
+    h |= 0
+  }
+  return Math.abs(h)
+}
+
+// 渐变池（可自由扩展）
+const gradients = [
+  'linear-gradient(135deg, #e3f2fd, #bbdefb)',
+  'linear-gradient(135deg, #e0f7fa, #b2ebf2)',
+  'linear-gradient(135deg, #e8f5e9, #c8e6c9)',
+  'linear-gradient(135deg, #e6fffa, #ccfbf1)',
+  'linear-gradient(135deg, #fffde7, #fff9c4)',
+  'linear-gradient(135deg, #fff3e0, #ffe0b2)',
+  'linear-gradient(135deg, #fce4ec, #f8bbd0)',
+  'linear-gradient(135deg, #f3e5f5, #e1bee7)',
+]
+
 const appId = () => appIdFromData(props.app.id)
 
-const coverSrc = () => props.app.cover || ''
+const coverStyle = computed(() => {
+  // 有封面 → 用图片
+  if (props.app.cover) {
+    return {
+      backgroundImage: `url(${props.app.cover})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }
+  }
+  // 没封面 → 用渐变
+  const index = hash(props.app.id?? "default") % gradients.length
+  return {
+    background: gradients[index],
+  }
+})
 
 const relativeCreate = () => {
   const t = props.app.createTime
@@ -44,17 +82,18 @@ const onCardClick = () => {
 
 <template>
   <a-card class="app-card" hoverable @click="onCardClick">
-    <div class="app-card__thumb">
-      <img v-if="coverSrc()" class="app-card__img" :src="coverSrc()" alt="" />
-      <div v-else class="app-card__placeholder">预览</div>
+    <div class="app-card__thumb" :style="coverStyle">
+      <div v-if="!app.cover" class="app-card__placeholder">预览</div>
     </div>
     <div class="app-card__body">
       <div class="app-card__title">{{ app.appName || '未命名应用' }}</div>
       <div v-if="mode === 'mine'" class="app-card__meta">创建于 {{ relativeCreate() }}</div>
       <div v-else class="app-card__footer">
         <div class="app-card__author">
-          <a-avatar v-if="app.user?.userAvatar" :size="22" :src="app.user.userAvatar" />
-          <a-avatar v-else :size="22">{{ (app.user?.userName || app.user?.userAccount || '?').slice(0, 1) }}</a-avatar>
+          <a-avatar v-if="app.user?.userAvatar" :size="24" :src="app.user.userAvatar" />
+          <a-avatar v-else :size="24" class="avatar-letter">
+            {{ (app.user?.userName || app.user?.userAccount || '?').slice(0, 1).toUpperCase() }}
+          </a-avatar>
           <span class="app-card__name">{{ app.user?.userName || app.user?.userAccount || '用户' }}</span>
         </div>
         <a-tag class="app-card__tag" color="processing">{{ tagLabel() }}</a-tag>
@@ -79,13 +118,6 @@ const onCardClick = () => {
   aspect-ratio: 16 / 9;
   background: linear-gradient(135deg, #f0f5ff 0%, #e6fffb 100%);
   overflow: hidden;
-}
-
-.app-card__img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
 .app-card__placeholder {
@@ -131,6 +163,16 @@ const onCardClick = () => {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  text-transform: capitalize;
+}
+
+.avatar-letter :deep(.ant-avatar-string) {
+  position: relative;
+  top: -2px;  /* 向上微调 */
+  left: 5px;  /* 向右微调 */
+  font-size: 16px;
+  display: inline-block;
+  transform: translateY(0);
 }
 
 .app-card__name {

@@ -61,11 +61,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         BeanUtil.copyProperties(req, app);
 
         app.setUserId(userVO.getId());
-        if (req.getAppName().isEmpty()) {
+        if (StrUtil.isBlank(req.getAppName())) {
             app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
         }
         app.setCodeGenType(CodeGenTypeEnum.HTML.getValue());
-        if (req.getCodeGenType().toUpperCase().contains("MULTI")) {
+        if (StrUtil.isNotBlank(req.getCodeGenType())
+                && req.getCodeGenType().toUpperCase().contains("MULTI")) {
             app.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
         }
 
@@ -175,16 +176,34 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String sortField = appQueryRequest.getSortField();
         String sortOrder = appQueryRequest.getSortOrder();
 
-        return QueryWrapper.create()
-                .eq("id", id)
-                .eq("user_id", userId)
-                .like("app_name", appName)
-                .like("cover", cover)
-                .like("init_prompt", initPrompt)
-                .eq("code_gen_type", codeGenType)
-                .eq("deploy_key", deployKey)
-                .eq("priority", priority)
-                .orderBy(sortField, "ascend".equals(sortOrder));
+        // 3. 原先无条件 .eq("id", id)，前端占位 id: 0 会变成 WHERE id = 0，结果集为空。
+        //    现已经改为: iff id != null && id > 0 才加 id 条件，以此类推。
+        QueryWrapper qw = QueryWrapper.create();
+        if (id != null && id > 0) {
+            qw.eq("id", id);
+        }
+        if (userId != null && userId > 0) {
+            qw.eq("user_id", userId);
+        }
+        if (StrUtil.isNotBlank(appName)) {
+            qw.like("app_name", appName);
+        }
+        if (StrUtil.isNotBlank(cover)) {
+            qw.like("cover", cover);
+        }
+        if (StrUtil.isNotBlank(initPrompt)) {
+            qw.like("init_prompt", initPrompt);
+        }
+        if (StrUtil.isNotBlank(codeGenType)) {
+            qw.eq("code_gen_type", codeGenType);
+        }
+        if (StrUtil.isNotBlank(deployKey)) {
+            qw.eq("deploy_key", deployKey);
+        }
+        if (priority != null) {
+            qw.eq("priority", priority);
+        }
+        return qw.orderBy(sortField, "ascend".equals(sortOrder));
     }
 
     @Override

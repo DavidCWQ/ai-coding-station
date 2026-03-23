@@ -60,7 +60,7 @@ const getErr = (err: unknown): string => {
 }
 
 const onCreate = async () => {
-  const t = promptText.value.trim()
+  const t = promptText.value.trim() + "\n保持代码部分简洁，无需代码注释"
   if (!t) {
     message.warning('请先描述你想创建的应用')
     return
@@ -111,7 +111,7 @@ onMounted(() => {
       <div class="app-home__composer">
         <a-textarea
           v-model:value="promptText"
-          :rows="5"a
+          :rows="5"
           class="app-home__textarea"
           placeholder="使用 AI Coding 高效创建一个网站，比如：个人博客，企业官网，产品展示网站……"
           :disabled="creating"

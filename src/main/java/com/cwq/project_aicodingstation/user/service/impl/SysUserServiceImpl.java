@@ -200,13 +200,25 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         String sortField = userQueryRequest.getSortField();
         String sortOrder = userQueryRequest.getSortOrder();
 
-        return QueryWrapper.create()
-                .eq("id", id)
-                .eq("user_role", userRole)
-                .like("user_account", userAccount)
-                .like("user_name", userName)
-                .like("user_profile", userProfile)
-                .orderBy(sortField, "ascend".equals(sortOrder));
+        // 3. 原先无条件 .eq("id", id)，前端占位 id: 0 会变成 WHERE id = 0，结果集为空。
+        //    现已经改为: iff id != null && id > 0 才加 id 条件，以此类推。
+        QueryWrapper qw = QueryWrapper.create();
+        if (id != null && id > 0) {
+            qw.eq("id", id);
+        }
+        if (userRole != null) {
+            qw.eq("user_role", userRole);
+        }
+        if (StrUtil.isNotBlank(userAccount)) {
+            qw.like("user_account", userAccount);
+        }
+        if (StrUtil.isNotBlank(userName)) {
+            qw.like("user_name", userName);
+        }
+        if (StrUtil.isNotBlank(userProfile)) {
+            qw.like("user_profile", userProfile);
+        }
+        return qw.orderBy(sortField, "ascend".equals(sortOrder));
     }
 
 }
