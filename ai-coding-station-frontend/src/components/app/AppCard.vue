@@ -16,6 +16,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   click: [appId: string]
+  viewChat: [appId: string]
+  viewWork: [deployKey: string]
 }>()
 
 // 稳定 hash（保证同一个 app 永远同一个渐变）
@@ -78,12 +80,36 @@ const onCardClick = () => {
   const id = appId()
   if (id) emit('click', id)
 }
+
+const onViewChat = () => {
+  const id = appId()
+  if (id) emit('viewChat', id)
+}
+
+const onViewWork = () => {
+  const key = props.app.deployKey?.trim()
+  if (key) emit('viewWork', key)
+}
 </script>
 
 <template>
   <a-card class="app-card" hoverable @click="onCardClick">
     <div class="app-card__thumb" :style="coverStyle">
       <div v-if="!app.cover" class="app-card__placeholder">预览</div>
+      <div class="app-card__actions" @click.stop>
+        <a-space>
+          <a-button size="small" @click="onViewChat">查看对话</a-button>
+          <a-button
+            v-if="app.deployKey"
+            size="small"
+            type="primary"
+            class="app-card__work-btn"
+            @click="onViewWork"
+          >
+            查看作品
+          </a-button>
+        </a-space>
+      </div>
     </div>
     <div class="app-card__body">
       <div class="app-card__title">{{ app.appName || '未命名应用' }}</div>
@@ -115,6 +141,7 @@ const onCardClick = () => {
 }
 
 .app-card__thumb {
+  position: relative;
   aspect-ratio: 16 / 9;
   background: linear-gradient(135deg, #f0f5ff 0%, #e6fffb 100%);
   overflow: hidden;
@@ -127,6 +154,21 @@ const onCardClick = () => {
   justify-content: center;
   color: rgba(0, 0, 0, 0.35);
   font-size: 14px;
+}
+
+.app-card__actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 14, 30, 0.45);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.app-card:hover .app-card__actions {
+  opacity: 1;
 }
 
 .app-card__body {
@@ -186,5 +228,11 @@ const onCardClick = () => {
 .app-card__tag {
   flex-shrink: 0;
   margin: 0;
+}
+
+.app-card__work-btn {
+  border-color: #1677ff !important;
+  background: #1677ff !important;
+  color: #fff !important;
 }
 </style>

@@ -4,6 +4,7 @@ import { ref, watch } from 'vue'
 const props = defineProps<{
   modelValue: string
   loading?: boolean
+  disabled?: boolean
   placeholder?: string
 }>()
 
@@ -50,7 +51,7 @@ const onPressEnter = (e: Event) => {
       :value="local"
       :rows="3"
       :placeholder="placeholder ?? '描述越详细，页面越具体，可以一步一步完善生成效果'"
-      :disabled="loading"
+      :disabled="loading || disabled"
       class="chat-input__area"
       @update:value="onInput"
       @press-enter="onPressEnter"
@@ -61,7 +62,7 @@ const onPressEnter = (e: Event) => {
       </div>
       <a-space :size="8">
         <a-button v-if="loading" danger @click="onCancel">停止</a-button>
-        <a-button type="primary" :loading="loading" @click="onSubmit">发送</a-button>
+        <a-button type="primary" :loading="loading" :disabled="disabled" @click="onSubmit">发送</a-button>
       </a-space>
     </div>
   </div>

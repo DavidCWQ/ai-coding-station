@@ -40,6 +40,8 @@ export function useAppList(kind: AppListKind) {
         pageNum: query.pageNum,
         pageSize: Math.min(query.pageSize, 20),
         appName: name || undefined,
+        sortField: kind === 'my' ? 'update_time': 'create_time',
+        sortOrder: 'desc',
       })
       const res =
         kind === 'my' ? await listMyApps(body) : await listFeaturedApps(body)

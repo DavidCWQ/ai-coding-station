@@ -23,6 +23,10 @@ const form = reactive({
   appName: '',
   cover: '',
   priority: 0,
+  initPrompt: '',
+  deployKey: '',
+  createTime: '',
+  updateTime: '',
 })
 
 const rules: Record<'appName', Rule[]> = {
@@ -57,6 +61,10 @@ const load = async () => {
       form.appName = vo.appName ?? ''
       form.cover = vo.cover ?? ''
       form.priority = vo.priority ?? 0
+      form.initPrompt = vo.initPrompt ?? ''
+      form.deployKey = vo.deployKey ?? ''
+      form.createTime = vo.createTime ?? ''
+      form.updateTime = vo.updateTime ?? ''
     }
   } catch (e) {
     message.error(getErr(e))
@@ -124,10 +132,33 @@ onMounted(() => {
             <a-form-item label="封面图 URL">
               <a-input v-model:value="form.cover" allow-clear placeholder="https://..." />
             </a-form-item>
-            <a-form-item label="优先级（99=精选）">
-              <a-input-number v-model:value="form.priority" :min="0" :max="999" style="width: 100%" />
-            </a-form-item>
           </template>
+
+          <a-form-item label="初始提示词">
+            <a-textarea :value="form.initPrompt || '—'" :rows="4" disabled />
+          </a-form-item>
+
+          <a-form-item label="部署密钥">
+            <a-input :value="form.deployKey || '—'" disabled />
+          </a-form-item>
+
+          <a-form-item label="创建时间">
+            <a-input :value="form.createTime || '—'" disabled />
+          </a-form-item>
+
+          <a-form-item label="更新时间">
+            <a-input :value="form.updateTime || '—'" disabled />
+          </a-form-item>
+
+          <a-form-item label="优先级（99=精选）">
+            <a-input-number
+              v-model:value="form.priority"
+              :min="0"
+              :max="999"
+              :disabled="!isAdmin"
+              style="width: 100%"
+            />
+          </a-form-item>
 
           <a-form-item>
             <a-space>

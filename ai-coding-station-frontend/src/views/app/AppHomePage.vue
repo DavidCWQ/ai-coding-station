@@ -91,7 +91,13 @@ const onCreate = async () => {
 }
 
 const goDetail = (appId: string) => {
-  void router.push(`/app/${appId}`)
+  void router.push({ path: `/app/${appId}`, query: { view: '1' } })
+}
+
+const viewWork = (deployKey: string) => {
+  const key = deployKey.trim()
+  if (!key) return
+  window.open(`http://localhost:8088/${encodeURIComponent(key)}/`, '_blank', 'noopener,noreferrer')
 }
 
 onMounted(() => {
@@ -174,7 +180,7 @@ onMounted(() => {
         <a-empty v-if="!myList.records.length" description="暂无应用，试试上方创建" />
         <a-row v-else :gutter="[16, 16]">
           <a-col v-for="app in myList.records" :key="String(app.id)" :xs="24" :sm="12" :lg="8">
-            <AppCard :app="app" mode="mine" @click="goDetail" />
+            <AppCard :app="app" mode="mine" @click="goDetail" @view-chat="goDetail" @view-work="viewWork" />
           </a-col>
         </a-row>
         <div v-if="myList.total > 0" class="app-home__pager">
@@ -208,7 +214,7 @@ onMounted(() => {
         <a-empty v-if="!featuredList.records.length" description="暂无精选" />
         <a-row v-else :gutter="[16, 16]">
           <a-col v-for="app in featuredList.records" :key="String(app.id)" :xs="24" :sm="12" :lg="8">
-            <AppCard :app="app" mode="featured" @click="goDetail" />
+            <AppCard :app="app" mode="featured" @click="goDetail" @view-chat="goDetail" @view-work="viewWork" />
           </a-col>
         </a-row>
         <div v-if="featuredList.total > 0" class="app-home__pager">
