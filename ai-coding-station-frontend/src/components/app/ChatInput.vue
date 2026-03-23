@@ -10,6 +10,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [v: string]
   submit: []
+  cancel: []
 }>()
 
 const local = ref(props.modelValue)
@@ -28,6 +29,10 @@ const onInput = (v: string) => {
 
 const onSubmit = () => {
   emit('submit')
+}
+
+const onCancel = () => {
+  emit('cancel')
 }
 
 const onPressEnter = (e: Event) => {
@@ -54,7 +59,10 @@ const onPressEnter = (e: Event) => {
       <div class="chat-input__hints">
         <span class="chat-input__hint">Enter 发送 · Shift+Enter 换行</span>
       </div>
-      <a-button type="primary" :loading="loading" @click="onSubmit">发送</a-button>
+      <a-space :size="8">
+        <a-button v-if="loading" danger @click="onCancel">停止</a-button>
+        <a-button type="primary" :loading="loading" @click="onSubmit">发送</a-button>
+      </a-space>
     </div>
   </div>
 </template>

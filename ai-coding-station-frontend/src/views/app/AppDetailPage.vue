@@ -33,6 +33,7 @@ const deployLoading = ref(false)
 
 let abortCtl: AbortController | null = null
 let didInitial = false
+let cancelledByUser = false
 
 const scrollEnd = async () => {
   await nextTick()
@@ -53,12 +54,14 @@ const loadApp = async () => {
   try {
     const res = await getApp({ id: apiLongId(appId.value) })
     appVo.value = res.data?.data ?? null
-    await maybeRunInitial()
   } catch (e) {
     message.error(getErr(e))
     appVo.value = null
   } finally {
     pageLoading.value = false
+  }
+  if (appVo.value) {
+    void maybeRunInitial()
   }
 }
 
@@ -76,6 +79,7 @@ const finishAssistant = () => {
 const runStream = async (text: string) => {
   abortCtl?.abort()
   abortCtl = new AbortController()
+  cancelledByUser = false
   chatLoading.value = true
   appendAssistantStreaming()
   await scrollEnd()
@@ -103,17 +107,24 @@ const runStream = async (text: string) => {
       })
       if (ready.ok) {
         previewUrl.value = ready.url
-      } else {
+      } else if (!cancelledByUser) {
         previewFailed.value = true
         message.warning('预览暂不可用：文件尚未就绪或生成失败，可稍后重试或查看服务端日志')
       }
     }
   } catch (e) {
-    if ((e as Error).name === 'AbortError') return
+    if ((e as Error).name === 'AbortError') {
+      finishAssistant()
+      if (cancelledByUser) {
+        message.info('已停止本次生成')
+      }
+      return
+    }
     message.error(getErr(e))
     finishAssistant()
   } finally {
     chatLoading.value = false
+    abortCtl = null
     await scrollEnd()
   }
 }
@@ -125,6 +136,12 @@ const sendUser = async (text: string) => {
   inputText.value = ''
   await scrollEnd()
   await runStream(t)
+}
+
+const cancelStream = () => {
+  if (!chatLoading.value || !abortCtl) return
+  cancelledByUser = true
+  abortCtl.abort()
 }
 
 const maybeRunInitial = async () => {
@@ -216,6 +233,7 @@ onBeforeUnmount(() => {
               v-model="inputText"
               :loading="chatLoading"
               @submit="sendUser(inputText)"
+              @cancel="cancelStream"
             />
           </div>
           <div class="app-detail__preview">
@@ -237,10 +255,16 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .app-detail {
-  min-height: 100vh;
+  height: 100vh;
   background: #f5f5f5;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.app-detail :deep(.ant-spin-nested-loading),
+.app-detail :deep(.ant-spin-container) {
+  height: 100%;
 }
 
 .app-detail__header {
@@ -281,7 +305,8 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
   gap: 0;
-  min-height: calc(100vh - 57px);
+  height: calc(100vh - 57px);
+  overflow: hidden;
 }
 
 @media (max-width: 960px) {
@@ -297,19 +322,23 @@ onBeforeUnmount(() => {
   background: #fff;
   border-right: 1px solid rgba(5, 5, 5, 0.06);
   min-height: 0;
+  overflow: hidden;
 }
 
 .app-detail__messages {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 16px;
 }
 
 .app-detail__chat :deep(.chat-input) {
+  flex-shrink: 0;
   border-radius: 0;
   border-left: none;
   border-right: none;
   border-bottom: none;
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
 }
 
 .app-detail__preview {
