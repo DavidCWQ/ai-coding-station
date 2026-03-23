@@ -422,6 +422,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 6. 部署目录
         String deployDirPath = appDeployConfig.getDeployDir() + File.separator + deployKey;
         try {
+            // 先清空旧部署目录，避免历史残留文件影响最新版本
+            FileUtil.del(deployDirPath);
+            FileUtil.mkdir(deployDirPath);
             FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "该应用部署失败");

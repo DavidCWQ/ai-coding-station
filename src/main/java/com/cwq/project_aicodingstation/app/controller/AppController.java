@@ -2,6 +2,7 @@ package com.cwq.project_aicodingstation.app.controller;
 
 import cn.hutool.json.JSONUtil;
 import com.cwq.project_aicodingstation.app.dto.AppAddRequest;
+import com.cwq.project_aicodingstation.app.dto.AppChatGenCodeRequest;
 import com.cwq.project_aicodingstation.app.dto.AppDeployRequest;
 import com.cwq.project_aicodingstation.app.dto.AppQueryRequest;
 import com.cwq.project_aicodingstation.app.dto.AppUpdateRequest;
@@ -13,6 +14,7 @@ import com.cwq.project_aicodingstation.common.utils.ResultUtils;
 import com.cwq.project_aicodingstation.user.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
@@ -110,8 +112,24 @@ public class AppController {
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId,
                                                        @RequestParam String message,
                                                        HttpServletRequest request) {
-        return appService // 调用 Service，封装 JSON + 追加 done 事件
+        return toSSE(appService // 调用 Service，封装 JSON + 追加 done 事件
                 .chatToGenCode(appId, message, userService.getUserLoginVO(request))
+        );
+    }
+
+    /**
+     * 应用聊天生成代码 (SSE流式，POST 防止长文本触发 431 ERROR)
+     */
+    @PostMapping(value = "/chat/genCode", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> chatToGenCode(@RequestBody @Valid AppChatGenCodeRequest req,
+                                                       HttpServletRequest request) {
+        return toSSE(appService
+                .chatToGenCode(req.getAppId(), req.getMessage(), userService.getUserLoginVO(request))
+        );
+    }
+
+    private Flux<ServerSentEvent<String>> toSSE(Flux<String> source) {
+        return source
                 .map(chunk -> {
                     Map<String, String> wrapper = Map.of("d", chunk);
                     String json = JSONUtil.toJsonStr(wrapper);
