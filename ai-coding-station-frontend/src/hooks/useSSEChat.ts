@@ -1,18 +1,9 @@
 import { assertValidAppId } from '@/utils/appId'
+import { getApiUrl } from '@/config/env'
 
 function buildChatGenCodeUrl(appId: string): string {
   assertValidAppId(appId)
-  const base = import.meta.env.VITE_APP_API_BASE_URL ?? '/api'
-  // 处理完整 URL：http://localhost:8142/api
-  if (base.startsWith('http://') || base.startsWith('https://')) {
-    const u = new URL(base)
-    const prefix = u.pathname.endsWith('/') ? u.pathname.slice(0, -1) : u.pathname
-    return `${u.origin}${prefix}/app/chat/genCode`
-  }
-  // 处理相对路径：/api
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const prefix = base.endsWith('/') ? base.slice(0, -1) : base
-  return `${origin}${prefix}/app/chat/genCode`
+  return getApiUrl('/app/chat/genCode')
 }
 
 /**

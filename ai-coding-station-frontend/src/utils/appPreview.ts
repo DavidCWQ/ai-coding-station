@@ -1,24 +1,10 @@
+import { getStaticPreviewIndexUrl, getStaticPreviewUrl } from '@/config/env'
+
 /**
  * 生成代码预览 (与后端 StaticResourceController `/api/static/**` 一致)
  */
 function buildPreviewCandidates(codeGenType: string, appId: string): string[] {
-  const safeType = (codeGenType || 'html').trim() || 'html'
-  const standardType = safeType.replace(/-/g, '_')
-  const baseDir = `/static/${standardType}_${appId}`
-  const candidates = [`${baseDir}/index.html`, `${baseDir}/`]
-  return candidates.map((path) => {
-    const base = import.meta.env.VITE_APP_API_BASE_URL ?? '/api'
-    // 处理完整 URL：http://localhost:8142/api
-    if (base.startsWith('http://') || base.startsWith('https://')) {
-      const u = new URL(base)
-      const prefix = u.pathname.endsWith('/') ? u.pathname.slice(0, -1) : u.pathname
-      return `${u.origin}${prefix}${path}`
-    }
-    // 处理相对路径：/api
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    const prefix = base.endsWith('/') ? base.slice(0, -1) : base
-    return `${origin}${prefix}${path}`
-  })
+  return [getStaticPreviewIndexUrl(codeGenType, appId), getStaticPreviewUrl(codeGenType, appId)]
 }
 
 function looksLikeJsonError(res: Response): boolean {

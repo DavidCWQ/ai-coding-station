@@ -1,10 +1,6 @@
-import axios, {
-  type AxiosError,
-  type AxiosInstance,
-  type AxiosResponse,
-  type InternalAxiosRequestConfig,
-} from 'axios'
-import { message } from 'ant-design-vue'
+import axios, {type AxiosError, type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig,} from 'axios'
+import {message} from 'ant-design-vue'
+import {APP_API_BASE_URL} from '@/config/env'
 
 export interface ApiResponse<T = any> {
   code: number
@@ -13,10 +9,8 @@ export interface ApiResponse<T = any> {
   [key: string]: unknown
 }
 
-const BASE_URL = import.meta.env.VITE_APP_API_BASE_URL ?? '/api'
-
 const request: AxiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: APP_API_BASE_URL,
   timeout: 60_000,
   withCredentials: true,
 })

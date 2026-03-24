@@ -5,6 +5,7 @@ import { message } from 'ant-design-vue'
 
 import AppCard from '@/components/app/AppCard.vue'
 import { createApp } from '@/api/appController'
+import { getDeployUrl } from '@/config/env'
 import { useAppList } from '@/hooks/useAppList'
 import { useLoginUserStore } from '@/stores/loginUser'
 
@@ -97,7 +98,7 @@ const goDetail = (appId: string) => {
 const viewWork = (deployKey: string) => {
   const key = deployKey.trim()
   if (!key) return
-  window.open(`http://localhost:8088/${encodeURIComponent(key)}/`, '_blank', 'noopener,noreferrer')
+  window.open(getDeployUrl(key), '_blank', 'noopener,noreferrer')
 }
 
 onMounted(() => {
