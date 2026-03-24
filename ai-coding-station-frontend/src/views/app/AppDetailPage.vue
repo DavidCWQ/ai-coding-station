@@ -16,6 +16,7 @@ import { deleteApp, deployApp, getApp } from '@/api/appController'
 import { streamChatGenCode } from '@/hooks/useSSEChat'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { apiLongId, appIdFromData } from '@/utils/appId'
+import { getErrorMessage } from '@/utils/error'
 import { waitForStaticPreviewReady } from '@/utils/appPreview'
 
 type ChatRow = {
@@ -72,21 +73,13 @@ const scrollEnd = async () => {
   if (el) el.scrollTop = el.scrollHeight
 }
 
-const getErr = (err: unknown): string => {
-  if (typeof err === 'object' && err !== null) {
-    const m = (err as Record<string, unknown>).message
-    if (typeof m === 'string') return m
-  }
-  return '操作失败'
-}
-
 const loadApp = async () => {
   pageLoading.value = true
   try {
     const res = await getApp({ id: apiLongId(appId.value) })
     appVo.value = res.data?.data ?? null
   } catch (e) {
-    message.error(getErr(e))
+    message.error(getErrorMessage(e))
     appVo.value = null
   } finally {
     pageLoading.value = false
@@ -151,7 +144,7 @@ const runStream = async (text: string) => {
       }
       return
     }
-    message.error(getErr(e))
+    message.error(getErrorMessage(e))
     finishAssistant()
   } finally {
     chatLoading.value = false
@@ -200,7 +193,7 @@ const onDeploy = async () => {
       deploySuccessOpen.value = true
     }
   } catch (e) {
-    message.error(getErr(e))
+    message.error(getErrorMessage(e))
   } finally {
     deployLoading.value = false
   }
@@ -234,7 +227,7 @@ const confirmDelete = async () => {
     message.success('删除成功')
     await router.push('/app')
   } catch (e) {
-    message.error(getErr(e))
+    message.error(getErrorMessage(e))
   } finally {
     deleteLoading.value = false
   }

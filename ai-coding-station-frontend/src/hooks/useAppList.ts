@@ -2,6 +2,7 @@ import { reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 
 import { listFeaturedApps, listMyApps } from '@/api/appController'
+import { getErrorMessage } from '@/utils/error'
 
 export type AppListKind = 'my' | 'featured'
 
@@ -12,14 +13,6 @@ function emptyQueryBody(extra: Partial<API.AppQueryRequest> = {}): API.AppQueryR
     pageSize: 10,
     ...extra,
   }
-}
-
-const getErr = (err: unknown): string => {
-  if (typeof err === 'object' && err !== null) {
-    const m = (err as Record<string, unknown>).message
-    if (typeof m === 'string') return m
-  }
-  return '加载失败'
 }
 
 export function useAppList(kind: AppListKind) {
@@ -49,7 +42,7 @@ export function useAppList(kind: AppListKind) {
       records.value = page?.records ?? []
       total.value = page?.totalRow ?? 0
     } catch (e) {
-      message.error(getErr(e))
+      message.error(getErrorMessage(e, '加载失败'))
       records.value = []
       total.value = 0
     } finally {

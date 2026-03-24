@@ -7,6 +7,7 @@ import dayjs from 'dayjs'
 
 import { adminDeleteApp, adminUpdateApp, listApp } from '@/api/appAdminController'
 import { apiLongId, appIdFromData } from '@/utils/appId'
+import { getErrorMessage } from '@/utils/error'
 
 const FEATURED_PRIORITY = 99
 
@@ -46,14 +47,6 @@ const fmt = (v?: string) => {
   return d.isValid() ? d.format('YYYY-MM-DD HH:mm:ss') : v
 }
 
-const getErr = (err: unknown): string => {
-  if (typeof err === 'object' && err !== null) {
-    const m = (err as Record<string, unknown>).message
-    if (typeof m === 'string') return m
-  }
-  return '请求失败'
-}
-
 const buildQuery = (): API.AppQueryRequest => {
   const uid = searchParams.userId.trim()
   return {
@@ -73,7 +66,7 @@ const fetchData = async () => {
     data.value = page?.records ?? []
     total.value = page?.totalRow ?? 0
   } catch (e) {
-    message.error(getErr(e))
+    message.error(getErrorMessage(e, '请求失败'))
   } finally {
     loading.value = false
   }
@@ -100,7 +93,7 @@ const doDelete = async (id: string) => {
     message.success('已删除')
     await fetchData()
   } catch (e) {
-    message.error(getErr(e))
+    message.error(getErrorMessage(e, '请求失败'))
   }
 }
 
@@ -113,7 +106,7 @@ const setFeatured = async (id: string, priority: number) => {
     message.success('已更新')
     await fetchData()
   } catch (e) {
-    message.error(getErr(e))
+    message.error(getErrorMessage(e, '请求失败'))
   }
 }
 

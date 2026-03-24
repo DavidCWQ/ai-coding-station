@@ -8,6 +8,7 @@ import { adminUpdateApp } from '@/api/appAdminController'
 import { getApp, updateApp } from '@/api/appController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { apiLongId } from '@/utils/appId'
+import { getErrorMessage } from '@/utils/error'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,14 +44,6 @@ const canEdit = computed(() => {
   return String(u.id) === String(app.userId)
 })
 
-const getErr = (err: unknown): string => {
-  if (typeof err === 'object' && err !== null) {
-    const m = (err as Record<string, unknown>).message
-    if (typeof m === 'string') return m
-  }
-  return '操作失败'
-}
-
 const load = async () => {
   pageLoading.value = true
   try {
@@ -67,7 +60,7 @@ const load = async () => {
       form.updateTime = vo.updateTime ?? ''
     }
   } catch (e) {
-    message.error(getErr(e))
+    message.error(getErrorMessage(e))
     appVo.value = null
   } finally {
     pageLoading.value = false
@@ -97,7 +90,7 @@ const onSubmit = async () => {
     message.success('保存成功')
     await router.push(`/app/${appIdStr.value}`)
   } catch (e) {
-    message.error(getErr(e))
+    message.error(getErrorMessage(e))
   } finally {
     saving.value = false
   }

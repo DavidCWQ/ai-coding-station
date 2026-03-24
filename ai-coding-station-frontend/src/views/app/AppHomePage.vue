@@ -8,6 +8,7 @@ import { createApp } from '@/api/appController'
 import { getDeployUrl } from '@/config/env'
 import { useAppList } from '@/hooks/useAppList'
 import { useLoginUserStore } from '@/stores/loginUser'
+import { getErrorMessage } from '@/utils/error'
 
 const router = useRouter()
 const loginUserStore = useLoginUserStore()
@@ -52,14 +53,6 @@ const applySuggestion = (s: Suggestion) => {
   promptText.value = `轻松创建一个：${s.prompt}`
 }
 
-const getErr = (err: unknown): string => {
-  if (typeof err === 'object' && err !== null) {
-    const m = (err as Record<string, unknown>).message
-    if (typeof m === 'string') return m
-  }
-  return '创建失败'
-}
-
 const onCreate = async () => {
   const t = promptText.value.trim() + "\n保持代码部分简洁，无需代码注释"
   if (!t) {
@@ -85,7 +78,7 @@ const onCreate = async () => {
     }
     await router.push(`/app/${String(id)}`)
   } catch (e) {
-    message.error(getErr(e))
+    message.error(getErrorMessage(e, '创建失败'))
   } finally {
     creating.value = false
   }
