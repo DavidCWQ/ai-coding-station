@@ -55,7 +55,7 @@ const getPriorityInfo = (priority: number) => {
   }
   if (priority >= 0) {
     return {
-      tag: { color: 'cyan', text: '普通' },
+      tag: { color: 'gray', text: '普通' },
       buttons: [
         { text: '精选', priority: FEATURED_PRIORITY, danger: false },
         { text: '置顶', priority: PINNED_PRIORITY, danger: false }
