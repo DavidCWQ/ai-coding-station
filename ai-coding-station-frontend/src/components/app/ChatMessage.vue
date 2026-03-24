@@ -71,18 +71,21 @@ const onContentClick = async (e: MouseEvent) => {
     message.warning('复制失败，请重试')
   }
 }
+
 </script>
 
 <template>
   <div class="msg" :class="role === 'user' ? 'msg--user' : 'msg--ai'">
     <div class="msg__bubble">
-      <div class="msg__content" @click="onContentClick">
-        <div
-          v-if="role === 'assistant'"
-          class="msg__markdown"
-          v-html="aiHtml"
-        />
-        <pre v-else class="msg__text" v-html="safeUserHtml" />
+      <div class="msg__content-wrap">
+        <div class="msg__content" @click="onContentClick">
+          <div
+            v-if="role === 'assistant'"
+            class="msg__markdown"
+            v-html="aiHtml"
+          />
+          <pre v-else class="msg__text" v-html="safeUserHtml" />
+        </div>
       </div>
       <span v-if="streaming" class="msg__cursor" aria-hidden="true">▍</span>
     </div>
@@ -104,7 +107,7 @@ const onContentClick = async (e: MouseEvent) => {
 }
 
 .msg__bubble {
-  max-width: min(92%, 640px);
+  max-width: min(78%, 520px);
   padding: 10px 14px;
   border-radius: 12px;
   line-height: 1.55;
@@ -125,10 +128,15 @@ const onContentClick = async (e: MouseEvent) => {
 }
 
 .msg__content {
-  max-height: min(52vh, 560px);
+  max-height: min(78vh, 960px);
   overflow: auto;
-  margin: -10px -14px;
-  padding: 10px 14px;
+  margin: -4px -14px;
+  padding: 4px 14px;
+}
+
+.msg__content-wrap {
+  position: relative;
+  padding: 4px 0;
 }
 
 .msg__text {
@@ -246,30 +254,6 @@ const onContentClick = async (e: MouseEvent) => {
 .msg--user .msg__content::-webkit-scrollbar,
 .msg--ai .msg__content::-webkit-scrollbar {
   width: 8px;
-}
-
-.msg--user .msg__content::-webkit-scrollbar-button:single-button,
-.msg--ai .msg__content::-webkit-scrollbar-button:single-button {
-  display: block;
-  height: 12px;
-  background-color: rgba(0, 0, 0, 0.1);
-  border-radius: 6px;
-}
-
-.msg--user .msg__content::-webkit-scrollbar-button:single-button:vertical:decrement,
-.msg--ai .msg__content::-webkit-scrollbar-button:single-button:vertical:decrement {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath d='M1 5.5L4 2.5l3 3' fill='none' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 8px 8px;
-}
-
-.msg--user .msg__content::-webkit-scrollbar-button:single-button:vertical:increment,
-.msg--ai .msg__content::-webkit-scrollbar-button:single-button:vertical:increment {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath d='M1 2.5L4 5.5l3-3' fill='none' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 8px 8px;
 }
 
 .msg--user .msg__content::-webkit-scrollbar-thumb,

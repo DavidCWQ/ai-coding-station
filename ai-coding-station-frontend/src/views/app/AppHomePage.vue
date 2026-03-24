@@ -75,7 +75,7 @@ const onCreate = async () => {
     const res = await createApp({
       appName: '',
       initPrompt: t,
-      codeGenType: 'HTML',
+      codeGenType: 'HTML', // Possible Expansion here (multi_file, etc.)
     })
     const id = res.data?.data
     if (id === undefined || id === null) {

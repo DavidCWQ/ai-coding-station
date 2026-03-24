@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
-import { CloudUploadOutlined, InfoCircleOutlined } from '@ant-design/icons-vue'
+import { CloudUploadOutlined, ExportOutlined, InfoCircleOutlined } from '@ant-design/icons-vue'
 
 import BackButton from '@/components/common/backButton.vue'
 import ChatInput from '@/components/app/ChatInput.vue'
@@ -211,6 +211,14 @@ const onDelete = () => {
   deleteConfirmOpen.value = true
 }
 
+const openPreviewInNewWindow = () => {
+  if (!previewUrl.value) {
+    message.info('暂无可打开的预览')
+    return
+  }
+  window.open(previewUrl.value, '_blank', 'noopener,noreferrer')
+}
+
 const confirmDelete = async () => {
   if (!appVo.value) return
   deleteLoading.value = true
@@ -290,7 +298,13 @@ onBeforeUnmount(() => {
             </a-tooltip>
           </div>
           <div class="app-detail__preview">
-            <div class="app-detail__preview-title">生成预览</div>
+            <div class="app-detail__preview-title">
+              <span>生成预览</span>
+              <button type="button" class="app-detail__preview-open" @click="openPreviewInNewWindow">
+                <ExportOutlined />
+                <span>新窗口打开</span>
+              </button>
+            </div>
             <iframe v-if="previewUrl" class="app-detail__iframe" :src="previewUrl" title="preview" />
             <a-empty v-else-if="previewFailed">
               <template #description>
@@ -409,6 +423,21 @@ onBeforeUnmount(() => {
   color: rgba(0, 0, 0, 0.55);
   border-bottom: 1px solid rgba(5, 5, 5, 0.06);
   background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-detail__preview-open {
+  border: none;
+  background: transparent;
+  color: #1677ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
 }
 
 .app-detail__iframe {
