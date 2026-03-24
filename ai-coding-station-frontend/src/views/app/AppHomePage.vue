@@ -183,7 +183,7 @@ onMounted(() => {
             :page-size="myList.query.pageSize"
             :total="myList.total"
             :show-size-changer="true"
-            :page-size-options="['12', '16', '20']"
+            :page-size-options="['6', '12', '18']"
             @change="myList.onPageChange"
           />
         </div>

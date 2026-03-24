@@ -10,7 +10,7 @@ function emptyQueryBody(extra: Partial<API.AppQueryRequest> = {}): API.AppQueryR
   return {
     id: 0,
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 12,
     ...extra,
   }
 }
@@ -31,7 +31,7 @@ export function useAppList(kind: AppListKind) {
       const name = query.appName.trim()
       const body = emptyQueryBody({
         pageNum: query.pageNum,
-        pageSize: Math.min(query.pageSize, 20),
+        pageSize: Math.min(query.pageSize, 15),
         appName: name || undefined,
         sortField: kind === 'my' ? 'update_time': 'create_time',
         sortOrder: 'desc',

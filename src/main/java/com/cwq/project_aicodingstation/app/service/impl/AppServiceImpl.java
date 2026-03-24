@@ -201,7 +201,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             qw.eq("deploy_key", deployKey);
         }
         if (priority != null) {
-            qw.eq("priority", priority);
+            qw.ge("priority", priority);
         }
         return qw.orderBy(sortField, "ascend".equals(sortOrder));
     }

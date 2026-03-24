@@ -10,6 +10,7 @@ import { apiLongId, appIdFromData } from '@/utils/appId'
 import { getErrorMessage } from '@/utils/error'
 
 const FEATURED_PRIORITY = 99
+const PINNED_PRIORITY = 999
 
 const router = useRouter()
 
@@ -19,7 +20,7 @@ const loading = ref(false)
 
 const searchParams = reactive({
   pageNum: 1,
-  pageSize: 12,
+  pageSize: 10,
   appName: '',
   userId: '' as string,
 })
@@ -32,6 +33,40 @@ const columns: TableColumnType<API.AppVO>[] = [
   { title: '创建时间', key: 'createTime', width: 180 },
   { title: '操作', key: 'action', width: 220, fixed: 'right' },
 ]
+
+const getPriorityInfo = (priority: number) => {
+  if (priority >= PINNED_PRIORITY) {
+    return {
+      tag: { color: 'gold', text: '置顶' },
+      buttons: [
+        { text: '精选', priority: FEATURED_PRIORITY, danger: false },
+        { text: '取消置顶', priority: FEATURED_PRIORITY, danger: false }
+      ]
+    }
+  }
+  if (priority >= FEATURED_PRIORITY) {
+    return {
+      tag: { color: 'green', text: '精选' },
+      buttons: [
+        { text: '取消精选', priority: 0, danger: false },
+        { text: '置顶', priority: PINNED_PRIORITY, danger: false }
+      ]
+    }
+  }
+  if (priority >= 0) {
+    return {
+      tag: { color: 'cyan', text: '普通' },
+      buttons: [
+        { text: '精选', priority: FEATURED_PRIORITY, danger: false },
+        { text: '置顶', priority: PINNED_PRIORITY, danger: false }
+      ]
+    }
+  }
+  return {
+    tag: { color: 'red', text: '锁定' },
+    buttons: [{ text: '取消锁定', priority: 0, danger: false }]
+  }
+}
 
 const pagination = computed<TableProps['pagination']>(() => ({
   current: searchParams.pageNum,
@@ -97,7 +132,7 @@ const doDelete = async (id: string) => {
   }
 }
 
-const setFeatured = async (id: string, priority: number) => {
+const setPriority = async (id: string, priority: number) => {
   try {
     await adminUpdateApp({
       id: apiLongId(id),
@@ -147,8 +182,9 @@ onMounted(() => {
             {{ record.userId != null ? String(record.userId) : '—' }}
           </template>
           <template v-else-if="column.key === 'priority'">
-            <a-tag v-if="record.priority === FEATURED_PRIORITY" color="green">精选</a-tag>
-            <span v-else>{{ record.priority ?? '—' }}</span>
+            <a-tag :color="getPriorityInfo(record.priority).tag.color">
+              {{ getPriorityInfo(record.priority).tag.text }}
+            </a-tag>
           </template>
           <template v-else-if="column.key === 'createTime'">
             {{ fmt(record.createTime) }}
@@ -157,20 +193,14 @@ onMounted(() => {
             <a-space wrap>
               <a-button type="link" size="small" @click="goEdit(appIdFromData(record.id))">编辑</a-button>
               <a-button
-                v-if="record.priority !== FEATURED_PRIORITY"
+                v-for="btn in getPriorityInfo(record.priority).buttons"
+                :key="btn.text"
                 type="link"
                 size="small"
-                @click="setFeatured(appIdFromData(record.id), FEATURED_PRIORITY)"
+                :danger="btn.danger"
+                @click="setPriority(appIdFromData(record.id), btn.priority)"
               >
-                精选
-              </a-button>
-              <a-button
-                v-else
-                type="link"
-                size="small"
-                @click="setFeatured(appIdFromData(record.id), 0)"
-              >
-                取消精选
+                {{ btn.text }}
               </a-button>
               <a-popconfirm title="确定删除？" @confirm="doDelete(appIdFromData(record.id))">
                 <a-button type="link" danger size="small">删除</a-button>
