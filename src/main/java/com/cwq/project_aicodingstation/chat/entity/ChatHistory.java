@@ -1,4 +1,4 @@
-package com.cwq.project_aicodingstation.app.entity;
+package com.cwq.project_aicodingstation.chat.entity;
 
 import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Id;
@@ -15,15 +15,15 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * @apiNote App Entity Layer
+ * @apiNote ChatHistory Entity Layer
  * @author <a href="https://github.com/DavidCWQ">DavidCWQ</a>
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table("app")
-public class App implements Serializable {
+@Table("chat_history")
+public class ChatHistory implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -31,17 +31,15 @@ public class App implements Serializable {
     @Id(keyType = KeyType.Generator, value = KeyGenerators.snowFlakeId)
     private Long id;
 
-    private String appName;
-    private String cover;
-    private String initPrompt;
-    private String codeGenType;
-    private String deployKey;
+    private String message;
+    private String messageType; // 消息类型 user/ai/system
+    private String fileList;    // 文件列表(JSON字符串)
 
+    private Long appId;
     private Long userId;
-    private Integer priority;
-    private LocalDateTime deployedTime;
+    private Long sessionId;     // 会话id
+    private Long parentId;      // 父消息id
 
-    private LocalDateTime editTime;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 

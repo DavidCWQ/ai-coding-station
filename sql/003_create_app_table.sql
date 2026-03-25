@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS `app` (
     KEY `idx_app_name` (`app_name`),                        -- 提升基于应用名称的查询性能
     KEY `idx_user_id` (`user_id`),                          -- 提升基于用户ID的查询性能
     CONSTRAINT `fk_app_user`
-        FOREIGN KEY (`user_id`)                             -- 保证数据一致性
-        REFERENCES `sys_user` (`id`)
-        ON DELETE CASCADE
+    FOREIGN KEY (`user_id`)                                 -- 保证数据一致性
+    REFERENCES `sys_user` (`id`)
+                                                            ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI应用表';
