@@ -3,7 +3,6 @@ package com.cwq.project_aicodingstation.user.service.impl;
 import cn.hutool.core.collection.CollUtil;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
-import com.cwq.project_aicodingstation.user.constant.UserConstant;
 import com.cwq.project_aicodingstation.user.dto.UserLoginRequest;
 import com.cwq.project_aicodingstation.user.dto.UserRegisterRequest;
 import com.cwq.project_aicodingstation.user.dto.UserUpdateRequest;
