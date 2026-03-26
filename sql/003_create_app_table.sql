@@ -8,7 +8,7 @@
 USE `ai_coding_station_memo`;
 
 CREATE TABLE IF NOT EXISTS `app` (
-    `id`              BIGINT AUTO_INCREMENT COMMENT '主键' PRIMARY KEY,
+    `id`              BIGINT AUTO_INCREMENT                 COMMENT '主键' PRIMARY KEY,
     `app_name`        VARCHAR(256)                          NULL COMMENT '应用名称',
     `cover`           VARCHAR(512)                          NULL COMMENT '应用封面',
     `init_prompt`     TEXT                                  NULL COMMENT '初始化提示词',

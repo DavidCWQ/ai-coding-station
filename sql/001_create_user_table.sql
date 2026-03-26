@@ -16,7 +16,7 @@ USE `ai_coding_station_memo`;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS `sys_user` (
-    `id`            BIGINT AUTO_INCREMENT COMMENT '主键' PRIMARY KEY,
+    `id`            BIGINT AUTO_INCREMENT                   PRIMARY KEY COMMENT '主键',
     `user_account`  VARCHAR(128)                            NOT NULL COMMENT '账号',
     `user_password` VARCHAR(256)                            NOT NULL COMMENT '密码（加密）',
     `user_name`     VARCHAR(128)                            NULL COMMENT '用户昵称',

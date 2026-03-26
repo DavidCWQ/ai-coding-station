@@ -8,7 +8,7 @@
 USE `ai_coding_station_memo`;
 
 CREATE TABLE IF NOT EXISTS `chat_session` (               -- 对话容器（元信息）
-    `id`            BIGINT COMMENT '主键（雪花ID）' PRIMARY KEY,
+    `id`            BIGINT AUTO_INCREMENT                 PRIMARY KEY COMMENT '主键（雪花ID）',
     `app_id`        BIGINT                                NOT NULL COMMENT '应用id',
     `user_id`       BIGINT                                NOT NULL COMMENT '用户id',
     `title`         VARCHAR(256)                          NULL COMMENT '会话标题（自动生成或用户修改）',
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS `chat_session` (               -- 对话容器（元�
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='对话会话表';
 
 CREATE TABLE IF NOT EXISTS `chat_history` (                 -- 对话内容（真实数据）
-    `id`              BIGINT AUTO_INCREMENT COMMENT '主键' PRIMARY KEY,
+    `id`              BIGINT AUTO_INCREMENT                 PRIMARY KEY COMMENT '主键',
     `message`         TEXT                                  NOT NULL COMMENT '消息内容',
     `message_type`    VARCHAR(32)                           NOT NULL COMMENT '消息类型（user/ai/system）',
     `app_id`          BIGINT                                NOT NULL COMMENT '应用id',
