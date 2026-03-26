@@ -48,8 +48,8 @@ export async function userRegister(
   });
 }
 
-/** 更新当前用户资料（需后端提供 POST /user/update） */
-export async function updateUser(
+/** 此处后端没有提供注释 POST /user/update */
+export async function updateMyProfile(
   body: API.UserUpdateRequest,
   options?: { [key: string]: any }
 ) {

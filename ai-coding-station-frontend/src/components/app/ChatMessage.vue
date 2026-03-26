@@ -128,7 +128,7 @@ const onContentClick = async (e: MouseEvent) => {
 }
 
 .msg__content {
-  max-height: min(78vh, 960px);
+  max-height: min(86vh, 1200px);
   overflow: auto;
   margin: -4px -14px;
   padding: 4px 14px;

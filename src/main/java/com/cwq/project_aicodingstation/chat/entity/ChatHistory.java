@@ -15,7 +15,8 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * @apiNote ChatHistory Entity Layer
+ * 对话历史实体（单条消息，与应用、会话、用户关联）。
+ *
  * @author <a href="https://github.com/DavidCWQ">DavidCWQ</a>
  */
 @Data
@@ -28,21 +29,60 @@ public class ChatHistory implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    /**
+     * 主键（雪花算法）
+     */
     @Id(keyType = KeyType.Generator, value = KeyGenerators.snowFlakeId)
     private Long id;
 
+    /**
+     * 消息内容
+     */
     private String message;
-    private String messageType; // 消息类型 user/ai/system
-    private String fileList;    // 文件列表(JSON字符串)
 
+    /**
+     * 消息类型：user / ai / system（见 {@link com.cwq.project_aicodingstation.chat.enums.MessageTypeEnum}）
+     */
+    private String messageType;
+
+    /**
+     * 关联文件列表（JSON 字符串）
+     */
+    private String fileList;
+
+    /**
+     * 所属应用 id
+     */
     private Long appId;
-    private Long userId;
-    private Long sessionId;     // 会话id
-    private Long parentId;      // 父消息id
 
+    /**
+     * 发送/产生该条记录的用户 id
+     */
+    private Long userId;
+
+    /**
+     * 所属会话 id
+     */
+    private Long sessionId;
+
+    /**
+     * 父消息 id（上下文/重试）
+     */
+    private Long parentId;
+
+    /**
+     * 创建时间
+     */
     private LocalDateTime createTime;
+
+    /**
+     * 更新时间
+     */
     private LocalDateTime updateTime;
 
+    /**
+     * 逻辑删除：0 未删除，1 已删除
+     */
     @Column(isLogicDelete = true)
     private Integer isDeleted;
 }

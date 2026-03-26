@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
 import { CloudUploadOutlined, ExportOutlined, InfoCircleOutlined } from '@ant-design/icons-vue'
@@ -13,6 +12,7 @@ import DeleteConfirm from '@/components/app/DeleteConfirm.vue'
 import SuccessfulDeploy from '@/components/app/SuccessfulDeploy.vue'
 import { adminDeleteApp } from '@/api/appAdminController'
 import { deleteApp, deployApp, getApp } from '@/api/appController'
+import { addMessage, createSession, listHistory, listSessions } from '@/api/chatController'
 import { streamChatGenCode } from '@/hooks/useSSEChat'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { apiLongId, appIdFromData } from '@/utils/appId'
@@ -20,17 +20,20 @@ import { getErrorMessage } from '@/utils/error'
 import { waitForStaticPreviewReady } from '@/utils/appPreview'
 
 type ChatRow = {
+  key: string
+  id?: string
   role: 'user' | 'assistant'
   content: string
   streaming?: boolean
+  createTime?: string
 }
 
-const route = useRoute()
-const router = useRouter()
+const vm = getCurrentInstance()
+const router = vm?.proxy?.$router as any
+const route = computed(() => vm?.proxy?.$route as any)
 const loginUserStore = useLoginUserStore()
 
-const appId = computed(() => String(route.params.appId ?? ''))
-const isViewOnlyEntry = computed(() => String(route.query.view ?? '') === '1')
+const appId = computed(() => String(route.value?.params?.appId ?? ''))
 
 const appVo = ref<API.AppVO | null>(null)
 const pageLoading = ref(true)
@@ -47,6 +50,12 @@ const infoVisible = ref(false)
 const deleteConfirmOpen = ref(false)
 const deleteLoading = ref(false)
 
+const historyLoading = ref(false)
+const historyInited = ref(false)
+const hasMoreHistory = ref(false)
+const sessionId = ref<string | null>(null)
+const historyCursor = ref<{ beforeMessageId?: string; beforeCreateTime?: string }>({})
+
 let abortCtl: AbortController | null = null
 let didInitial = false
 let cancelledByUser = false
@@ -60,6 +69,7 @@ const isOwner = computed(() => {
 })
 const canOperate = computed(() => isOwner.value || isAdmin.value)
 const canChat = computed(() => isOwner.value)
+const showPreviewPanel = computed(() => historyInited.value && messages.value.length >= 2)
 const formattedCreateTime = computed(() => {
   const t = appVo.value?.createTime
   if (!t) return '—'
@@ -73,6 +83,160 @@ const scrollEnd = async () => {
   if (el) el.scrollTop = el.scrollHeight
 }
 
+const tryRestorePreview = async (silent = true) => {
+  const app = appVo.value
+  if (!app || !showPreviewPanel.value) {
+    previewUrl.value = ''
+    previewFailed.value = false
+    return
+  }
+  try {
+    previewFailed.value = false
+    previewUrl.value = ''
+    const cg = app.codeGenType || 'html'
+    const ready = await waitForStaticPreviewReady(cg, appIdFromData(app.id), {
+      maxAttempts: silent ? 4 : 30,
+      intervalMs: silent ? 300 : 600,
+    })
+    if (ready.ok) {
+      previewUrl.value = ready.url
+    } else if (!silent) {
+      previewFailed.value = true
+      message.warning('预览暂不可用：文件尚未就绪或生成失败，可稍后重试或查看服务端日志')
+    }
+  } catch {
+    if (!silent) {
+      previewFailed.value = true
+    }
+  }
+}
+
+const isAscendingByCreateTime = (rows: Array<{ createTime?: string }>) => {
+  const first = rows[0]?.createTime
+  const last = rows[rows.length - 1]?.createTime
+  if (!first || !last) return true
+  return dayjs(first).valueOf() <= dayjs(last).valueOf()
+}
+
+const mergeHistoryToMessages = (incoming: API.ChatHistoryVO[], mode: 'prepend' | 'append') => {
+  const list = Array.isArray(incoming) ? incoming : []
+  if (list.length === 0) return
+
+  // 服务端承诺时间正序；为稳妥起见做一次保护
+  const normalized = isAscendingByCreateTime(list) ? list : [...list].reverse()
+
+  const existingIds = new Set<string>()
+  for (const m of messages.value) {
+    if (typeof m.id === 'string' && m.id) existingIds.add(m.id)
+  }
+
+  const mapped: ChatRow[] = normalized
+    .filter((x) => x.id != null && !existingIds.has(String(x.id)))
+    .map((x) => ({
+      key: String(x.id),
+      id: String(x.id),
+      role: x.messageType === 'ai' ? 'assistant' : 'user',
+      content: x.message ?? '',
+      createTime: x.createTime,
+      streaming: false,
+    }))
+
+  if (mapped.length === 0) return
+
+  if (mode === 'prepend') {
+    messages.value = [...mapped, ...messages.value]
+  } else {
+    messages.value = [...messages.value, ...mapped]
+  }
+}
+
+const ensureSession = async () => {
+  if (!canChat.value) {
+    sessionId.value = null
+    return
+  }
+  if (sessionId.value != null) return
+  const idNum = apiLongId(appId.value)
+  const res = await listSessions({
+    appId: idNum,
+    pageNum: 1,
+    pageSize: 1,
+  })
+  const records = res.data?.data?.records ?? []
+  const first = records[0]
+  if (first?.id != null) {
+    sessionId.value = String(first.id)
+    return
+  }
+  const created = await createSession({ appId: idNum })
+  const sid = created.data?.data
+  if (sid == null) throw new Error('创建会话失败')
+  sessionId.value = String(sid)
+}
+
+const loadHistory = async (mode: 'initial' | 'more') => {
+  if (historyLoading.value) return
+  if (!canChat.value) {
+    historyInited.value = true
+    hasMoreHistory.value = false
+    return
+  }
+  if (mode === 'more' && !hasMoreHistory.value) return
+
+  historyLoading.value = true
+  const el = listEl.value
+  const beforeTop = el?.scrollTop ?? 0
+  const beforeHeight = el?.scrollHeight ?? 0
+
+  try {
+    await ensureSession()
+    if (!sessionId.value) return
+
+    const body: API.ChatHistoryQueryRequest = {
+      appId: apiLongId(appId.value),
+      sessionId: apiLongId(sessionId.value),
+      pageSize: 10,
+      beforeMessageId: mode === 'more' && historyCursor.value.beforeMessageId
+        ? apiLongId(historyCursor.value.beforeMessageId)
+        : undefined,
+      beforeCreateTime: mode === 'more' ? historyCursor.value.beforeCreateTime : undefined,
+    }
+    const res = await listHistory(body)
+    const list = res.data?.data ?? []
+
+    if (mode === 'initial') {
+      messages.value = []
+      historyCursor.value = {}
+      hasMoreHistory.value = false
+    }
+
+    // 服务端返回的是“更老的一页”（时间正序），所以这里做 prepend
+    mergeHistoryToMessages(list, 'prepend')
+
+    // 更新游标：取当前列表最老一条（列表头部）
+    const first = messages.value[0]
+    if (first?.id) {
+      historyCursor.value = {
+        beforeMessageId: first.id,
+        beforeCreateTime: first.createTime,
+      }
+    }
+
+    // 是否还有更多：返回条数 == pageSize 则认为可能还有
+    hasMoreHistory.value = Array.isArray(list) && list.length >= 10
+  } catch (e) {
+    message.error(getErrorMessage(e, '加载历史消息失败'))
+  } finally {
+    historyLoading.value = false
+    historyInited.value = true
+    if (mode === 'more' && el) {
+      await nextTick()
+      const afterHeight = el.scrollHeight
+      el.scrollTop = beforeTop + Math.max(0, afterHeight - beforeHeight)
+    }
+  }
+}
+
 const loadApp = async () => {
   pageLoading.value = true
   try {
@@ -84,13 +248,10 @@ const loadApp = async () => {
   } finally {
     pageLoading.value = false
   }
-  if (appVo.value) {
-    void maybeRunInitial()
-  }
 }
 
-const appendAssistantStreaming = () => {
-  messages.value.push({ role: 'assistant', content: '', streaming: true })
+const appendAssistantStreaming = (key: string) => {
+  messages.value.push({ key, role: 'assistant', content: '', streaming: true })
 }
 
 const finishAssistant = () => {
@@ -105,7 +266,8 @@ const runStream = async (text: string) => {
   abortCtl = new AbortController()
   cancelledByUser = false
   chatLoading.value = true
-  appendAssistantStreaming()
+  const assistantKey = `local-ai-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  appendAssistantStreaming(assistantKey)
   await scrollEnd()
   const idx = messages.value.length - 1
   try {
@@ -121,16 +283,35 @@ const runStream = async (text: string) => {
       { signal: abortCtl.signal },
     )
     finishAssistant()
+
+    // 持久化 AI 消息（忽略空内容）
+    try {
+      if (canChat.value && sessionId.value && messages.value[idx]?.content?.trim()) {
+        const saved = await addMessage({
+          appId: apiLongId(appId.value),
+          sessionId: apiLongId(sessionId.value),
+          message: messages.value[idx].content,
+          messageType: 'ai',
+        })
+        const hid = saved.data?.data
+        if (hid != null) {
+          messages.value[idx].id = String(hid)
+          messages.value[idx].key = String(hid)
+        }
+      }
+    } catch {
+      // 持久化失败不影响聊天主流程
+    }
+
     const app = appVo.value
-    if (app) {
-      previewFailed.value = false
-      previewUrl.value = ''
+    if (app && showPreviewPanel.value) {
       const cg = app.codeGenType || 'html'
       const ready = await waitForStaticPreviewReady(cg, appIdFromData(app.id), {
         signal: abortCtl.signal,
       })
       if (ready.ok) {
         previewUrl.value = ready.url
+        previewFailed.value = false
       } else if (!cancelledByUser) {
         previewFailed.value = true
         message.warning('预览暂不可用：文件尚未就绪或生成失败，可稍后重试或查看服务端日志')
@@ -160,9 +341,34 @@ const sendUser = async (text: string) => {
   }
   const t = text.trim()
   if (!t || chatLoading.value) return
-  messages.value.push({ role: 'user', content: t })
+  await ensureSession()
+  const userKey = `local-user-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  messages.value.push({ key: userKey, role: 'user', content: t })
   inputText.value = ''
   await scrollEnd()
+
+  // 持久化用户消息（失败不阻断对话）
+  try {
+    if (sessionId.value) {
+      const saved = await addMessage({
+        appId: apiLongId(appId.value),
+        sessionId: apiLongId(sessionId.value),
+        message: t,
+        messageType: 'user',
+      })
+      const hid = saved.data?.data
+      if (hid != null) {
+        const last = messages.value[messages.value.length - 1]
+        if (last && last.key === userKey) {
+          last.id = String(hid)
+          last.key = String(hid)
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
   await runStream(t)
 }
 
@@ -173,12 +379,37 @@ const cancelStream = () => {
 }
 
 const maybeRunInitial = async () => {
-  if (didInitial || !appVo.value || isViewOnlyEntry.value || !canChat.value) return
+  if (didInitial || !appVo.value || !canChat.value) return
+  if (messages.value.length > 0) return
   const init = appVo.value.initPrompt?.trim()
   if (!init) return
   didInitial = true
-  messages.value.push({ role: 'user', content: init })
+  await ensureSession()
+  const userKey = `local-user-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  messages.value.push({ key: userKey, role: 'user', content: init })
   await scrollEnd()
+
+  try {
+    if (sessionId.value) {
+      const saved = await addMessage({
+        appId: apiLongId(appId.value),
+        sessionId: apiLongId(sessionId.value),
+        message: init,
+        messageType: 'user',
+      })
+      const hid = saved.data?.data
+      if (hid != null) {
+        const last = messages.value[messages.value.length - 1]
+        if (last && last.key === userKey) {
+          last.id = String(hid)
+          last.key = String(hid)
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
   await runStream(init)
 }
 
@@ -238,11 +469,21 @@ watch(appId, async () => {
   messages.value = []
   previewUrl.value = ''
   previewFailed.value = false
+  historyInited.value = false
+  hasMoreHistory.value = false
+  historyCursor.value = {}
+  sessionId.value = null
   await loadApp()
+  await loadHistory('initial')
+  await maybeRunInitial()
+  await tryRestorePreview(true)
 })
 
 onMounted(async () => {
   await loadApp()
+  await loadHistory('initial')
+  await maybeRunInitial()
+  await tryRestorePreview(true)
 })
 
 onBeforeUnmount(() => {
@@ -270,12 +511,28 @@ onBeforeUnmount(() => {
         <div class="app-detail__main">
           <div class="app-detail__chat">
             <div ref="listEl" class="app-detail__messages">
+              <div class="app-detail__more">
+                <a-button
+                  v-if="hasMoreHistory"
+                  size="small"
+                  :loading="historyLoading"
+                  @click="loadHistory('more')"
+                >
+                  加载更多
+                </a-button>
+                <a-spin v-else-if="!historyInited" size="small" />
+              </div>
               <ChatMessage
                 v-for="(m, i) in messages"
-                :key="i"
+                :key="m.key"
                 :role="m.role"
                 :content="m.content"
                 :streaming="m.streaming"
+              />
+              <a-empty
+                v-if="historyInited && messages.length === 0"
+                class="app-detail__empty"
+                :description="canChat ? '暂无历史消息，快来发送第一条吧' : '暂无可查看的历史消息'"
               />
             </div>
             <a-tooltip :title="canChat ? '' : '亲，无法在别人的作品下对话哦~'">
@@ -290,7 +547,7 @@ onBeforeUnmount(() => {
               </div>
             </a-tooltip>
           </div>
-          <div class="app-detail__preview">
+          <div v-if="showPreviewPanel" class="app-detail__preview">
             <div class="app-detail__preview-title">
               <span>生成预览</span>
               <button type="button" class="app-detail__preview-open" @click="openPreviewInNewWindow">
@@ -392,6 +649,16 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: auto;
   padding: 16px;
+}
+
+.app-detail__more {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 12px;
+}
+
+.app-detail__empty {
+  margin: 24px 0;
 }
 
 .app-detail__chat :deep(.chat-input) {

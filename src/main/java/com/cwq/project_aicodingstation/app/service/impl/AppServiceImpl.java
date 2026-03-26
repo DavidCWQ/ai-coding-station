@@ -14,6 +14,7 @@ import com.cwq.project_aicodingstation.app.entity.App;
 import com.cwq.project_aicodingstation.app.mapper.AppMapper;
 import com.cwq.project_aicodingstation.app.service.AppService;
 import com.cwq.project_aicodingstation.app.vo.AppVO;
+import com.cwq.project_aicodingstation.chat.service.ChatHistoryService;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.exception.BusinessException;
 import com.cwq.project_aicodingstation.common.request.DeleteRequest;
@@ -26,15 +27,18 @@ import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @Transactional(rollbackFor = Exception.class)
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
@@ -47,6 +51,42 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private AppDeployConfig appDeployConfig;
+
+    @Resource
+    private ChatHistoryService chatHistoryService;
+
+    /**
+     * 删除应用时关联删除对话历史（兜底清理；即使外键 CASCADE 生效也不影响）。
+     * <p>
+     * 容错设计：对话历史删除失败不阻止应用删除，只记录日志，确保核心业务稳定。
+     * </p>
+     *
+     * @param id 应用ID
+     * @return 是否成功
+     */
+    @Override
+    public boolean removeById(Serializable id) {
+        if (id == null) {
+            return false;
+        }
+        long appId;
+        try {
+            appId = Long.parseLong(id.toString());
+        } catch (Exception e) {
+            return false;
+        }
+        if (appId <= 0) {
+            return false;
+        }
+        try {
+            BusinessAssert.requireTrue(chatHistoryService.deleteByAppId(appId),
+                    ErrorCode.BUSINESS_ERROR, "AppID: " + appId
+            );
+        } catch (Exception e) {
+            log.error("删除应用关联对话历史失败: {}", e.getMessage());
+        }
+        return super.removeById(id);
+    }
 
     @Override
     public Long createApp(AppAddRequest req, UserLoginVO userVO) {

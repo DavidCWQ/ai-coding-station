@@ -14,6 +14,11 @@ declare namespace API {
     userId?: number;
   };
 
+  type AppChatGenCodeRequest = {
+    appId: number;
+    message: string;
+  };
+
   type AppDeployRequest = {
     appId: number;
   };
@@ -66,6 +71,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseListChatHistoryVO = {
+    code?: number;
+    data?: ChatHistoryVO[];
+    message?: string;
+  };
+
   type BaseResponseLong = {
     code?: number;
     data?: number;
@@ -75,6 +86,12 @@ declare namespace API {
   type BaseResponsePageAppVO = {
     code?: number;
     data?: PageAppVO;
+    message?: string;
+  };
+
+  type BaseResponsePageChatSessionVO = {
+    code?: number;
+    data?: PageChatSessionVO;
     message?: string;
   };
 
@@ -108,7 +125,61 @@ declare namespace API {
     message?: string;
   };
 
-  type chatToGenCodeParams = {
+  type ChatHistoryAddRequest = {
+    appId: number;
+    sessionId: number;
+    message: string;
+    messageType: string;
+  };
+
+  type ChatHistoryQueryRequest = {
+    appId: number;
+    sessionId: number;
+    beforeMessageId?: number;
+    beforeCreateTime?: string;
+    pageSize?: number;
+  };
+
+  type ChatHistoryVO = {
+    id?: number;
+    message?: string;
+    messageType?: string;
+    fileList?: string;
+    appId?: number;
+    sessionId?: number;
+    parentId?: number;
+    createTime?: string;
+    updateTime?: string;
+  };
+
+  type ChatSessionAddRequest = {
+    appId: number;
+    title?: string;
+  };
+
+  type ChatSessionQueryRequest = {
+    pageNum?: number;
+    pageSize?: number;
+    sortField?: string;
+    sortOrder?: string;
+    appId: number;
+  };
+
+  type ChatSessionUpdateTitleRequest = {
+    sessionId: number;
+    title: string;
+  };
+
+  type ChatSessionVO = {
+    id?: number;
+    appId?: number;
+    title?: string;
+    lastMsgTime?: string;
+    createTime?: string;
+    updateTime?: string;
+  };
+
+  type chatToGenCode1Params = {
     appId: number;
     message: string;
   };
@@ -133,8 +204,21 @@ declare namespace API {
     id: number;
   };
 
+  type listAllHistoryParams = {
+    pageSize?: number;
+  };
+
   type PageAppVO = {
     records?: AppVO[];
+    pageNumber?: number;
+    pageSize?: number;
+    totalPage?: number;
+    totalRow?: number;
+    optimizeCountQuery?: boolean;
+  };
+
+  type PageChatSessionVO = {
+    records?: ChatSessionVO[];
     pageNumber?: number;
     pageSize?: number;
     totalPage?: number;
@@ -152,6 +236,10 @@ declare namespace API {
   };
 
   type ServerSentEventString = true;
+
+  type serveStaticResourceParams = {
+    codeDir: string;
+  };
 
   type SysUser = {
     id?: number;
