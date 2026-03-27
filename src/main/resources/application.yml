@@ -2,17 +2,20 @@
 spring:
   application:
     name: cwq-ai-coding-station-backend
+  session:
+    store-type: redis             # Session expired after 1 month
+    timeout: 2600000
   datasource:
-    url: jdbc:mysql://mysql-memo:3306/ai_coding_station_memo?useSSL=false&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3306/ai_coding_station_memo?useSSL=false&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
     username: ai_user
     password: ai_secret
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
-      host: redis-memo            # Container name
-      port: 6379                  # Default port in container name
+      host: localhost             # Container name
+      port: 6380                  # Your port in container name
+      username: default
       password: redis_secret
-      timeout: 5000               # Connection timeout
       ttl: 3600                   # Self-defined persist time for RedisChatMemoryStoreConfig
   cache:
     type: caffeine
@@ -21,6 +24,10 @@ server:
   port: 8142
   servlet:
     context-path: /api
+    session:
+      timeout: 2600000            # 1 month
+      cookie:                     # Expired after 1 month
+        max-age: 2600000
 
 # ------------- Springdoc-Openapi -------------
 springdoc:
