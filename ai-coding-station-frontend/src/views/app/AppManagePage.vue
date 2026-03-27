@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, getCurrentInstance, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import type { TableColumnType, TableProps } from 'ant-design-vue'
 import dayjs from 'dayjs'
 
 import { adminDeleteApp, adminUpdateApp, listApp } from '@/api/appAdminController'
-import { apiLongId, appIdFromData } from '@/utils/appId'
+import { apiLongId, idFromData } from '@/utils/id'
 import { getErrorMessage } from '@/utils/error'
 
 const FEATURED_PRIORITY = 99
 const PINNED_PRIORITY = 999
 
-const router = useRouter()
+const vm = getCurrentInstance()
+const router = vm?.proxy?.$router as any
 
 const data = ref<API.AppVO[]>([])
 const total = ref(0)
@@ -176,7 +176,7 @@ onMounted(() => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'id'">
-            {{ appIdFromData(record.id) }}
+            {{ idFromData(record.id) }}
           </template>
           <template v-else-if="column.key === 'userId'">
             {{ record.userId != null ? String(record.userId) : '—' }}
@@ -191,18 +191,18 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space wrap>
-              <a-button type="link" size="small" @click="goEdit(appIdFromData(record.id))">编辑</a-button>
+              <a-button type="link" size="small" @click="goEdit(idFromData(record.id))">编辑</a-button>
               <a-button
                 v-for="btn in getPriorityInfo(record.priority).buttons"
                 :key="btn.text"
                 type="link"
                 size="small"
                 :danger="btn.danger"
-                @click="setPriority(appIdFromData(record.id), btn.priority)"
+                @click="setPriority(idFromData(record.id), btn.priority)"
               >
                 {{ btn.text }}
               </a-button>
-              <a-popconfirm title="确定删除？" @confirm="doDelete(appIdFromData(record.id))">
+              <a-popconfirm title="确定删除？" @confirm="doDelete(idFromData(record.id))">
                 <a-button type="link" danger size="small">删除</a-button>
               </a-popconfirm>
             </a-space>

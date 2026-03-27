@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
 
-import { appIdFromData } from '@/utils/appId'
+import { idFromData } from '@/utils/id'
 
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
@@ -43,7 +43,7 @@ const gradients = [
   'linear-gradient(135deg, #f3e5f5, #e1bee7)',
 ]
 
-const appId = () => appIdFromData(props.app.id)
+const appId = () => idFromData(props.app.id)
 
 const coverStyle = computed(() => {
   // 有封面 → 用图片

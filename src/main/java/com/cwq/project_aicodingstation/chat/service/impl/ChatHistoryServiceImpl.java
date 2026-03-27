@@ -19,7 +19,11 @@ import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import com.mybatisflex.core.query.QueryCondition;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +40,7 @@ import static com.mybatisflex.core.query.QueryMethods.column;
  *
  * @author <a href="https://github.com/DavidCWQ">DavidCWQ</a>
  */
+@Slf4j
 @Service
 @Transactional(rollbackFor = Exception.class)
 public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatHistory> implements ChatHistoryService {
@@ -160,6 +165,41 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         QueryWrapper qw = getQueryWrapperForAdminList((int) size);
         List<ChatHistory> rows = this.list(qw);
         return rows.stream().map(this::toHistoryVO).collect(Collectors.toList());
+    }
+
+    @Override
+    public void loadChatHistoryToMemory(Long sessionId, MessageWindowChatMemory chatMemory,
+                                        int maxCount) {
+        try {
+            List<ChatHistory> historyList = this.list(
+                    QueryWrapper.create()
+                            .eq(ChatHistory::getSessionId, sessionId)
+                            .orderBy(ChatHistory::getCreateTime, false)
+                            .limit(1, maxCount) // 起始点为 1 而不是 0，用于排除最新的用户消息
+            ); // 不排除会导致消息重复！
+
+            if (historyList.isEmpty()) { return; }
+
+            // 反转列表，确保按照时间正序（老的在前，新的在后）
+            Collections.reverse(historyList);
+            // 清理历史缓存，防止重复加载
+            int count = 0;
+            chatMemory.clear();
+            // 记录非系统历史对话条数
+            for (ChatHistory h : historyList) {
+                if (MessageTypeEnum.USER.getValue().equals(h.getMessageType())) {
+                    chatMemory.add(UserMessage.from(h.getMessage()));
+                } else if (MessageTypeEnum.AI.getValue().equals(h.getMessageType())){
+                    chatMemory.add(AiMessage.from(h.getMessage()));
+                }
+                count++;
+            }
+            // 加载成功，记录对话条数
+            log.info("加载历史对话成功，sessionId={}, count={}", sessionId, count);
+        } catch (Exception e) {
+            // 加载失败不影响系统运行，只是没有历史上下文
+            log.error("加载历史对话失败，sessionId: {}, error: {}", sessionId, e.getMessage(), e);
+        }
     }
 
     /**

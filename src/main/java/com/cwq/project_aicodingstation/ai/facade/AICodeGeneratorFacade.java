@@ -7,6 +7,7 @@
 package com.cwq.project_aicodingstation.ai.facade;
 
 import com.cwq.project_aicodingstation.ai.AICodeGeneratorService;
+import com.cwq.project_aicodingstation.ai.AICodeGeneratorServiceFactory;
 import com.cwq.project_aicodingstation.ai.enums.CodeGenTypeEnum;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
@@ -27,7 +28,7 @@ import java.io.File;
 public class AICodeGeneratorFacade {
 
     @Resource
-    private AICodeGeneratorService aiCodeGeneratorService;
+    private AICodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
 
     @Resource
     private CodeFileSaverExecutor codeFileSaver;
@@ -42,8 +43,11 @@ public class AICodeGeneratorFacade {
      * @param codeGenTypeEnum 生成类型
      * @return 保存的目录
      */
-    public File generateAndSaveCode(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId) {
+    public File generateAndSaveCode(String userMessage, CodeGenTypeEnum codeGenTypeEnum,
+                                    Long appId, Long sessionId) {
         BusinessAssert.notNull(codeGenTypeEnum, ErrorCode.SYSTEM_ERROR, "生成类型为空");
+        AICodeGeneratorService aiCodeGeneratorService =
+                aiCodeGeneratorServiceFactory.getAICodeGeneratorService(sessionId);
         return codeFileSaver.executeSaver(
                 aiCodeGeneratorService.generateCode(userMessage, codeGenTypeEnum),
                 codeGenTypeEnum, appId
@@ -83,8 +87,11 @@ public class AICodeGeneratorFacade {
      * @param codeGenType   生成类型
      * @return 生成的代码（流式）
      */
-    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenType, Long appId) {
+    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenType,
+                                                  Long appId, Long sessionId) {
         BusinessAssert.notNull(codeGenType, ErrorCode.SYSTEM_ERROR, "生成类型为空");
+        AICodeGeneratorService aiCodeGeneratorService =
+                aiCodeGeneratorServiceFactory.getAICodeGeneratorService(sessionId);
         return processCodeStream(
                 aiCodeGeneratorService.generateCodeStream(userMessage, codeGenType),
                 codeGenType, appId

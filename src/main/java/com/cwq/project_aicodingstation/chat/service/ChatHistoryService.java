@@ -5,6 +5,7 @@ import com.cwq.project_aicodingstation.chat.entity.ChatHistory;
 import com.cwq.project_aicodingstation.chat.vo.ChatHistoryVO;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import com.mybatisflex.core.service.IService;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 
 import java.util.List;
 
@@ -53,4 +54,13 @@ public interface ChatHistoryService extends IService<ChatHistory> {
      * @return 消息列表（时间倒序，与数据查询顺序一致）
      */
     List<ChatHistoryVO> listAll(Long pageSize, UserLoginVO userVO);
+
+    /**
+     * 根据会话 id 加载历史对话（USER/AI）到 chatMemory
+     *
+     * @param sessionId  会话 id
+     * @param chatMemory 对话记忆
+     * @param maxCount   对话条数上限
+     * */
+    void loadChatHistoryToMemory(Long sessionId, MessageWindowChatMemory chatMemory, int maxCount);
 }

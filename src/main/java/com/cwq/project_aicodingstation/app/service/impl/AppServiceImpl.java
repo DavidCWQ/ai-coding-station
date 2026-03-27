@@ -405,7 +405,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     // ======================= 应用侧 ========================
 
     @Override
-    public Flux<String> chatToGenCode(Long appId, String message, UserLoginVO userVO) {
+    public Flux<String> chatToGenCode(Long appId, Long sessionId, String message, UserLoginVO userVO) {
 
         BusinessAssert.notNull(appId, ErrorCode.PARAMS_MISSING, "应用ID不能为空");
         BusinessAssert.notBlank(message, ErrorCode.PARAMS_MISSING, "消息不能为空");
@@ -422,7 +422,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         return aiCodeGeneratorFacade.generateAndSaveCodeStream(
                 message,
                 codeGenTypeEnum,
-                appId
+                appId,
+                sessionId
         );
     }
 

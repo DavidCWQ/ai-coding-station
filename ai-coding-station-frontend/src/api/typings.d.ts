@@ -16,6 +16,7 @@ declare namespace API {
 
   type AppChatGenCodeRequest = {
     appId: number;
+    sessionId: number;
     message: string;
   };
 
@@ -181,6 +182,7 @@ declare namespace API {
 
   type chatToGenCode1Params = {
     appId: number;
+    sessionId: number;
     message: string;
   };
 

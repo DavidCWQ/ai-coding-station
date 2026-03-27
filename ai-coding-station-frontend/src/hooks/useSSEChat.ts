@@ -1,8 +1,7 @@
-import { assertValidAppId } from '@/utils/appId'
+import { assertValidId } from '@/utils/id'
 import { getApiUrl } from '@/config/env'
 
-function buildChatGenCodeUrl(appId: string): string {
-  assertValidAppId(appId)
+function buildChatGenCodeUrl(): string {
   return getApiUrl('/app/chat/genCode')
 }
 
@@ -11,11 +10,14 @@ function buildChatGenCodeUrl(appId: string): string {
  */
 export async function streamChatGenCode(
   appId: string,
+  sessionId: string,
   message: string,
   onDelta: (chunk: string) => void,   // 每次收到数据块的回调
   options?: { signal?: AbortSignal }, // 用于取消请求
 ): Promise<void> {
-  const url = buildChatGenCodeUrl(appId)
+  assertValidId(appId)
+  assertValidId(sessionId)
+  const url = buildChatGenCodeUrl()
 
   const res = await fetch(url, {
     method: 'POST',
@@ -27,6 +29,7 @@ export async function streamChatGenCode(
     },
     body: JSON.stringify({
       appId,
+      sessionId,
       message,
     }),
   })

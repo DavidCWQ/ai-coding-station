@@ -15,6 +15,14 @@ const request: AxiosInstance = axios.create({
   withCredentials: true,
 })
 
+function isNotLoginResponse(res?: ApiResponse | null): boolean {
+  if (!res) return false
+  const code = Number(res.code)
+  if (code === 40100 || code === 40101 || code === 401) return true
+  const msg = String(res.message ?? '')
+  return msg.includes('未登录')
+}
+
 // 请求拦截器，发请求前统一拦截
 request.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -29,17 +37,8 @@ request.interceptors.response.use(
     (response: AxiosResponse<ApiResponse>) => {
       const res = response.data
 
-    // 未登录（统一处理：除了获取用户信息外，跳转到登录页）
-    if (res?.code === 40100) {
-      const isGetLogin = response.request?.responseURL?.includes?.('user/get/login')
-      const inLoginPage = window.location.pathname.includes('/user/login')
-
-      if (!isGetLogin && !inLoginPage) {
-        message.warning('请先登录')
-        const redirect = encodeURIComponent(window.location.href)
-        window.location.href = `/user/login?redirect=${redirect}`
-      }
-
+    // 未登录：静默 reject（具体页面自行决定是否提示/跳转）
+    if (isNotLoginResponse(res)) {
       return Promise.reject(res)
     }
 
@@ -58,6 +57,9 @@ request.interceptors.response.use(
   // HTTP 层错误 (500/Internet)
   (error: AxiosError<ApiResponse>) => {
     const resp = error.response
+    if (isNotLoginResponse(resp?.data ?? null)) {
+      return Promise.reject(error)
+    }
     if (resp?.data?.message) {
       message.error(resp.data.message)
     } else if (error.message) {

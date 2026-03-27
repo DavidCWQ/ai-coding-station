@@ -16,6 +16,9 @@ public class AppChatGenCodeRequest implements Serializable {
     @NotNull
     private Long appId;
 
+    @NotNull
+    private Long sessionId;
+
     @NotBlank
     private String message;
 }

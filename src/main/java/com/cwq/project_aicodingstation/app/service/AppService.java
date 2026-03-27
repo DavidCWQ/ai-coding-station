@@ -159,11 +159,12 @@ public interface AppService extends IService<App> {
      * 生成的代码目录格式：{@code codeGenType_appId}</p>
      *
      * @param appId     应用 ID
+     * @param sessionId 会话 ID
      * @param message   用户输入消息
      * @param userVO    当前登录用户 VO
      * @return 流式代码生成结果 (SSE)
      */
-    Flux<String> chatToGenCode(Long appId, String message, UserLoginVO userVO);
+    Flux<String> chatToGenCode(Long appId, Long sessionId, String message, UserLoginVO userVO);
 
     /**
      * 部署应用

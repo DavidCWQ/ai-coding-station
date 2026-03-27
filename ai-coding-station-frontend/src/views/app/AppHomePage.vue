@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, getCurrentInstance, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 
 import AppCard from '@/components/app/AppCard.vue'
@@ -10,7 +9,8 @@ import { useAppList } from '@/hooks/useAppList'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { getErrorMessage } from '@/utils/error'
 
-const router = useRouter()
+const vm = getCurrentInstance()
+const router = vm?.proxy?.$router as any
 const loginUserStore = useLoginUserStore()
 
 const promptText = ref('')

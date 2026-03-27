@@ -1,10 +1,13 @@
 package com.cwq.project_aicodingstation;
 
+import dev.langchain4j.community.store.embedding.redis.spring.RedisEmbeddingStoreAutoConfiguration;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
+@SpringBootApplication( // 未使用 embedding 向量检索
+        exclude = { RedisEmbeddingStoreAutoConfiguration.class }
+)
 @MapperScan({"com.cwq.project_aicodingstation.*.mapper"}) // 添加 Mapper 到 Spring Boot 扫描范围内
 public class ProjectAiCodingStationApplication {
 
@@ -110,6 +113,13 @@ public class ProjectAiCodingStationApplication {
  * 相比 MySQL，作为内存数据库的 Redis 在读写对话记忆时性能更高；
  * 数据库中的对话历史表包含其他业务字段，不适合直接交给 LangChain4j 的对话记忆组件管理。
  * 注意，Redis 的内存也不是无限的！一般情况下要给存入 Redis 的每个 Key 都设置合理的过期时间！
+ * */
+
+/*
+ * User
+ * └── App（应用）
+ *      └── Session（会话）
+ *            └── Messages（对话）
  * */
 
 // ====== 笔记区（NOTES）结束 ======

@@ -15,7 +15,7 @@ import { deleteApp, deployApp, getApp } from '@/api/appController'
 import { addMessage, createSession, listHistory, listSessions } from '@/api/chatController'
 import { streamChatGenCode } from '@/hooks/useSSEChat'
 import { useLoginUserStore } from '@/stores/loginUser'
-import { apiLongId, appIdFromData } from '@/utils/appId'
+import { apiLongId, idFromData } from '@/utils/id'
 import { getErrorMessage } from '@/utils/error'
 import { waitForStaticPreviewReady } from '@/utils/appPreview'
 
@@ -83,6 +83,12 @@ const scrollEnd = async () => {
   if (el) el.scrollTop = el.scrollHeight
 }
 
+const withCacheBust = (url: string): string => {
+  if (!url) return url
+  const sep = url.includes('?') ? '&' : '?'
+  return `${url}${sep}_t=${Date.now()}`
+}
+
 const tryRestorePreview = async (silent = true) => {
   const app = appVo.value
   if (!app || !showPreviewPanel.value) {
@@ -94,12 +100,12 @@ const tryRestorePreview = async (silent = true) => {
     previewFailed.value = false
     previewUrl.value = ''
     const cg = app.codeGenType || 'html'
-    const ready = await waitForStaticPreviewReady(cg, appIdFromData(app.id), {
+    const ready = await waitForStaticPreviewReady(cg, idFromData(app.id), {
       maxAttempts: silent ? 4 : 30,
       intervalMs: silent ? 300 : 600,
     })
     if (ready.ok) {
-      previewUrl.value = ready.url
+      previewUrl.value = withCacheBust(ready.url)
     } else if (!silent) {
       previewFailed.value = true
       message.warning('预览暂不可用：文件尚未就绪或生成失败，可稍后重试或查看服务端日志')
@@ -271,8 +277,12 @@ const runStream = async (text: string) => {
   await scrollEnd()
   const idx = messages.value.length - 1
   try {
+    if (!sessionId.value) {
+      throw new Error('会话不存在，请刷新后重试')
+    }
     await streamChatGenCode(
       appId.value,
+      sessionId.value,
       text,
       (chunk) => {
         const row = messages.value[idx]
@@ -306,11 +316,11 @@ const runStream = async (text: string) => {
     const app = appVo.value
     if (app && showPreviewPanel.value) {
       const cg = app.codeGenType || 'html'
-      const ready = await waitForStaticPreviewReady(cg, appIdFromData(app.id), {
+      const ready = await waitForStaticPreviewReady(cg, idFromData(app.id), {
         signal: abortCtl.signal,
       })
       if (ready.ok) {
-        previewUrl.value = ready.url
+        previewUrl.value = withCacheBust(ready.url)
         previewFailed.value = false
       } else if (!cancelledByUser) {
         previewFailed.value = true
@@ -446,7 +456,7 @@ const openPreviewInNewWindow = () => {
 const confirmDelete = async () => {
   if (!appVo.value) return
   deleteLoading.value = true
-  const id = appIdFromData(appVo.value.id)
+  const id = idFromData(appVo.value.id)
   try {
     if (isAdmin.value) {
       await adminDeleteApp({ id: apiLongId(id) })

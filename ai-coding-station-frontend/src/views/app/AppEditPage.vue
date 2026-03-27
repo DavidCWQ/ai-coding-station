@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, getCurrentInstance, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form/interface'
 
 import { adminUpdateApp } from '@/api/appAdminController'
 import { getApp, updateApp } from '@/api/appController'
 import { useLoginUserStore } from '@/stores/loginUser'
-import { apiLongId } from '@/utils/appId'
+import { apiLongId } from '@/utils/id'
 import { getErrorMessage } from '@/utils/error'
 
-const route = useRoute()
-const router = useRouter()
+const vm = getCurrentInstance()
+const route = computed(() => vm?.proxy?.$route as any)
+const router = vm?.proxy?.$router as any
 const loginUserStore = useLoginUserStore()
 
-const appIdStr = computed(() => String(route.params.id ?? ''))
+const appIdStr = computed(() => String(route.value?.params?.id ?? ''))
 
 const pageLoading = ref(true)
 const saving = ref(false)

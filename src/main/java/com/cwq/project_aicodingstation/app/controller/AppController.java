@@ -110,10 +110,11 @@ public class AppController {
      */
     @GetMapping(value = "/chat/genCode", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId,
+                                                       @RequestParam Long sessionId,
                                                        @RequestParam String message,
                                                        HttpServletRequest request) {
         return toSSE(appService // 调用 Service，封装 JSON + 追加 done 事件
-                .chatToGenCode(appId, message, userService.getUserLoginVO(request))
+                .chatToGenCode(appId, sessionId, message, userService.getUserLoginVO(request))
         );
     }
 
@@ -124,7 +125,8 @@ public class AppController {
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestBody @Valid AppChatGenCodeRequest req,
                                                        HttpServletRequest request) {
         return toSSE(appService
-                .chatToGenCode(req.getAppId(), req.getMessage(), userService.getUserLoginVO(request))
+                .chatToGenCode(req.getAppId(), req.getSessionId(), req.getMessage(),
+                        userService.getUserLoginVO(request))
         );
     }
 

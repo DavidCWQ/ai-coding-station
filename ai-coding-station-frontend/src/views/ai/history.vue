@@ -5,7 +5,7 @@ import type { TableColumnType, TableProps } from 'ant-design-vue'
 import dayjs from 'dayjs'
 
 import { deleteSession, listHistory, listSessions, updateSessionTitle } from '@/api/chatController'
-import { apiLongId, appIdFromData } from '@/utils/appId'
+import { apiLongId, idFromData } from '@/utils/id'
 import { getErrorMessage } from '@/utils/error'
 
 type SessionRow = API.ChatSessionVO & { _idText: string }
@@ -217,7 +217,7 @@ onMounted(() => {
             {{ record._idText }}
           </template>
           <template v-else-if="column.key === 'appId'">
-            {{ record.appId != null ? appIdFromData(record.appId) : '—' }}
+            {{ record.appId != null ? idFromData(record.appId) : '—' }}
           </template>
           <template v-else-if="column.key === 'title'">
             {{ record.title || '—' }}
@@ -245,7 +245,7 @@ onMounted(() => {
         <div class="chat-manage__detail-meta">
           <div class="chat-manage__detail-line">
             <span class="chat-manage__label">应用ID</span>
-            <span class="chat-manage__value">{{ appIdFromData(current.appId) }}</span>
+            <span class="chat-manage__value">{{ idFromData(current.appId) }}</span>
           </div>
           <div class="chat-manage__detail-line">
             <span class="chat-manage__label">会话ID</span>
