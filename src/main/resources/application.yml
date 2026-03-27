@@ -1,0 +1,71 @@
+# --------------- Spring Config ---------------
+spring:
+  application:
+    name: cwq-ai-coding-station-backend
+  datasource:
+    url: jdbc:mysql://mysql-memo:3306/ai_coding_station_memo?useSSL=false&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
+    username: ai_user
+    password: ai_secret
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: redis-memo            # Container name
+      port: 6379                  # Default port in container name
+      password: redis_secret
+      timeout: 5000               # Connection timeout
+      ttl: 3600                   # Self-defined persist time for RedisChatMemoryStoreConfig
+  cache:
+    type: caffeine
+# --------------- Server Config ---------------
+server:
+  port: 8142
+  servlet:
+    context-path: /api
+
+# ------------- Springdoc-Openapi -------------
+springdoc:
+  group-configs:
+    - group: 'user'
+      packages-to-scan: com.cwq.project_aicodingstation.user.controller
+    - group: 'app'
+      packages-to-scan: com.cwq.project_aicodingstation.app.controller
+    - group: 'chat'
+      packages-to-scan: com.cwq.project_aicodingstation.chat.controller
+
+# --------------- API doc tools ---------------
+knife4j:
+  enable: true
+  setting:
+    language: en
+
+# -------------- AI Service API ---------------
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://api.deepseek.com
+      api-key: <YOUR API KEY>
+      model-name: deepseek-chat
+      max-tokens: 8192
+      log-requests: true
+      log-responses: true
+      response-format: json_object
+      strict-json-schema: true
+    streaming-chat-model:
+      base-url: https://api.deepseek.com
+      api-key: <YOUR API KEY>
+      model-name: deepseek-chat
+      max-tokens: 8192
+      log-requests: true
+      log-responses: true
+
+# ------------- AI Module Config --------------
+ai:
+  code:
+    output-dir: ${user.dir}/tmp/code_output
+
+# ------------- App Module Config -------------
+app:
+  deploy:
+    output-dir: ${user.dir}/tmp/code_output
+    deploy-dir: ${user.dir}/tmp/code_deploy
+    deploy-host: http://localhost:8088
