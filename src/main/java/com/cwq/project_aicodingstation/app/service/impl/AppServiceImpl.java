@@ -19,6 +19,7 @@ import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.exception.BusinessException;
 import com.cwq.project_aicodingstation.common.request.DeleteRequest;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
+import com.cwq.project_aicodingstation.core.screenshot.ScreenshotService;
 import com.cwq.project_aicodingstation.user.constant.UserConstant;
 import com.cwq.project_aicodingstation.user.service.UserService;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
@@ -54,6 +55,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private ChatHistoryService chatHistoryService;
+
+    @Resource
+    private ScreenshotService screenshotService;
 
     /**
      * 删除应用时关联删除对话历史（兜底清理；即使外键 CASCADE 生效也不影响）。
@@ -427,6 +431,27 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         );
     }
 
+    /**
+     * 异步生成应用截图并更新封面
+     *
+     * @param appId     应用 ID
+     * @param appUrl    应用访问 URL
+     */
+    private void generateAppScreenshotAsync(Long appId, String appUrl) {
+        // 使用虚拟线程异步执行
+        Thread.startVirtualThread(() -> {
+            // 调用截图服务生成截图
+            String screenshotUrl = screenshotService.capture(appUrl, appId);
+            // 更新应用封面字段
+            App updateApp = new App();
+            updateApp.setId(appId);
+            updateApp.setCover(screenshotUrl);
+            BusinessAssert.requireTrue(this.updateById(updateApp), ErrorCode.BUSINESS_ERROR,
+                    "更新应用封面字段失败"
+            );
+        });
+    }
+
     @Override
     public String deployApp(AppDeployRequest req, UserLoginVO userVO) {
 
@@ -460,8 +485,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
                 ErrorCode.SYSTEM_ERROR, "未找到生成代码，请先生成代码"
         );
 
-        // 6. 部署目录
+        // 6. 部署目录&链接
         String deployDirPath = appDeployConfig.getDeployDir() + File.separator + deployKey;
+        String appDeployUrl = String.format("%s/%s/", appDeployConfig.getDeployHost(), deployKey);
         try {
             // 先清空旧部署目录，避免历史残留文件影响最新版本
             FileUtil.del(deployDirPath);
@@ -481,7 +507,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
                 ErrorCode.BUSINESS_ERROR, "更新部署信息失败"
         );
 
-        // 8. 返回URL
-        return String.format("%s/%s/", appDeployConfig.getDeployHost(), deployKey);
+        // 8. 异步更新应用封面
+        generateAppScreenshotAsync(appId, appDeployUrl);
+
+        // 9. 返回URL
+        return appDeployUrl;
     }
 }

@@ -45,17 +45,25 @@ const gradients = [
 
 const appId = () => idFromData(props.app.id)
 
+/** 仅 null / undefined / 纯空白 视为无封面；有效图片 URL 用背景图，不叠「预览」字 */
+const coverUrl = computed(() => {
+  const c = props.app.cover
+  if (c == null) return ''
+  const s = typeof c === 'string' ? c : String(c)
+  return s.trim()
+})
+
+const hasCoverImage = computed(() => coverUrl.value.length > 0)
+
 const coverStyle = computed(() => {
-  // 有封面 → 用图片
-  if (props.app.cover) {
+  if (hasCoverImage.value) {
     return {
-      backgroundImage: `url(${props.app.cover})`,
+      backgroundImage: `url(${JSON.stringify(coverUrl.value)})`,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
     }
   }
-  // 没封面 → 用渐变
-  const index = hash(props.app.id?? "default") % gradients.length
+  const index = hash(props.app.id ?? 'default') % gradients.length
   return {
     background: gradients[index],
   }
@@ -95,7 +103,7 @@ const onViewWork = () => {
 <template>
   <a-card class="app-card" hoverable @click="onCardClick">
     <div class="app-card__thumb" :style="coverStyle">
-      <div v-if="!app.cover" class="app-card__placeholder">预览</div>
+      <div v-if="!hasCoverImage" class="app-card__placeholder">预览</div>
       <div class="app-card__actions" @click.stop>
         <a-space>
           <a-button size="small" @click="onViewChat">查看对话</a-button>

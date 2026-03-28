@@ -43,6 +43,7 @@ services:
       - "8088:80"
     volumes:
       - ./tmp/code_deploy:/usr/share/nginx/html
+      - ./tmp/covers:/usr/share/nginx/static/covers
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     restart: always
 

@@ -8,7 +8,7 @@ spring:
     store-type: redis             # Session expired after 1 month
     timeout: 2600000
   datasource:
-    url: jdbc:mysql://localhost:3306/ai_coding_station_memo?useSSL=false&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3306/ai_coding_station_memo?useSSL=false&serverTimezone=Asia/Shanghai
     username: ai_user
     password: ai_secret
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -78,3 +78,7 @@ app:
     output-dir: ${user.dir}/tmp/code_output
     deploy-dir: ${user.dir}/tmp/code_deploy
     deploy-host: http://localhost:8088
+  screenshot:
+    script-path: ${user.dir}/scripts/screenshot.js
+    output-dir: ${user.dir}/tmp/covers
+    base-url: http://localhost:8088/covers

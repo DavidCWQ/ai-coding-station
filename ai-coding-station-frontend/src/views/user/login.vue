@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { getCurrentInstance, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form/interface'
 
@@ -12,7 +11,8 @@ type LoginFormModel = {
   userPassword: string
 }
 
-const router = useRouter()
+const vm = getCurrentInstance()
+const router = vm?.proxy?.$router as any
 const loginUserStore = useLoginUserStore()
 const loading = ref(false)
 

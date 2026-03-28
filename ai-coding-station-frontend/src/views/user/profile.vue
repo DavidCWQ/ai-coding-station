@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { getCurrentInstance, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form/interface'
 import { storeToRefs } from 'pinia'
 
-import { updateUser } from '@/api/userController'
+import { updateMyProfile } from '@/api/userController'
 import { useLoginUserStore } from '@/stores/loginUser'
 
 type ProfileFormModel = {
@@ -17,9 +16,10 @@ type ProfileFormModel = {
   createTime: string
 }
 
+const vm = getCurrentInstance()
+const router = vm?.proxy?.$router as any
 const loginUserStore = useLoginUserStore()
 const { loginUser } = storeToRefs(loginUserStore)
-const router = useRouter()
 
 const loading = ref(false)
 
@@ -79,7 +79,7 @@ const onSave = async () => {
 
   try {
     loading.value = true
-    await updateUser({
+    await updateMyProfile({
       id,
       userName: form.userName,
       userAvatar: form.userAvatar,

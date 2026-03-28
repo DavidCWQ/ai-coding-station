@@ -45,3 +45,6 @@ build/
 ### Others ###
 /README_PIC/
 /prompts/
+
+### Node.js ###
+*/node_modules

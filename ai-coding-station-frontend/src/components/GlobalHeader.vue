@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, getCurrentInstance, h, onBeforeUnmount, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import type { MenuProps } from 'ant-design-vue'
 import { LogoutOutlined, UserOutlined } from '@ant-design/icons-vue'
@@ -10,9 +9,9 @@ import { ACCESS_ENUM } from '@/access/accessEnum'
 import { checkAccess } from '@/access/checkAccess'
 import { useLoginUserStore } from '@/stores/loginUser'
 
-const router = useRouter()
-const route = useRoute()
-
+const vm = getCurrentInstance()
+const route = computed(() => vm?.proxy?.$route as any)
+const router = vm?.proxy?.$router as any
 const loginUserStore = useLoginUserStore()
 
 const mobileOpen = ref(false)
@@ -34,7 +33,7 @@ const visibleMenuItems = computed(() => {
 })
 
 const selectedKeys = computed(() => {
-  const match = visibleMenuItems.value.find((m) => m.path === route.path)
+  const match = visibleMenuItems.value.find((m) => m.path === route.value.path)
   return match ? [match.key] : []
 })
 
