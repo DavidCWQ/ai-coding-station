@@ -8,6 +8,7 @@ import { getDeployUrl } from '@/config/env'
 import { useAppList } from '@/hooks/useAppList'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { getErrorMessage } from '@/utils/error'
+import { CODE_GEN_HTML, CODE_GEN_MULTI_FILE, type CodeGenTypeValue } from '@/constants/codeGen'
 
 const vm = getCurrentInstance()
 const router = vm?.proxy?.$router as any
@@ -15,6 +16,8 @@ const loginUserStore = useLoginUserStore()
 
 const promptText = ref('')
 const creating = ref(false)
+/** 创建时写入应用，后续对话由后端按该字段选择 HTML / 多文件解析与落盘 */
+const createCodeGenType = ref<CodeGenTypeValue>(CODE_GEN_HTML)
 
 const myList = useAppList('my')
 const featuredList = useAppList('featured')
@@ -69,7 +72,7 @@ const onCreate = async () => {
     const res = await createApp({
       appName: '',
       initPrompt: t,
-      codeGenType: 'HTML', // Possible Expansion here (multi_file, etc.)
+      codeGenType: createCodeGenType.value,
     })
     const id = res.data?.data
     if (id === undefined || id === null) {
@@ -121,6 +124,19 @@ onMounted(() => {
           <div class="app-home__composer-left">
             <a-button type="text" disabled>上传</a-button>
             <a-button type="text" disabled>优化</a-button>
+            <a-tooltip title="生成方式">
+              <a-radio-group
+                v-model:value="createCodeGenType"
+                :disabled="creating"
+                size="small"
+                option-type="button"
+                button-style="solid"
+                class="app-home__gen-radio"
+              >
+                <a-radio-button :value="CODE_GEN_HTML">单页</a-radio-button>
+                <a-radio-button :value="CODE_GEN_MULTI_FILE">多文件</a-radio-button>
+              </a-radio-group>
+            </a-tooltip>
           </div>
           <a-button type="primary" shape="circle" :loading="creating" class="app-home__send" @click="onCreate">
             <svg
@@ -284,7 +300,13 @@ onMounted(() => {
 
 .app-home__composer-left {
   display: flex;
-  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.app-home__gen-radio {
+  margin-left: 4px;
 }
 
 .app-home__send {

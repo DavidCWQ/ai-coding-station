@@ -29,6 +29,27 @@ function encodeAttr(input: string): string {
   return escapeHtml(encodeURIComponent(input))
 }
 
+function codeLangDisplayName(lang: string): string {
+  const t = (lang || '').trim().toLowerCase()
+  return t || 'text'
+}
+
+/** 工具栏左侧 </> lang + 下方 pre/code */
+function renderCodeBlock(input: string, codeInnerHtml: string, lang: string): string {
+  const name = escapeHtml(codeLangDisplayName(lang))
+  const toolbarLeft =
+    `<span class="msg__code-lang"><span class="msg__code-lang-icon">&lt;/&gt;</span> ${name}</span>`
+  return (
+    `<div class="msg__code-wrap">` +
+    `<div class="msg__code-toolbar">` +
+    `${toolbarLeft}` +
+    `<button class="msg__copy-btn" data-code="${encodeAttr(input)}" type="button">复制</button>` +
+    `</div>` +
+    `<pre class="msg__code hljs"><code>${codeInnerHtml}</code></pre>` +
+    `</div>`
+  )
+}
+
 const md = new MarkdownIt({
   html: true,
   linkify: true,
@@ -39,13 +60,13 @@ const md = new MarkdownIt({
     if (language && hljs.getLanguage(language)) {
       try {
         const out = hljs.highlight(input, { language }).value
-        return `<div class="msg__code-wrap"><button class="msg__copy-btn" data-code="${encodeAttr(input)}" type="button">复制</button><pre class="msg__code hljs"><code>${out}</code></pre></div>`
+        return renderCodeBlock(input, out, lang)
       } catch {
         // fallback to escaped block
       }
     }
     const escaped = escapeHtml(input)
-    return `<div class="msg__code-wrap"><button class="msg__copy-btn" data-code="${encodeAttr(input)}" type="button">复制</button><pre class="msg__code hljs"><code>${escaped}</code></pre></div>`
+    return renderCodeBlock(input, escaped, lang)
   },
 })
 
@@ -174,35 +195,58 @@ const onContentClick = async (e: MouseEvent) => {
   text-decoration: underline;
 }
 
-.msg__markdown :deep(.msg__code) {
+.msg__markdown :deep(.msg__code-wrap) {
   margin: 0 0 10px;
-  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.msg__markdown :deep(.msg__code-toolbar) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.msg__markdown :deep(.msg__code-lang) {
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.55);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+.msg__markdown :deep(.msg__code-lang-icon) {
+  opacity: 0.85;
+}
+
+.msg__markdown :deep(.msg__code) {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 0;
   background: #ffffff;
   color: #24292f;
-  border: 1px solid #e5e7eb;
+  border: none;
   overflow: auto;
   font-size: 13px;
   line-height: 1.5;
 }
 
-.msg__markdown :deep(.msg__code-wrap) {
-  position: relative;
-  margin-bottom: 10px;
-}
-
-.msg__markdown :deep(.msg__code-wrap .msg__code) {
-  margin-bottom: 0;
-}
-
 .msg__markdown :deep(.msg__copy-btn) {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 1;
+  flex-shrink: 0;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.92);
+  background: #ffffff;
   color: rgba(0, 0, 0, 0.65);
   padding: 2px 8px;
   font-size: 12px;
