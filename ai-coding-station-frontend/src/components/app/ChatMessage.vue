@@ -178,8 +178,9 @@ const onContentClick = async (e: MouseEvent) => {
   margin: 0 0 10px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: #ffffff;
+  color: #24292f;
+  border: 1px solid #e5e7eb;
   overflow: auto;
   font-size: 13px;
   line-height: 1.5;
@@ -199,13 +200,14 @@ const onContentClick = async (e: MouseEvent) => {
   top: 8px;
   right: 8px;
   z-index: 1;
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 6px;
-  background: rgba(15, 23, 42, 0.65);
-  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(0, 0, 0, 0.65);
   padding: 2px 8px;
   font-size: 12px;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .msg__markdown :deep(code:not(pre code)) {
@@ -217,26 +219,26 @@ const onContentClick = async (e: MouseEvent) => {
 
 .msg__markdown :deep(.hljs-keyword),
 .msg__markdown :deep(.hljs-selector-tag) {
-  color: #c792ea;
+  color: #cf222e;
 }
 
 .msg__markdown :deep(.hljs-string),
 .msg__markdown :deep(.hljs-attribute) {
-  color: #c3e88d;
+  color: #0a3069;
 }
 
 .msg__markdown :deep(.hljs-number),
 .msg__markdown :deep(.hljs-literal) {
-  color: #f78c6c;
+  color: #0550ae;
 }
 
 .msg__markdown :deep(.hljs-title),
 .msg__markdown :deep(.hljs-function) {
-  color: #82aaff;
+  color: #8250df;
 }
 
 .msg__markdown :deep(.hljs-comment) {
-  color: #7f8c98;
+  color: #6e7781;
   font-style: italic;
 }
 
