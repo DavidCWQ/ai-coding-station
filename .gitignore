@@ -39,7 +39,8 @@ build/
 .vscode/
 
 ### Confidential ###
-/src/main/resources/application.yml
+/src/main/resources/application-local.yml
+/src/main/resources/application-local.properties
 
 ### Others ###
 /README_PIC/

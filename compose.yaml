@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ai_coding_station_memo
-      MYSQL_USER: ai_user
+      MYSQL_USER: ${MYSQL_USERNAME:-ai_user}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ai_secret}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_secret}
       TZ: Asia/Shanghai
