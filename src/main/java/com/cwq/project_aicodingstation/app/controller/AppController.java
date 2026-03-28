@@ -6,22 +6,30 @@ import com.cwq.project_aicodingstation.app.dto.AppChatGenCodeRequest;
 import com.cwq.project_aicodingstation.app.dto.AppDeployRequest;
 import com.cwq.project_aicodingstation.app.dto.AppQueryRequest;
 import com.cwq.project_aicodingstation.app.dto.AppUpdateRequest;
+import com.cwq.project_aicodingstation.app.config.AppDeployConfig;
+import com.cwq.project_aicodingstation.app.entity.App;
 import com.cwq.project_aicodingstation.app.service.AppService;
 import com.cwq.project_aicodingstation.app.vo.AppVO;
+import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.request.DeleteRequest;
 import com.cwq.project_aicodingstation.common.response.BaseResponse;
+import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
 import com.cwq.project_aicodingstation.common.utils.ResultUtils;
+import com.cwq.project_aicodingstation.core.download.ProjectDownloadService;
 import com.cwq.project_aicodingstation.user.service.UserService;
+import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.File;
 import java.util.Map;
 
 /**
@@ -40,6 +48,12 @@ public class AppController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private AppDeployConfig appDeployConfig;
+
+    @Resource
+    private ProjectDownloadService projectDownloadService;
 
     /* ======================= 用户接口 ======================= */
 
@@ -156,5 +170,38 @@ public class AppController {
         return ResultUtils.success(
                 appService.deployApp(req, userService.getUserLoginVO(request))
         );
+    }
+
+    /**
+     * 下载应用生成代码 (ZIP)
+     *
+     * @param appId    应用 ID
+     * @param request  请求
+     * @param response 响应
+     */
+    @GetMapping("/download/{appId}")
+    public void downloadAppCode(@PathVariable Long appId, HttpServletRequest request,
+                                HttpServletResponse response) {
+
+        // 1. 参数校验
+        BusinessAssert.requireTrue(appId != null && appId > 0,
+                ErrorCode.PARAMS_ERROR, "应用ID无效");
+
+        App app = appService.getById(appId);
+        BusinessAssert.notNull(app, ErrorCode.NOT_FOUND, "应用不存在");
+
+        UserLoginVO userVO = userService.getUserLoginVO(request);
+        BusinessAssert.equals(app.getUserId(), userVO.getId(),
+                ErrorCode.NO_PERMISSION, "无权限下载该应用代码：仅原作者可下载");
+
+        String sourceDirName = app.getCodeGenType() + "_" + appId;
+        String sourceDirPath = appDeployConfig.getOutputDir() + File.separator + sourceDirName;
+
+        File sourceDir = new File(sourceDirPath);
+        BusinessAssert.requireTrue(sourceDir.exists() && sourceDir.isDirectory(),
+                ErrorCode.NOT_FOUND, "应用代码不存在，请先生成代码");
+
+        String downloadFileName = String.valueOf(appId);
+        projectDownloadService.downloadProjectAsZip(sourceDirPath, downloadFileName, response);
     }
 }

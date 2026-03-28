@@ -2,7 +2,12 @@
 import { computed, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
-import { CloudUploadOutlined, ExportOutlined, InfoCircleOutlined } from '@ant-design/icons-vue'
+import {
+  CloudDownloadOutlined,
+  CloudUploadOutlined,
+  ExportOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons-vue'
 
 import BackButton from '@/components/common/backButton.vue'
 import ChatInput from '@/components/app/ChatInput.vue'
@@ -11,13 +16,18 @@ import AppDetail from '@/components/app/AppDetail.vue'
 import DeleteConfirm from '@/components/app/DeleteConfirm.vue'
 import SuccessfulDeploy from '@/components/app/SuccessfulDeploy.vue'
 import { adminDeleteApp } from '@/api/appAdminController'
-import { deleteApp, deployApp, getApp } from '@/api/appController'
+import { deleteApp, deployApp, downloadAppCode, getApp } from '@/api/appController'
 import { addMessage, createSession, listHistory, listSessions } from '@/api/chatController'
 import { streamChatGenCode } from '@/hooks/useSSEChat'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { apiLongId, idFromData } from '@/utils/id'
 import { getErrorMessage } from '@/utils/error'
 import { waitForStaticPreviewReady } from '@/utils/appPreview'
+import {
+  parseFilenameFromContentDisposition,
+  sanitizeDownloadFilename,
+  triggerBlobDownload,
+} from '@/utils/fileDownload'
 
 type ChatRow = {
   key: string
@@ -44,6 +54,7 @@ const listEl = ref<HTMLElement | null>(null)
 const previewUrl = ref('')
 const previewFailed = ref(false)
 const deployLoading = ref(false)
+const downloadLoading = ref(false)
 const deploySuccessOpen = ref(false)
 const deploySuccessUrl = ref('')
 const infoVisible = ref(false)
@@ -440,6 +451,43 @@ const onDeploy = async () => {
   }
 }
 
+const onDownloadCode = async () => {
+  if (!appId.value) return
+  try {
+    downloadLoading.value = true
+    const res = await downloadAppCode(
+      { appId: apiLongId(appId.value) },
+      { responseType: 'blob' },
+    )
+    const blob = res.data as unknown as Blob
+    const ct = String(res.headers['content-type'] ?? '').toLowerCase()
+    if (ct.includes('application/json')) {
+      const text = await blob.text()
+      try {
+        const j = JSON.parse(text) as { message?: string; code?: number }
+        message.error(j.message || '下载失败')
+      } catch {
+        message.error('下载失败')
+      }
+      return
+    }
+    const cd = res.headers['content-disposition'] as string | undefined
+    const fromHeader = parseFilenameFromContentDisposition(cd)
+    const fallback = `${appVo.value?.appName?.trim() || `app-${appId.value}`}.zip`
+    const filename = sanitizeDownloadFilename(fromHeader || fallback)
+    if (!blob.size) {
+      message.warning('下载内容为空')
+      return
+    }
+    triggerBlobDownload(blob, filename)
+    message.success('已开始下载')
+  } catch (e) {
+    message.error(getErrorMessage(e))
+  } finally {
+    downloadLoading.value = false
+  }
+}
+
 const onDelete = () => {
   if (!canOperate.value || !appVo.value) return
   deleteConfirmOpen.value = true
@@ -511,6 +559,10 @@ onBeforeUnmount(() => {
           <a-button @click="infoVisible = true">
             <template #icon><InfoCircleOutlined /></template>
             详情
+          </a-button>
+          <a-button :loading="downloadLoading" @click="onDownloadCode">
+            <template #icon><CloudDownloadOutlined /></template>
+            下载
           </a-button>
           <a-button type="primary" :loading="deployLoading" @click="onDeploy">
             <template #icon><CloudUploadOutlined /></template>

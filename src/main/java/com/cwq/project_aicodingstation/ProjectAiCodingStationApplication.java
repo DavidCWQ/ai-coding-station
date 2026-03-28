@@ -109,6 +109,10 @@ public class ProjectAiCodingStationApplication {
  * */
 
 /*
+ * 先确保后端在运行中，再运行 `npm run openapi2ts` 以生成前端 @api/
+ * */
+
+/*
  * 为什么用 Redis 不用 MySQL 来存储会话记忆？
  * 相比 MySQL，作为内存数据库的 Redis 在读写对话记忆时性能更高；
  * 数据库中的对话历史表包含其他业务字段，不适合直接交给 LangChain4j 的对话记忆组件管理。
