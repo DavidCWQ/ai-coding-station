@@ -40,3 +40,7 @@ __screenshots__/
 
 # Developer
 /prompts/
+
+# local
+.env.local
+.env.development
