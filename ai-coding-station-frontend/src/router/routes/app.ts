@@ -13,7 +13,7 @@ export const appRoutes: RouteRecordRaw[] = [
     path: '/app/manage',
     name: 'app-manage',
     component: () => import('@/views/app/AppManagePage.vue'),
-    meta: { layout: 'basic', title: '应用管理', access: ACCESS_ENUM.ADMIN },
+    meta: { layout: 'basic', title: '应用管理', access: ACCESS_ENUM.USER },
   },
   {
     path: '/app/edit/:id',

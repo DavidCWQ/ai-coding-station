@@ -4,6 +4,7 @@ import { message } from 'ant-design-vue'
 import type { MenuProps } from 'ant-design-vue'
 import { LogoutOutlined, UserOutlined } from '@ant-design/icons-vue'
 
+import UserAvatar from '@/components/UserAvatar.vue'
 import { appMenu, type AppMenuItem } from '@/config/menu'
 import { ACCESS_ENUM } from '@/access/accessEnum'
 import { checkAccess } from '@/access/checkAccess'
@@ -123,9 +124,11 @@ onBeforeUnmount(() => {
       <div class="global-header__right">
         <a-dropdown v-if="isLoggedIn" :trigger="['click']" placement="bottomRight">
           <div class="global-header__user-trigger" role="button" tabindex="0">
-            <a-avatar :src="loginUser?.userAvatar">
-              {{ (loginUser?.userName || loginUser?.userAccount || '?').slice(0, 1).toUpperCase() }}
-            </a-avatar>
+            <UserAvatar
+              :src="loginUser?.userAvatar"
+              :name="loginUser?.userName"
+              :account="loginUser?.userAccount"
+            />
             <span class="global-header__username">
               {{ loginUser?.userName || loginUser?.userAccount }}
             </span>

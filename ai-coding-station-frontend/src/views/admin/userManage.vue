@@ -4,6 +4,7 @@ import { message } from 'ant-design-vue'
 import type { TableColumnType, TableProps } from 'ant-design-vue'
 import dayjs from 'dayjs'
 
+import UserAvatar from '@/components/UserAvatar.vue'
 import { deleteUser, listUserVoByPage } from '@/api/adminUserController'
 
 const data = ref<API.UserVO[]>([])
@@ -138,14 +139,12 @@ onMounted(() => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'userAvatar'">
-            <a-image
-              v-if="record.userAvatar"
+            <UserAvatar
+              :size="40"
               :src="record.userAvatar"
-              :width="40"
-              :height="40"
-              style="border-radius: 4px; object-fit: cover"
+              :name="record.userName"
+              :account="record.userAccount"
             />
-            <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'userRole'">
             <a-tag v-if="record.userRole === 'admin'" color="green">admin</a-tag>

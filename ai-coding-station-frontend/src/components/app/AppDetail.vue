@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons-vue'
 
+import UserAvatar from '@/components/UserAvatar.vue'
+
 const props = defineProps<{
   open: boolean
   app: API.AppVO | null
@@ -20,10 +22,6 @@ const modalOpen = computed({
   set: (v: boolean) => emit('update:open', v),
 })
 
-const ownerInitial = computed(() =>
-  (props.app?.user?.userName || props.app?.user?.userAccount || '?').slice(0, 1).toUpperCase(),
-)
-
 const ownerName = computed(() => props.app?.user?.userName || props.app?.user?.userAccount || '用户')
 </script>
 
@@ -38,8 +36,12 @@ const ownerName = computed(() => props.app?.user?.userName || props.app?.user?.u
       <div class="app-detail-modal__row app-detail-modal__owner-row">
         <span class="app-detail-modal__label">创建者</span>
         <div class="app-detail-modal__owner">
-          <a-avatar v-if="app.user?.userAvatar" :src="app.user.userAvatar" />
-          <a-avatar v-else class="app-detail-modal__owner-avatar-letter">{{ ownerInitial }}</a-avatar>
+          <UserAvatar
+            letter-class="app-detail-modal__owner-avatar-letter"
+            :src="app.user?.userAvatar"
+            :name="app.user?.userName"
+            :account="app.user?.userAccount"
+          />
           <span class="app-detail-modal__owner-name">{{ ownerName }}</span>
         </div>
       </div>

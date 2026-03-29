@@ -5,6 +5,8 @@ import type { TableColumnType, TableProps } from 'ant-design-vue'
 import dayjs from 'dayjs'
 
 import { adminDeleteApp, adminUpdateApp, listApp } from '@/api/appAdminController'
+import { deleteApp, listMyApps } from '@/api/appController'
+import { useLoginUserStore } from '@/stores/loginUser'
 import { apiLongId, idFromData } from '@/utils/id'
 import { getErrorMessage } from '@/utils/error'
 
@@ -13,6 +15,9 @@ const PINNED_PRIORITY = 999
 
 const vm = getCurrentInstance()
 const router = vm?.proxy?.$router as any
+const loginUserStore = useLoginUserStore()
+
+const isAdmin = computed(() => loginUserStore.loginUser?.userRole === 'admin')
 
 const data = ref<API.AppVO[]>([])
 const total = ref(0)
@@ -25,7 +30,7 @@ const searchParams = reactive({
   userId: '' as string,
 })
 
-const columns: TableColumnType<API.AppVO>[] = [
+const allColumns: TableColumnType<API.AppVO>[] = [
   { title: 'ID', key: 'id', width: 100, ellipsis: true },
   { title: '应用名', dataIndex: 'appName', key: 'appName', ellipsis: true },
   { title: '用户ID', key: 'userId', width: 120 },
@@ -34,38 +39,47 @@ const columns: TableColumnType<API.AppVO>[] = [
   { title: '操作', key: 'action', width: 220, fixed: 'right' },
 ]
 
-const getPriorityInfo = (priority: number) => {
+const columns = computed((): TableColumnType<API.AppVO>[] =>
+  isAdmin.value ? allColumns : allColumns.filter((c) => c.key !== 'userId'),
+)
+
+type PriorityBtn = { text: string; priority: number; danger: boolean }
+
+const getAdminPriorityButtons = (priority: number): PriorityBtn[] => {
   if (priority >= PINNED_PRIORITY) {
-    return {
-      tag: { color: 'gold', text: '置顶' },
-      buttons: [
-        { text: '精选', priority: FEATURED_PRIORITY, danger: false },
-        { text: '取消置顶', priority: FEATURED_PRIORITY, danger: false }
-      ]
-    }
+    return [
+      { text: '精选', priority: FEATURED_PRIORITY, danger: false },
+      { text: '取消置顶', priority: FEATURED_PRIORITY, danger: false },
+    ]
   }
   if (priority >= FEATURED_PRIORITY) {
-    return {
-      tag: { color: 'green', text: '精选' },
-      buttons: [
-        { text: '取消精选', priority: 0, danger: false },
-        { text: '置顶', priority: PINNED_PRIORITY, danger: false }
-      ]
-    }
+    return [
+      { text: '取消精选', priority: 0, danger: false },
+      { text: '置顶', priority: PINNED_PRIORITY, danger: false },
+    ]
   }
   if (priority >= 0) {
-    return {
-      tag: { color: 'gray', text: '普通' },
-      buttons: [
-        { text: '精选', priority: FEATURED_PRIORITY, danger: false },
-        { text: '置顶', priority: PINNED_PRIORITY, danger: false }
-      ]
-    }
+    return [
+      { text: '精选', priority: FEATURED_PRIORITY, danger: false },
+      { text: '置顶', priority: PINNED_PRIORITY, danger: false },
+    ]
   }
-  return {
-    tag: { color: 'red', text: '锁定' },
-    buttons: [{ text: '取消锁定', priority: 0, danger: false }]
+  return [{ text: '取消锁定', priority: 0, danger: false }]
+}
+
+const getPriorityInfo = (priority: number) => {
+  let tag: { color: string; text: string }
+  if (priority >= PINNED_PRIORITY) {
+    tag = { color: 'gold', text: '置顶' }
+  } else if (priority >= FEATURED_PRIORITY) {
+    tag = { color: 'green', text: '精选' }
+  } else if (priority >= 0) {
+    tag = { color: 'gray', text: '普通' }
+  } else {
+    tag = { color: 'red', text: '锁定' }
   }
+  const buttons = isAdmin.value ? getAdminPriorityButtons(priority) : []
+  return { tag, buttons }
 }
 
 const pagination = computed<TableProps['pagination']>(() => ({
@@ -82,7 +96,7 @@ const fmt = (v?: string) => {
   return d.isValid() ? d.format('YYYY-MM-DD HH:mm:ss') : v
 }
 
-const buildQuery = (): API.AppQueryRequest => {
+const buildAdminQuery = (): API.AppQueryRequest => {
   const uid = searchParams.userId.trim()
   return {
     id: 0,
@@ -93,10 +107,17 @@ const buildQuery = (): API.AppQueryRequest => {
   }
 }
 
+const buildMyQuery = (): API.AppQueryRequest => ({
+  id: 0,
+  pageNum: searchParams.pageNum,
+  pageSize: Math.min(searchParams.pageSize, 20),
+  appName: searchParams.appName.trim() || undefined,
+})
+
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await listApp(buildQuery())
+    const res = isAdmin.value ? await listApp(buildAdminQuery()) : await listMyApps(buildMyQuery())
     const page = res.data?.data
     data.value = page?.records ?? []
     total.value = page?.totalRow ?? 0
@@ -124,7 +145,11 @@ const goEdit = (id: string) => {
 
 const doDelete = async (id: string) => {
   try {
-    await adminDeleteApp({ id: apiLongId(id) })
+    if (isAdmin.value) {
+      await adminDeleteApp({ id: apiLongId(id) })
+    } else {
+      await deleteApp({ id: apiLongId(id) })
+    }
     message.success('已删除')
     await fetchData()
   } catch (e) {
@@ -157,7 +182,7 @@ onMounted(() => {
         <a-form-item label="应用名">
           <a-input v-model:value="searchParams.appName" allow-clear style="width: 180px" />
         </a-form-item>
-        <a-form-item label="用户ID">
+        <a-form-item v-if="isAdmin" label="用户ID">
           <a-input v-model:value="searchParams.userId" allow-clear style="width: 140px" />
         </a-form-item>
         <a-form-item>

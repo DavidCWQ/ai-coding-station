@@ -4,6 +4,7 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
 
+import UserAvatar from '@/components/UserAvatar.vue'
 import { idFromData } from '@/utils/id'
 
 dayjs.extend(relativeTime)
@@ -124,10 +125,13 @@ const onViewWork = () => {
       <div v-if="mode === 'mine'" class="app-card__meta">创建于 {{ relativeCreate() }}</div>
       <div v-else class="app-card__footer">
         <div class="app-card__author">
-          <a-avatar v-if="app.user?.userAvatar" :size="24" :src="app.user.userAvatar" />
-          <a-avatar v-else :size="24" class="avatar-letter">
-            {{ (app.user?.userName || app.user?.userAccount || '?').slice(0, 1).toUpperCase() }}
-          </a-avatar>
+          <UserAvatar
+            :size="24"
+            letter-class="avatar-letter"
+            :src="app.user?.userAvatar"
+            :name="app.user?.userName"
+            :account="app.user?.userAccount"
+          />
           <span class="app-card__name">{{ app.user?.userName || app.user?.userAccount || '用户' }}</span>
         </div>
         <a-tag class="app-card__tag" color="processing">{{ tagLabel() }}</a-tag>
