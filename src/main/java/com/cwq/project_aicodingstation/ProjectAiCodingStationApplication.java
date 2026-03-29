@@ -138,4 +138,19 @@ public class ProjectAiCodingStationApplication {
  * - 它的使用和传统 Java 线程几乎没有区别，非常适合处理 I/O 密集型的异步任务 (截图服务)。
  * */
 
+/*
+ * 浏览器的同源策略 (Same-Origin Policy) 规定，
+ * 两个页面若要被视为 “同源”，必须同时满足三个条件：协议相同，域名相同，端口相同。
+ *
+ * 如果 iframe 是跨域的，你不能：
+ * - iframe.contentWindow.document
+ * - iframe.contentWindow.addEventListener
+ * - ...
+ *
+ * 对于同源网站，可以外部注入 js，实现动态编辑页面：
+ * const script = doc.createElement('script');
+ * script.src = '/inject/iframe-editor.js';
+ * doc.body.appendChild(script);
+ * */
+
 // ====== 笔记区（NOTES）结束 ======

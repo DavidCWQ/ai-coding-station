@@ -5,6 +5,7 @@ import { message } from 'ant-design-vue'
 import {
   CloudDownloadOutlined,
   CloudUploadOutlined,
+  EditOutlined,
   ExportOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons-vue'
@@ -12,6 +13,8 @@ import {
 import BackButton from '@/components/common/backButton.vue'
 import ChatInput from '@/components/app/ChatInput.vue'
 import ChatMessage from '@/components/app/ChatMessage.vue'
+import IframePreview from '@/components/app/IframePreview.vue'
+import SelectedElementDetail from '@/components/app/SelectedElementDetail.vue'
 import AppDetail from '@/components/app/AppDetail.vue'
 import DeleteConfirm from '@/components/app/DeleteConfirm.vue'
 import SuccessfulDeploy from '@/components/app/SuccessfulDeploy.vue'
@@ -28,6 +31,8 @@ import {
   sanitizeDownloadFilename,
   triggerBlobDownload,
 } from '@/utils/fileDownload'
+import { buildAugmentedChatMessage } from '@/utils/elementExtractor'
+import type { VisualEditorSelectedElement } from '@/utils/visualEditor'
 
 type ChatRow = {
   key: string
@@ -60,6 +65,10 @@ const deploySuccessUrl = ref('')
 const infoVisible = ref(false)
 const deleteConfirmOpen = ref(false)
 const deleteLoading = ref(false)
+
+/** 预览 iframe 内点选元素（可视化编辑） */
+const visualEditMode = ref(false)
+const selectedElement = ref<VisualEditorSelectedElement | null>(null)
 
 const historyLoading = ref(false)
 const historyInited = ref(false)
@@ -363,12 +372,19 @@ const sendUser = async (text: string) => {
   const t = text.trim()
   if (!t || chatLoading.value) return
   await ensureSession()
+
+  const selectedSnapshot = selectedElement.value
+  const streamMessage =
+    visualEditMode.value && selectedSnapshot
+      ? buildAugmentedChatMessage(t, selectedSnapshot)
+      : t
+
   const userKey = `local-user-${Date.now()}-${Math.random().toString(16).slice(2)}`
   messages.value.push({ key: userKey, role: 'user', content: t })
   inputText.value = ''
   await scrollEnd()
 
-  // 持久化用户消息（失败不阻断对话）
+  // 持久化用户消息（失败不阻断对话）— 仅保存用户输入原文，与气泡展示一致
   try {
     if (sessionId.value) {
       const saved = await addMessage({
@@ -390,7 +406,11 @@ const sendUser = async (text: string) => {
     // ignore
   }
 
-  await runStream(t)
+  // 发送后清除选中并退出可视化编辑，恢复 iframe 正常交互
+  visualEditMode.value = false
+  selectedElement.value = null
+
+  await runStream(streamMessage)
 }
 
 const cancelStream = () => {
@@ -522,11 +542,30 @@ const confirmDelete = async () => {
   }
 }
 
+const toggleVisualEditMode = () => {
+  if (visualEditMode.value) {
+    visualEditMode.value = false
+    selectedElement.value = null
+  } else {
+    visualEditMode.value = true
+  }
+}
+
+const clearSelectedElement = () => {
+  selectedElement.value = null
+}
+
+const onVisualInjectFailed = () => {
+  visualEditMode.value = false
+}
+
 watch(appId, async () => {
   didInitial = false
   messages.value = []
   previewUrl.value = ''
   previewFailed.value = false
+  visualEditMode.value = false
+  selectedElement.value = null
   historyInited.value = false
   hasMoreHistory.value = false
   historyCursor.value = {}
@@ -585,7 +624,7 @@ onBeforeUnmount(() => {
                 <a-spin v-else-if="!historyInited" size="small" />
               </div>
               <ChatMessage
-                v-for="(m, i) in messages"
+                v-for="m in messages"
                 :key="m.key"
                 :role="m.role"
                 :content="m.content"
@@ -599,6 +638,11 @@ onBeforeUnmount(() => {
             </div>
             <a-tooltip :title="canChat ? '' : '亲，无法在别人的作品下对话哦~'">
               <div>
+                <SelectedElementDetail
+                  v-if="selectedElement && canChat"
+                  :element="selectedElement"
+                  @close="clearSelectedElement"
+                />
                 <ChatInput
                   v-model="inputText"
                   :loading="chatLoading"
@@ -612,12 +656,31 @@ onBeforeUnmount(() => {
           <div v-if="showPreviewPanel" class="app-detail__preview">
             <div class="app-detail__preview-title">
               <span>生成预览</span>
-              <button type="button" class="app-detail__preview-open" @click="openPreviewInNewWindow">
-                <ExportOutlined />
-                <span>新窗口打开</span>
-              </button>
+              <div class="app-detail__preview-actions">
+                <button
+                  type="button"
+                  class="app-detail__preview-open"
+                  :class="{ 'app-detail__preview-edit--exit': visualEditMode }"
+                  :disabled="!previewUrl"
+                  @click="toggleVisualEditMode"
+                >
+                  <EditOutlined />
+                  <span>{{ visualEditMode ? '退出编辑' : '进入编辑' }}</span>
+                </button>
+                <button type="button" class="app-detail__preview-open" @click="openPreviewInNewWindow">
+                  <ExportOutlined />
+                  <span>新窗口打开</span>
+                </button>
+              </div>
             </div>
-            <iframe v-if="previewUrl" class="app-detail__iframe" :src="previewUrl" title="preview" />
+            <IframePreview
+              v-if="previewUrl"
+              class="app-detail__iframe"
+              :src="previewUrl"
+              :visual-edit-active="visualEditMode"
+              @select="selectedElement = $event"
+              @inject-failed="onVisualInjectFailed"
+            />
             <a-empty v-else-if="previewFailed">
               <template #description>
                 <span>未能加载静态预览（文件未就绪或服务异常）。可稍后发送一条消息重新生成，或检查服务端代码输出目录与日志。</span>
@@ -750,6 +813,12 @@ onBeforeUnmount(() => {
   justify-content: space-between;
 }
 
+.app-detail__preview-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .app-detail__preview-open {
   border: none;
   background: transparent;
@@ -762,8 +831,18 @@ onBeforeUnmount(() => {
   padding: 0;
 }
 
+.app-detail__preview-open:disabled {
+  color: rgba(0, 0, 0, 0.25);
+  cursor: not-allowed;
+}
+
+.app-detail__preview-edit--exit:not(:disabled) {
+  color: #ff4d4f;
+}
+
 .app-detail__iframe {
   flex: 1;
+  min-height: 0;
   width: 100%;
   border: none;
   background: #fff;
