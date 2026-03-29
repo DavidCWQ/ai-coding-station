@@ -70,4 +70,9 @@ public interface ChatSessionService extends IService<ChatSession> {
      * @param at        消息时间
      */
     void touchLastMessageTime(Long sessionId, LocalDateTime at);
+
+    /**
+     * 按应用 id 逻辑删除其下全部会话（应用删除时调用）。
+     */
+    boolean deleteByAppId(Long appId);
 }

@@ -11,4 +11,7 @@ public interface AppConstant {
     /// 默认最大翻页数
     Long MAX_PAGE_SIZE = 20L;
 
+    /// 软删除保留天数，期满后启动/定时任务物理删除并清理磁盘
+    int SOFT_DELETED_RETENTION_DAYS = 14;
+
 }

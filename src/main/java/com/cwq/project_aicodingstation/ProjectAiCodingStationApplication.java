@@ -4,11 +4,13 @@ import dev.langchain4j.community.store.embedding.redis.spring.RedisEmbeddingStor
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication( // 未使用 embedding 向量检索
         exclude = { RedisEmbeddingStoreAutoConfiguration.class }
 )
 @MapperScan({"com.cwq.project_aicodingstation.*.mapper"}) // 添加 Mapper 到 Spring Boot 扫描范围内
+@EnableScheduling
 public class ProjectAiCodingStationApplication {
 
     public static void main(String[] args) {
@@ -92,6 +94,13 @@ public class ProjectAiCodingStationApplication {
  * 这个流程涉及到：数据存储、权限控制、文件管理、网站部署等多个技术环节。
  * */
 
+/*
+ * nginx: 一个高性能的 HTTP 和 反向代理 web 服务器。
+ * 在这里，nginx 做的就是根据配置，把进来的 HTTP 请求转到「本地（挂载）文件」或「后面的服务」
+ * -「URL → 本地目录里的文件」的映射
+ * -「URL → 另一台服务器后端」的映射
+ * */
+
 /* [!!CAUTION!!]
  * 该项目前端开发于 WSL2.0 Ubuntu 24.04
  * 该项目后端开发于 Windows
@@ -151,6 +160,10 @@ public class ProjectAiCodingStationApplication {
  * const script = doc.createElement('script');
  * script.src = '/inject/iframe-editor.js';
  * doc.body.appendChild(script);
+ * */
+
+/*
+ * 用户删除应用时，先软删除(mark is_deleted)，满 14-days 再清磁盘 + 物理删库，避免内存堆积。
  * */
 
 // ====== 笔记区（NOTES）结束 ======

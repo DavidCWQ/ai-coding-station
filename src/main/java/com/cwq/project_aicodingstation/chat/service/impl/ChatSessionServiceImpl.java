@@ -147,6 +147,15 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     }
 
     @Override
+    public boolean deleteByAppId(Long appId) {
+        BusinessAssert.notNull(appId, ErrorCode.PARAMS_MISSING, "应用 id 为空");
+        BusinessAssert.requireTrue(appId > 0, ErrorCode.PARAMS_INVALID, "应用 id 非法");
+        QueryWrapper qw = QueryWrapper.create();
+        qw.eq("app_id", appId);
+        return this.remove(qw);
+    }
+
+    @Override
     public void touchLastMessageTime(Long sessionId, LocalDateTime at) {
         if (sessionId == null) {
             return;

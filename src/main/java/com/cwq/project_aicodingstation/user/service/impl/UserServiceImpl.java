@@ -15,6 +15,7 @@ import com.cwq.project_aicodingstation.user.vo.UserVO;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,9 +32,13 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
     @Resource
     private SysUserService sysUserService;
 
+    @Value("${app.user.registration-enabled:true}")
+    private boolean registrationEnabled;
+
     @Override
     public Long userRegister(UserRegisterRequest request) {
         BusinessAssert.notNull(request, ErrorCode.PARAMS_MISSING, "用户注册请求为空");
+        BusinessAssert.requireTrue(registrationEnabled, ErrorCode.NO_PERMISSION, "注册已关闭，请使用已有账号登录");
         return sysUserService.userRegister(
                 request.getUserAccount(),
                 request.getUserPassword(),

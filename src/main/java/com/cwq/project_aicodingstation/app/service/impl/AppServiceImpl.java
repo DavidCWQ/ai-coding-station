@@ -15,6 +15,7 @@ import com.cwq.project_aicodingstation.app.mapper.AppMapper;
 import com.cwq.project_aicodingstation.app.service.AppService;
 import com.cwq.project_aicodingstation.app.vo.AppVO;
 import com.cwq.project_aicodingstation.chat.service.ChatHistoryService;
+import com.cwq.project_aicodingstation.chat.service.ChatSessionService;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.exception.BusinessException;
 import com.cwq.project_aicodingstation.common.request.DeleteRequest;
@@ -57,6 +58,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private ChatHistoryService chatHistoryService;
 
     @Resource
+    private ChatSessionService chatSessionService;
+
+    @Resource
     private ScreenshotService screenshotService;
 
     /**
@@ -83,8 +87,15 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             return false;
         }
         try {
+            BusinessAssert.requireTrue(chatSessionService.deleteByAppId(appId),
+                    ErrorCode.BUSINESS_ERROR, "清理会话失败, appId=" + appId
+            );
+        } catch (Exception e) {
+            log.error("删除应用关联会话失败: {}", e.getMessage());
+        }
+        try {
             BusinessAssert.requireTrue(chatHistoryService.deleteByAppId(appId),
-                    ErrorCode.BUSINESS_ERROR, "AppID: " + appId
+                    ErrorCode.BUSINESS_ERROR, "清理历史失败，appId=" + appId
             );
         } catch (Exception e) {
             log.error("删除应用关联对话历史失败: {}", e.getMessage());
