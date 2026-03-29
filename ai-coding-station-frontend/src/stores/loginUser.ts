@@ -49,4 +49,3 @@ export const useLoginUserStore = defineStore('loginUser', () => {
 
   return { loginUser, isLoggedIn, fetchLoginUser, setLoginUser, logout }
 })
-
