@@ -39,7 +39,8 @@ const onImgError = () => {
   imgLoadFailed.value = true
 }
 
-const showImage = computed(() => !!resolvedSrc.value && !imgLoadFailed.value)
+// 即便图片加载失败，也优先保留图片占位，避免 Header 中头像闪回首字母
+const showImage = computed(() => !!resolvedSrc.value)
 
 /** 与 a-avatar 默认 / lg / sm 及数字 size 对齐；图片分支必须写死 px，否则在 flex 里会按原图尺寸撑开 */
 const imagePxSize = computed(() => {
