@@ -74,6 +74,10 @@ ai:
 
 # ------------- App Module Config -------------
 app:
+  user:
+    # 设为 false 以拒绝新用户注册，仅允许库内已有账号登录（账号需事先插入或由开启注册的环境创建）
+    # 设为 true  以开启新用户注册。
+    registration-enabled: true
   deploy:
     output-dir: ${user.dir}/tmp/code_output
     deploy-dir: ${user.dir}/tmp/code_deploy
