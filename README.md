@@ -126,7 +126,7 @@ git clone https://github.com/你的用户名/project_ai-coding-station.git
 cd project_ai-coding-station
 ```
 
-**步骤 2：准备数据库与 Redis**
+**步骤 2：准备数据库 Mysql 与 Redis**
 
 方式一：直接使用仓库自带的 `compose.yaml` 启动 MySQL + Redis + Nginx 静态站位（开发态）：
 
@@ -193,7 +193,7 @@ docker compose -f compose.yaml up -d
 - `mysql` / `redis` / `nginx` 与 `compose.yaml` 一致但加入了 **healthcheck**；
 - `backend`：基于 `Dockerfile` 构建 Spring Boot 应用镜像；
 - `frontend-build`：基于 `Dockerfile.frontend` 构建前端静态资源并拷贝到共享卷；
-- **注意**：需自行配置 `.env`，并确保 `application.yml` 中 `SPRING_PROFILES_ACTIVE=docker`。
+- **注意**：需自行配置 `.env`，并确保环境变量中 `SPRING_PROFILES_ACTIVE=prod`。
 
 **核心流程**
 
@@ -225,21 +225,22 @@ docker compose -f compose.prod.yaml up -d --build
 
 根目录提供 `.env` 文件（默认空），以及若干 `application*.yml` 与 Compose 配置，常用变量包括：
 
-- **数据库 / Redis**
+- **数据库 Mysql / Redis**
   - `MYSQL_USERNAME` / `MYSQL_PASSWORD` / `MYSQL_ROOT_PASSWORD`
   - `REDIS_USERNAME` / `REDIS_PASSWORD`
 
 - **AI 服务（DeepSeek）**
   - `DEEPSEEK_API_KEY`：在 `compose.prod.yaml` 中通过 `environment` 传给后端；
-  - 后端 `application-docker.yml` 中通过：
+  - 后端 `application-prod.yml` 中通过：
     - `langchain4j.open-ai.chat-model.api-key`
     - `langchain4j.open-ai.streaming-chat-model.api-key`
     - 从环境变量读取。
+  - 本地部署时，`DEEPSEEK_API_KEY` 通过 `application-local.yml` 直接读取。
 
 - **部署相关**
   - `PUBLIC_DEPLOY_HOST`：前端可访问的部署站点地址，例如 `http://your-domain.com`；
   - `PUBLIC_COVERS_BASE`：封面图访问基址，例如 `http://your-domain.com`；
-  - `SPRING_PROFILES_ACTIVE`：生产容器中设置为 `docker`，启用 `application-docker.yml`。
+  - `SPRING_PROFILES_ACTIVE`：生产容器中设置为 `prod`，启用 `application-prod.yml`。
 
 详细配置可参考：
 

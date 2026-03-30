@@ -20,7 +20,7 @@ spring:
     timeout: 2600000              # Global Session timeout (ms)
 
   datasource:
-    # 本地开发数据库地址；Docker 环境在 application-docker.yml 中覆盖
+    # 本地开发数据库地址；Docker 环境在 application-prod.yml 中覆盖
     url: jdbc:mysql://localhost:3306/ai_coding_station_memo?useSSL=false&serverTimezone=Asia/Shanghai
     username: ai_user
     password: ai_secret
