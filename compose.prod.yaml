@@ -50,6 +50,9 @@ services:
   nginx:
     image: nginx:stable-alpine3.23-perl
     container_name: nginx-proxy
+    depends_on:
+      frontend-build:
+        condition: service_completed_successfully
     ports:
       - "8088:80"
     volumes:
@@ -71,6 +74,8 @@ services:
         condition: service_healthy
       nginx:
         condition: service_started
+      frontend-build:
+        condition: service_completed_successfully
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: docker
