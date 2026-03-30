@@ -111,13 +111,13 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String initPrompt = req.getInitPrompt();
         BusinessAssert.notBlank(initPrompt, ErrorCode.PARAMS_MISSING, "初始化 prompt 不能为空");
 
-        // 2. 构造对象并持久化 (应用名称默认 = prompt 前12位)
+        // 2. 构造对象并持久化 (应用名称默认 = prompt 前20位)
         App app = new App();
         BeanUtil.copyProperties(req, app);
 
         app.setUserId(userVO.getId());
         if (StrUtil.isBlank(req.getAppName())) {
-            app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
+            app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 20)));
         }
         app.setCodeGenType(CodeGenTypeEnum.HTML.getValue());
         if (StrUtil.isNotBlank(req.getCodeGenType())

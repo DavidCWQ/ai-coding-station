@@ -56,6 +56,7 @@ const imageWrapStyle = computed(() => ({
   lineHeight: `${imagePxSize.value}px`,
   flexShrink: 0,
   overflow: 'hidden',
+  borderRadius: '50%',
 }))
 
 const imageWrapClass = ['ant-avatar', 'ant-avatar-circle', 'user-avatar', 'user-avatar--has-image']
@@ -82,7 +83,14 @@ const letterRootClass = computed(() => {
 </template>
 
 <style scoped>
-/* 与 ant-avatar 内 img 规则一致：铺满圆形区域并居中裁剪 */
+/* 图片头像：正圆形容器 + 居中 cover，避免方图撑成方框 */
+.user-avatar.user-avatar--has-image {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
 .user-avatar--has-image img {
   display: block;
   width: 100%;

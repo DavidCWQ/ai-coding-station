@@ -70,8 +70,8 @@ const coverStyle = computed(() => {
   }
 })
 
-const relativeCreate = () => {
-  const t = props.app.createTime
+const relativeUpdate = () => {
+  const t = props.app.updateTime || props.app.createTime
   if (!t) return ''
   const d = dayjs(t)
   return d.isValid() ? d.fromNow() : t
@@ -122,7 +122,7 @@ const onViewWork = () => {
     </div>
     <div class="app-card__body">
       <div class="app-card__title">{{ app.appName || '未命名应用' }}</div>
-      <div v-if="mode === 'mine'" class="app-card__meta">创建于 {{ relativeCreate() }}</div>
+      <div v-if="mode === 'mine'" class="app-card__meta">修改于 {{ relativeUpdate() }}</div>
       <div v-else class="app-card__footer">
         <div class="app-card__author">
           <UserAvatar

@@ -23,19 +23,36 @@ const data = ref<API.AppVO[]>([])
 const total = ref(0)
 const loading = ref(false)
 
+/** 与后端一致：传 priority 时表示 priority >= 该值（普通≥0、精选≥99、置顶≥999） */
+const PRIORITY_FILTER_ALL = 'all' as const
+const PRIORITY_FILTER_NORMAL = 0
+const PRIORITY_FILTER_FEATURED = FEATURED_PRIORITY
+const PRIORITY_FILTER_PINNED = PINNED_PRIORITY
+
+type PriorityFilterValue = typeof PRIORITY_FILTER_ALL | number
+
 const searchParams = reactive({
   pageNum: 1,
   pageSize: 10,
   appName: '',
   userId: '' as string,
+  /** 按优先级下限筛选；'all' 表示不限 */
+  priorityFilter: PRIORITY_FILTER_ALL as PriorityFilterValue,
 })
+
+const priorityFilterOptions = [
+  { label: '不限', value: PRIORITY_FILTER_ALL },
+  { label: '普通', value: PRIORITY_FILTER_NORMAL },
+  { label: '精选', value: PRIORITY_FILTER_FEATURED },
+  { label: '置顶', value: PRIORITY_FILTER_PINNED },
+] as const
 
 const allColumns: TableColumnType<API.AppVO>[] = [
   { title: 'ID', key: 'id', width: 100, ellipsis: true },
   { title: '应用名', dataIndex: 'appName', key: 'appName', ellipsis: true },
   { title: '用户ID', key: 'userId', width: 120 },
   { title: '优先级', key: 'priority', width: 96 },
-  { title: '创建时间', key: 'createTime', width: 180 },
+  { title: '修改时间', key: 'updateTime', width: 180 },
   { title: '操作', key: 'action', width: 220, fixed: 'right' },
 ]
 
@@ -96,6 +113,11 @@ const fmt = (v?: string) => {
   return d.isValid() ? d.format('YYYY-MM-DD HH:mm:ss') : v
 }
 
+const priorityQueryPart = (): Pick<API.AppQueryRequest, 'priority'> | Record<string, never> => {
+  const pf = searchParams.priorityFilter
+  return typeof pf === 'number' ? { priority: pf } : {}
+}
+
 const buildAdminQuery = (): API.AppQueryRequest => {
   const uid = searchParams.userId.trim()
   return {
@@ -104,6 +126,9 @@ const buildAdminQuery = (): API.AppQueryRequest => {
     pageSize: Math.min(searchParams.pageSize, 20),
     appName: searchParams.appName.trim() || undefined,
     userId: uid ? apiLongId(uid) : undefined,
+    sortField: 'update_time',
+    sortOrder: 'descend',
+    ...priorityQueryPart(),
   }
 }
 
@@ -112,6 +137,9 @@ const buildMyQuery = (): API.AppQueryRequest => ({
   pageNum: searchParams.pageNum,
   pageSize: Math.min(searchParams.pageSize, 20),
   appName: searchParams.appName.trim() || undefined,
+  sortField: 'update_time',
+  sortOrder: 'descend',
+  ...priorityQueryPart(),
 })
 
 const fetchData = async () => {
@@ -185,6 +213,13 @@ onMounted(() => {
         <a-form-item v-if="isAdmin" label="用户ID">
           <a-input v-model:value="searchParams.userId" allow-clear style="width: 140px" />
         </a-form-item>
+        <a-form-item label="优先级">
+          <a-select
+            v-model:value="searchParams.priorityFilter"
+            style="width: 120px"
+            :options="priorityFilterOptions"
+          />
+        </a-form-item>
         <a-form-item>
           <a-button type="primary" html-type="submit">搜索</a-button>
         </a-form-item>
@@ -211,8 +246,8 @@ onMounted(() => {
               {{ getPriorityInfo(record.priority).tag.text }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'createTime'">
-            {{ fmt(record.createTime) }}
+          <template v-else-if="column.key === 'updateTime'">
+            {{ fmt(record.updateTime || record.createTime) }}
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space wrap>
