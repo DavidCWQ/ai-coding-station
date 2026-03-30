@@ -192,7 +192,8 @@ docker compose -f compose.yaml up -d
 
 - `mysql` / `redis` / `nginx` 与 `compose.yaml` 一致但加入了 **healthcheck**；
 - `backend`：基于 `Dockerfile` 构建 Spring Boot 应用镜像；
-- `frontend-build`：基于 `Dockerfile.frontend` 构建前端静态资源并拷贝到共享卷。
+- `frontend-build`：基于 `Dockerfile.frontend` 构建前端静态资源并拷贝到共享卷；
+- **注意**：需自行配置 `.env`，并确保 `application.yml` 中 `SPRING_PROFILES_ACTIVE=docker`。
 
 **核心流程**
 
@@ -202,7 +203,7 @@ docker compose -f compose.yaml up -d
 2. `backend` 容器：
    - 通过 `Dockerfile` 打包后端 Jar；
    - 再安装 Node + Playwright 以支持截图脚本 `scripts/screenshot.js`；
-   - 暴露 `8142` 端口，读取环境变量中的 DeepSeek API Key、数据库与 Redis 账号等。
+   - 暴露 `8142` 端口，读取环境变量 `.env` 中的 DeepSeek API Key、数据库与 Redis 账号等。
 3. `nginx` 容器：
    - 挂载 `./tmp/code_deploy` 作为 `/usr/share/nginx/html`；
    - 通过 `nginx.prod.conf` 将静态站暴露到外网。
