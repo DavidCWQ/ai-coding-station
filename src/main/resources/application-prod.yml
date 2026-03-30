@@ -1,4 +1,4 @@
-# 通过 SPRING_PROFILES_ACTIVE=docker 启用（见 compose.prod.yaml 中 backend 服务）
+# 通过 SPRING_PROFILES_ACTIVE=prod 启用（见 compose.prod.yaml 中 backend 服务）
 
 langchain4j:
   # Docker 环境下从环境变量中读取 DeepSeek API Key
@@ -17,15 +17,16 @@ spring:
   # 覆盖为容器网络内的 MySQL / Redis 地址
   datasource:
     url: jdbc:mysql://mysql:3306/ai_coding_station_memo?useSSL=false&serverTimezone=Asia/Shanghai
-    username: ${MYSQL_USERNAME:}
-    password: ${MYSQL_PASSWORD:}
+    username: ${MYSQL_USERNAME:ai_user}
+    password: ${MYSQL_PASSWORD:ai_secret}
 
   data:
     redis:
       host: redis
-      port: 6380
-      username: ${REDIS_USERNAME:}
-      password: ${REDIS_PASSWORD:}
+      # 容器网络内访问 Redis 使用容器端口 6379（6380 仅宿主机映射端口）
+      port: 6379
+      username: ${REDIS_USERNAME:default}
+      password: ${REDIS_PASSWORD:redis_secret}
 
 app:
   user:
@@ -35,10 +36,10 @@ app:
     # 容器内 Playwright / 服务端访问静态站
     deploy-host: http://nginx
     # 浏览器与前端可访问的部署页基址（按实际域名或宿主机 IP 修改）
-    public-deploy-host: ${PUBLIC_DEPLOY_HOST:http://localhost:8088}
+    public-deploy-host: ${PUBLIC_DEPLOY_HOST:http://150.158.47.34:8090}
   screenshot:
     # 路径和输出目录与 application.yml 相同，无需重复覆盖
-    base-url: ${PUBLIC_COVERS_BASE:http://localhost:8088}/covers
+    base-url: ${PUBLIC_COVERS_BASE:http://150.158.47.34:8090}/covers
 
 knife4j:
   basic:

@@ -44,3 +44,4 @@ __screenshots__/
 # local
 .env.local
 .env.development
+.env.production

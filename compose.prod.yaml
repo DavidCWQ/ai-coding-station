@@ -78,13 +78,13 @@ services:
         condition: service_completed_successfully
     environment:
       TZ: Asia/Shanghai
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: prod
       MYSQL_USERNAME: ${MYSQL_USERNAME:-ai_user}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ai_secret}
       REDIS_USERNAME: ${REDIS_USERNAME:-default}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
-      PUBLIC_DEPLOY_HOST: ${PUBLIC_DEPLOY_HOST:-http://localhost:8088}
-      PUBLIC_COVERS_BASE: ${PUBLIC_COVERS_BASE:-http://localhost:8088}
+      PUBLIC_DEPLOY_HOST: ${PUBLIC_DEPLOY_HOST:-http://150.158.47.34:8090}
+      PUBLIC_COVERS_BASE: ${PUBLIC_COVERS_BASE:-http://150.158.47.34:8090}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
     ports:
       - "8142:8142"

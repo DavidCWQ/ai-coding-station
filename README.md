@@ -193,12 +193,13 @@ docker compose -f compose.yaml up -d
 - `mysql` / `redis` / `nginx` 与 `compose.yaml` 一致但加入了 **healthcheck**；
 - `backend`：基于 `Dockerfile` 构建 Spring Boot 应用镜像；
 - `frontend-build`：基于 `Dockerfile.frontend` 构建前端静态资源并拷贝到共享卷；
-- **注意**：需自行配置 `.env`，并确保环境变量中 `SPRING_PROFILES_ACTIVE=prod`。
+- **注意**：需自行配置 `.env`。`compose.prod.yaml` 已在 `backend.environment` 中固定 `SPRING_PROFILES_ACTIVE=prod`。
 
 **核心流程**
 
 1. `frontend-build` 容器使用 `Dockerfile.frontend`：
-   - 安装前端依赖 → `npm run build` → 生成 `/frontend/dist`；
+   - 安装前端依赖 → `npm run build-only`（即 `vite build`）→ 生成 `/frontend/dist`；
+   - `vite build` 默认是 `production` mode，会自动读取前端根目录 `.env.production`（若存在）；
    - 将构建产物复制到宿主 `./tmp/code_deploy` 目录（通过 volume 挂载）。
 2. `backend` 容器：
    - 通过 `Dockerfile` 打包后端 Jar；
@@ -214,10 +215,11 @@ docker compose -f compose.yaml up -d
 docker compose -f compose.prod.yaml up -d --build
 ```
 
-启动后可访问：
+启动后可访问（以当前服务器映射配置为例）：
 
-- 前端应用：`http://<你的服务器 IP>:8088`
-- 后端接口：`http://<你的服务器 IP>:8142/api`
+- 前端应用：`http://<你的服务器 IP>:8090`
+- 对外统一 API 入口（经 Nginx 转发）：`http://<你的服务器 IP>:8090/api`
+- 容器内部反向代理目标（仅容器网络可见）：`http://backend:8142/api`
 
 ---
 
@@ -240,12 +242,16 @@ docker compose -f compose.prod.yaml up -d --build
 - **部署相关**
   - `PUBLIC_DEPLOY_HOST`：前端可访问的部署站点地址，例如 `http://your-domain.com`；
   - `PUBLIC_COVERS_BASE`：封面图访问基址，例如 `http://your-domain.com`；
-  - `SPRING_PROFILES_ACTIVE`：生产容器中设置为 `prod`，启用 `application-prod.yml`。
+  - `SPRING_PROFILES_ACTIVE`：生产容器中设置为 `prod`，启用 `application-prod.yml`（已在 compose.prod.yaml 写死）。
+
+- **前端构建环境**
+  - `ai-coding-station-frontend/.env.development`：本地 `npm run dev` 使用；
+  - `ai-coding-station-frontend/.env.production`：`vite build`（含 Docker 的 `frontend-build`）自动使用。
 
 详细配置可参考：
 
 - `src/main/resources/application.yml`：本地开发默认配置；
-- `src/main/resources/application-docker.yml`：容器部署专用配置；
+- `src/main/resources/application-prod.yml`：生产容器部署配置；
 - `compose.yaml` / `compose.prod.yaml`：服务编排与环境变量注入。
 
 ---

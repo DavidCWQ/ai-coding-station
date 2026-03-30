@@ -101,6 +101,12 @@ public class ProjectAiCodingStationApplication {
  * -「URL → 另一台服务器后端」的映射
  * */
 
+/*
+ * 8088:80 表示：宿主机 8088 -> nginx 容器 80，所以：
+ * 容器内部互访（backend -> nginx）：用 http://nginx 或 http://nginx:80
+ * 宿主机/外网访问：用 http://<服务器IP>:8088（localhost/外网IP）
+ * */
+
 /* [!!CAUTION!!]
  * 该项目前端开发于 WSL2.0 Ubuntu 24.04
  * 该项目后端开发于 Windows
