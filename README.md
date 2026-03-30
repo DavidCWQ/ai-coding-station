@@ -301,6 +301,9 @@ docker compose -f compose.prod.yaml up -d --build
 - **Q: 下载应用代码提示无权限或找不到？**  
   **A:** 仅应用创建者可下载对应代码；同时需确保已完成代码生成与部署，`tmp/code_output` 中确实存在对应目录。
 
+- **Q: 构建后端镜像时 Playwright 下载 `chrome-linux64.zip` 很慢？**  
+  **A:** `Dockerfile` 已对 `npx playwright install chromium` 使用 BuildKit 缓存挂载，**同一台机器上重复 `docker build` 时一般会复用浏览器缓存**（首次仍会完整下载）。若网络极差，可在网速好的 Linux 环境（或 WSL）进入 `scripts/`，执行 `npm ci && npx playwright install chromium`，然后把本机的 `~/.cache/ms-playwright` 整目录打成压缩包，拷到构建机后在 Dockerfile 里增加 `COPY` 到 `/root/.cache/ms-playwright`（须与 `scripts/package-lock.json` 里 **同一 Playwright 版本** 生成的目录一致，否则容易版本不匹配）。
+
 ---
 
 ### 8. 开发规范与约定

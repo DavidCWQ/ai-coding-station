@@ -20,15 +20,19 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY --from=build /build/target/*.jar /app/app.jar
 COPY scripts/package.json scripts/package-lock.json scripts/screenshot.js /app/scripts/
 
 WORKDIR /app/scripts
-RUN npm ci \
+# Playwright 浏览器缓存：需开启 BuildKit（Docker 24+ 默认开启）。
+# 同一台构建机会复用 /root/.cache/ms-playwright，避免每次重下 chrome-linux64.zip。
+# 也可在本机先跑一遍 install，把整个目录打包上传到构建机后解压到同名路径（见 README）。
+RUN --mount=type=cache,target=/root/.cache/ms-playwright,id=playwright-browsers \
+    npm ci \
     && npx playwright install-deps chromium \
     && npx playwright install chromium
 
 WORKDIR /app
+COPY --from=build /build/target/*.jar /app/app.jar
 
 EXPOSE 8142
 
