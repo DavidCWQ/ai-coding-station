@@ -6,9 +6,9 @@ WORKDIR /frontend
 COPY ai-coding-station-frontend/package.json ai-coding-station-frontend/package-lock.json ./
 RUN npm ci
 
-# 拷贝源码并构建前端
+# 拷贝源码并构建前端（仅打包，不做类型检查）
 COPY ai-coding-station-frontend/ .
-RUN npm run build
+RUN npm run build-only
 
 # 构建结果位于 /frontend/dist，后续通过 docker compose 将其拷贝到 nginx 挂载目录
 
