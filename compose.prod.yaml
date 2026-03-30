@@ -1,0 +1,103 @@
+name: ai-coding-station
+
+services:
+  mysql:
+    image: mysql:9.5.0
+    container_name: mysql-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ai_coding_station_memo
+      MYSQL_USER: ${MYSQL_USERNAME:-ai_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ai_secret}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_secret}
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_secret}"]
+      interval: 5s
+      timeout:  5s
+      retries:  30
+      start_period: 20s
+
+  redis:
+    image: redis:8.4.0
+    container_name: redis-cache
+    restart: unless-stopped
+    environment:
+      REDIS_USERNAME: ${REDIS_USERNAME:-default}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret} # database: 0 by default
+    ports:
+      - "6380:6379"
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-redis_secret}
+      --appendonly  yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"${REDIS_PASSWORD:-redis_secret}\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  nginx:
+    image: nginx:stable-alpine3.23-perl
+    container_name: nginx-proxy
+    ports:
+      - "8088:80"
+    volumes:
+      - ./tmp/code_deploy:/usr/share/nginx/html
+      - ./tmp/covers:/usr/share/nginx/static/covers
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-coding-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nginx:
+        condition: service_started
+    environment:
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: docker
+      MYSQL_USERNAME: ${MYSQL_USERNAME:-ai_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ai_secret}
+      REDIS_USERNAME: ${REDIS_USERNAME:-default}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      PUBLIC_DEPLOY_HOST: ${PUBLIC_DEPLOY_HOST:-http://localhost:8088}
+      PUBLIC_COVERS_BASE: ${PUBLIC_COVERS_BASE:-http://localhost:8088}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+    ports:
+      - "8142:8142"
+    volumes:
+      - ./tmp/code_output:/app/tmp/code_output
+      - ./tmp/code_deploy:/app/tmp/code_deploy
+      - ./tmp/covers:/app/tmp/covers
+
+  # 前端构建服务：只负责将 ai-coding-station-frontend 构建产物复制到 tmp/code_deploy
+  frontend-build:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    command: ["sh", "-c", "cp -r /frontend/dist/* /shared-dist && echo 'frontend build done'"]
+    volumes:
+      - ./tmp/code_deploy:/shared-dist
+    restart: "no"
+
+volumes:
+  mysql_data:
+  redis_data:

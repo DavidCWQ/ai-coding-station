@@ -1,27 +1,47 @@
 # --------------- Spring Config ---------------
+# 核心 SpringBoot 配置：应用名、Profile、docker-compose 集成、会话、数据源等
 spring:
   application:
+    # 后端应用名称（用于日志、注册中心等场景）
     name: cwq-ai-coding-station-backend
+
   profiles:
+    # 默认使用本地开发配置；生产部署通过 SPRING_PROFILES_ACTIVE=docker 覆盖
     active: local
+
+  docker:
+    compose:
+      # 本地开发时由 spring-boot-docker-compose 自动启动 compose.yaml
+      file: compose.yaml
+
   session:
+    # Session 存储在 Redis 中（需配合 spring-session-data-redis）
     store-type: redis             # Session expired after 1 month
-    timeout: 2600000
+    timeout: 2600000              # Global Session timeout (ms)
+
   datasource:
+    # 本地开发数据库地址；Docker 环境在 application-docker.yml 中覆盖
     url: jdbc:mysql://localhost:3306/ai_coding_station_memo?useSSL=false&serverTimezone=Asia/Shanghai
     username: ai_user
     password: ai_secret
     driver-class-name: com.mysql.cj.jdbc.Driver
+
   data:
     redis:
+      # 本地 Redis 主机；Docker 环境会改为 redis 服务名
       host: localhost             # Container name
+      # 本地映射端口；容器内使用 6379
       port: 6380                  # Your port in container name
       username: default
       password: redis_secret
       ttl: 3600                   # Self-defined persist time for RedisChatMemoryStoreConfig
+
   cache:
+    # 默认使用 Caffeine 本地缓存
     type: caffeine
+
 # --------------- Server Config ---------------
+# 后端服务默认配置
 server:
   port: 8142
   servlet:
@@ -31,7 +51,8 @@ server:
       cookie:                     # Expired after 1 month
         max-age: 2600000
 
-# ------------- Springdoc-Openapi -------------
+# ------------- Springdoc-OpenAPI -------------
+# 按模块拆分 OpenAPI 分组，方便在文档 UI 中切换
 springdoc:
   group-configs:
     - group: 'user'
@@ -42,12 +63,14 @@ springdoc:
       packages-to-scan: com.cwq.project_aicodingstation.chat.controller
 
 # --------------- API doc tools ---------------
+# Knife4j Swagger 增强 UI 配置
 knife4j:
   enable: true
   setting:
     language: en
 
 # -------------- AI Service API ---------------
+# LangChain4j 接 DeepSeek Chat；api-key 由不同 profile 注入
 langchain4j:
   open-ai:
     chat-model:
@@ -68,11 +91,13 @@ langchain4j:
       log-responses: true
 
 # ------------- AI Module Config --------------
+# AI 相关自定义配置（如代码生成输出目录）
 ai:
   code:
     output-dir: ${user.dir}/tmp/code_output
 
 # ------------- App Module Config -------------
+# 应用模块配置：用户注册开关、部署目录、截图脚本等
 app:
   user:
     # 设为 false 以拒绝新用户注册，仅允许库内已有账号登录（账号需事先插入或由开启注册的环境创建）

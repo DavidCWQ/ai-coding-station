@@ -1,0 +1,46 @@
+# 通过 SPRING_PROFILES_ACTIVE=docker 启用（见 compose.prod.yaml 中 backend 服务）
+
+langchain4j:
+  # Docker 环境下从环境变量中读取 DeepSeek API Key
+  open-ai:
+    chat-model:
+      api-key: ${DEEPSEEK_API_KEY:}
+    streaming-chat-model:
+      api-key: ${DEEPSEEK_API_KEY:}
+
+spring:
+  # 容器内不再由 Spring 去管理 docker compose
+  docker:
+    compose:
+      enabled: false
+
+  # 覆盖为容器网络内的 MySQL / Redis 地址
+  datasource:
+    url: jdbc:mysql://mysql:3306/ai_coding_station_memo?useSSL=false&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USERNAME:}
+    password: ${MYSQL_PASSWORD:}
+
+  data:
+    redis:
+      host: redis
+      port: 6380
+      username: ${REDIS_USERNAME:}
+      password: ${REDIS_PASSWORD:}
+
+app:
+  user:
+    # 生产环境默认关闭新用户注册（可用环境变量覆盖）
+    registration-enabled: false
+  deploy:
+    # 容器内 Playwright / 服务端访问静态站
+    deploy-host: http://nginx
+    # 浏览器与前端可访问的部署页基址（按实际域名或宿主机 IP 修改）
+    public-deploy-host: ${PUBLIC_DEPLOY_HOST:http://localhost:8088}
+  screenshot:
+    # 路径和输出目录与 application.yml 相同，无需重复覆盖
+    base-url: ${PUBLIC_COVERS_BASE:http://localhost:8088}/covers
+
+knife4j:
+  basic:
+    username: ${KNIFE_USERNAME:}
+    password: ${KNIFE_PASSWORD:}

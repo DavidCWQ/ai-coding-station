@@ -1,0 +1,14 @@
+FROM node:24.12.0 AS build
+
+WORKDIR /frontend
+
+# 安装依赖
+COPY ai-coding-station-frontend/package.json ai-coding-station-frontend/package-lock.json ./
+RUN npm ci
+
+# 拷贝源码并构建前端
+COPY ai-coding-station-frontend/ .
+RUN npm run build
+
+# 构建结果位于 /frontend/dist，后续通过 docker compose 将其拷贝到 nginx 挂载目录
+

@@ -1,0 +1,10 @@
+target/
+.git
+.idea
+.vscode
+*.iml
+scripts/node_modules
+ai-coding-station-frontend/node_modules
+ai-coding-station-frontend/dist
+tmp/
+**/.DS_Store

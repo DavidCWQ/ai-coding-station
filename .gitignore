@@ -41,6 +41,7 @@ build/
 ### Confidential ###
 /src/main/resources/application-local.yml
 /src/main/resources/application-local.properties
+.env
 
 ### Others ###
 /README_PIC/

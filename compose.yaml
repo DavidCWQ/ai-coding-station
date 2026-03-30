@@ -2,8 +2,8 @@ name: ai-coding-station
 
 services:
   mysql:
-    image: mysql:latest
-    container_name: mysql-memo
+    image: mysql:9.5.0
+    container_name: mysql-db
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ai_coding_station_memo
@@ -21,8 +21,8 @@ services:
       --collation-server=utf8mb4_unicode_ci
 
   redis:
-    image: redis:latest
-    container_name: redis-memo
+    image: redis:8.4.0
+    container_name: redis-cache
     restart: unless-stopped
     environment:
       REDIS_USERNAME: ${REDIS_USERNAME:-default}
@@ -38,13 +38,13 @@ services:
 
   nginx:
     image: nginx:stable-alpine3.23-perl
-    container_name: ai-nginx
+    container_name: nginx-proxy
     ports:
       - "8088:80"
     volumes:
       - ./tmp/code_deploy:/usr/share/nginx/html
       - ./tmp/covers:/usr/share/nginx/static/covers
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/nginx.local.conf:/etc/nginx/nginx.conf:ro
     restart: always
 
 volumes:

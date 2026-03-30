@@ -496,9 +496,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
                 ErrorCode.SYSTEM_ERROR, "未找到生成代码，请先生成代码"
         );
 
-        // 6. 部署目录&链接
+        // 6. 部署目录&链接（对内截图 URL 与对外返回 URL 可分离，见 AppDeployConfig.publicDeployHost）
         String deployDirPath = appDeployConfig.getDeployDir() + File.separator + deployKey;
-        String appDeployUrl = String.format("%s/%s/", appDeployConfig.getDeployHost(), deployKey);
+        String internalBase = StrUtil.removeSuffix(StrUtil.trim(appDeployConfig.getDeployHost()), "/");
+        String publicBase = StrUtil.isNotBlank(appDeployConfig.getPublicDeployHost())
+                ? StrUtil.removeSuffix(StrUtil.trim(appDeployConfig.getPublicDeployHost()), "/")
+                : internalBase;
+        String screenshotTargetUrl = internalBase + "/" + deployKey + "/";
+        String appDeployUrl = publicBase + "/" + deployKey + "/";
         try {
             // 先清空旧部署目录，避免历史残留文件影响最新版本
             FileUtil.del(deployDirPath);
@@ -519,7 +524,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         );
 
         // 8. 异步更新应用封面
-        generateAppScreenshotAsync(appId, appDeployUrl);
+        generateAppScreenshotAsync(appId, screenshotTargetUrl);
 
         // 9. 返回URL
         return appDeployUrl;
