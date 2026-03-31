@@ -197,4 +197,9 @@ public class ProjectAiCodingStationApplication {
  * 用户删除应用时，先软删除(mark is_deleted)，满 14-days 再清磁盘 + 物理删库，避免内存堆积。
  * */
 
+/*
+ * 在 Docker 里建议使用 BuildKit 的缓存挂载，缓存 Maven 依赖到 ~/.m2/repository，
+ * 同一台构建机上，后续构建时，依赖优先从 /root/.m2 缓存读。
+ * */
+
 // ====== 笔记区（NOTES）结束 ======
