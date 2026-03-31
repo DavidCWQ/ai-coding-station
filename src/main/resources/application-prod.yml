@@ -36,10 +36,10 @@ app:
     # 容器内 Playwright / 服务端访问静态站
     deploy-host: http://nginx
     # 浏览器与前端可访问的部署页基址（按实际域名或宿主机 IP 修改）
-    public-deploy-host: ${PUBLIC_DEPLOY_HOST:http://150.158.47.34:8090}
+    public-deploy-host: ${PUBLIC_DEPLOY_HOST:}
   screenshot:
     # 路径和输出目录与 application.yml 相同，无需重复覆盖
-    base-url: ${PUBLIC_COVERS_BASE:http://150.158.47.34:8090}/covers
+    base-url: ${PUBLIC_COVERS_BASE:}/covers
 
 knife4j:
   basic:
