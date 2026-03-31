@@ -49,3 +49,5 @@ build/
 
 ### Node.js ###
 */node_modules
+*.zip
+*.tgz
