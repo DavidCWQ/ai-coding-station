@@ -74,7 +74,7 @@ services:
         condition: service_healthy
       nginx:
         condition: service_started
-      frontend-build:
+      frontend:
         condition: service_completed_successfully
     environment:
       TZ: Asia/Shanghai
@@ -94,7 +94,7 @@ services:
       - ./tmp/covers:/app/tmp/covers
 
   # 前端构建服务：只负责将 ai-coding-station-frontend 构建产物复制到 tmp/code_deploy
-  frontend-deploy:
+  frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
