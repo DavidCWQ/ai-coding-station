@@ -51,7 +51,7 @@ services:
     image: nginx:stable-alpine3.23-perl
     container_name: nginx-proxy
     depends_on:
-      frontend-build:
+      frontend:
         condition: service_completed_successfully
     ports:
       - "8088:80"
