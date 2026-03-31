@@ -56,3 +56,9 @@ npm run build-only
 Notes:
 - Do not hardcode `localhost` / LAN IP in `vite.config.ts` or runtime config.
 - Do not use `http://backend:8142` in browser runtime; use `/api` + reverse proxy in production.
+
+Free User avatar
+- https://image2url.com/r2/default/images/1774957098586-c29f0a1f-9de2-4d83-a9a0-ab9337bf22cd.png
+- https://image2url.com/r2/default/images/1774957609539-5a08a27b-81de-4217-8497-4848388ccddc.png
+- https://image2url.com/r2/default/images/1774957903579-371c1cc8-26c4-4a25-9339-6b1f552ec78d.png
+- https://image2url.com/r2/default/gifs/1774958233526-d28d6a66-1f70-416b-8f8f-e55a9d6b7362.gif
