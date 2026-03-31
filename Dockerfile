@@ -2,9 +2,14 @@
 
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /build
+
+# 先拷贝依赖描述文件，利用 Docker 层缓存
 COPY pom.xml .
 COPY src ./src
-RUN mvn -B -DskipTests package
+
+# 使用 BuildKit 缓存 Maven 本地仓库，避免每次都重新下载依赖
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -DskipTests package
 
 FROM eclipse-temurin:21-jre-jammy
 
