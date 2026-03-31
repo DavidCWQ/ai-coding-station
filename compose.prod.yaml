@@ -31,10 +31,11 @@ services:
     container_name: redis-cache
     restart: unless-stopped
     environment:
-      REDIS_USERNAME: ${REDIS_USERNAME:-default}
+      REDIS_USERNAME: default
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret} # database: 0 by default
     ports:
       - "6380:6379"
+    # NOTES: --requirepass will SET username AS `default`!
     command: >
       redis-server
       --requirepass ${REDIS_PASSWORD:-redis_secret}
@@ -81,7 +82,7 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       MYSQL_USERNAME: ${MYSQL_USERNAME:-ai_user}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ai_secret}
-      REDIS_USERNAME: ${REDIS_USERNAME:-default}
+      REDIS_USERNAME: default
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
       PUBLIC_DEPLOY_HOST: ${PUBLIC_DEPLOY_HOST:-http://150.158.47.34:8090}
       PUBLIC_COVERS_BASE: ${PUBLIC_COVERS_BASE:-http://150.158.47.34:8090}
