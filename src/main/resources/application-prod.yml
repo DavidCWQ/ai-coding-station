@@ -16,7 +16,8 @@ spring:
 
   # 覆盖为容器网络内的 MySQL / Redis 地址
   datasource:
-    url: jdbc:mysql://mysql:3306/ai_coding_station_memo?useSSL=false&serverTimezone=Asia/Shanghai
+    # allowPublicKeyRetrieval：MySQL 8+ caching_sha2_password 在部分 JDBC 连接场景需要，否则报 Public Key Retrieval is not allowed
+    url: jdbc:mysql://mysql:3306/ai_coding_station_memo?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
     username: ${MYSQL_USERNAME:ai_user}
     password: ${MYSQL_PASSWORD:ai_secret}
 
