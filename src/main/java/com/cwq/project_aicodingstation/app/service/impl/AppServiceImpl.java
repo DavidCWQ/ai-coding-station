@@ -453,13 +453,15 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         Thread.startVirtualThread(() -> {
             // 调用截图服务生成截图
             String screenshotUrl = screenshotService.capture(appUrl, appId);
-            // 更新应用封面字段
-            App updateApp = new App();
-            updateApp.setId(appId);
-            updateApp.setCover(screenshotUrl);
-            BusinessAssert.requireTrue(this.updateById(updateApp), ErrorCode.BUSINESS_ERROR,
-                    "更新应用封面字段失败"
-            );
+            // 截图失败时不更新数据库，避免生成空的 UPDATE 语句
+            if (StrUtil.isNotBlank(screenshotUrl)) {
+                App updateApp = new App();
+                updateApp.setId(appId);
+                updateApp.setCover(screenshotUrl);
+                BusinessAssert.requireTrue(this.updateById(updateApp), ErrorCode.BUSINESS_ERROR,
+                        "更新应用封面字段失败"
+                );
+            }
         });
     }
 
