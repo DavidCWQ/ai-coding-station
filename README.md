@@ -250,6 +250,7 @@ docker compose -f compose.prod.yaml up -d --build
   - `PUBLIC_DEPLOY_HOST`：前端可访问的部署站点地址，例如 `http://your-domain.com`；
   - `PUBLIC_COVERS_BASE`：封面图访问基址，例如 `http://your-domain.com`；
   - `SPRING_PROFILES_ACTIVE`：生产容器中设置为 `prod`，启用 `application-prod.yml`（已在 compose.prod.yaml 写死）。
+  - `APP_USER_REGISTRATION_ENABLED`：是否允许用户注册（`true`/`false`），对应 `app.user.registration-enabled`，生产默认关闭。
 
 - **前端构建环境**
   - `ai-coding-station-frontend/.env.development`：本地 `npm run dev` 使用；

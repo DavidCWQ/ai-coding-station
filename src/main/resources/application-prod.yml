@@ -32,7 +32,7 @@ spring:
 app:
   user:
     # 生产环境默认关闭新用户注册（可用环境变量覆盖）
-    registration-enabled: false
+    registration-enabled: ${APP_USER_REGISTRATION_ENABLED:false}
   deploy:
     # 容器内 Playwright / 服务端访问静态站
     deploy-host: http://nginx
