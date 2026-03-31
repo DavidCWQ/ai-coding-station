@@ -85,8 +85,8 @@ services:
       REDIS_USERNAME: default
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
       APP_USER_REGISTRATION_ENABLED: ${APP_USER_REGISTRATION_ENABLED:-false}
-      PUBLIC_DEPLOY_HOST: ${PUBLIC_DEPLOY_HOST:}
-      PUBLIC_COVERS_BASE: ${PUBLIC_COVERS_BASE:}
+      PUBLIC_DEPLOY_HOST: ${PUBLIC_DEPLOY_HOST:-http://your-domain.com:port}
+      PUBLIC_COVERS_BASE: ${PUBLIC_COVERS_BASE:-http://your-domain.com:port}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
     ports:
       - "8142:8142"
