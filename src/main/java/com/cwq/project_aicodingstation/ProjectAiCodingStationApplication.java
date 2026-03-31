@@ -105,11 +105,36 @@ public class ProjectAiCodingStationApplication {
  * 8088:80 表示：宿主机 8088 -> nginx 容器 80，所以：
  * 容器内部互访（backend -> nginx）：用 http://nginx 或 http://nginx:80
  * 宿主机/外网访问：用 http://<服务器IP>:8088（localhost/外网IP）
+ * 注意：前端是跑在用户浏览器里的，浏览器不在 Docker 网络里，解析不到 http://backend，会直接请求失败
  * */
 
 /* [!!CAUTION!!]
  * 该项目前端开发于 WSL2.0 Ubuntu 24.04
  * 该项目后端开发于 Windows
+ * */
+
+/*
+ * 反向代理（proxy）
+ * 你（浏览器）→ 前台接待（Nginx）→ 后端部门（Java 服务）
+ *               ↑
+ *          这就是反向代理
+ * 你不需要知道后端部门在哪，你只需要找前台（Nginx），它帮你转达。
+ * ---
+ * 没有反代：
+ * 浏览器 → http://your-domain.com/api/app
+ *                    ↓
+ *              404 Not Found（因为 Nginx 不知道 /api 要转发到哪里）
+ * ---
+ * 有了反代：
+ * # nginx.conf
+ * location /api {
+ *   proxy_pass http://backend:8142;  # 转发到后端容器（容器间通信）
+ * }
+ * 浏览器 → http://your-domain.com/api/users
+ *   ↑                ↓
+ *   ↑        Nginx 接收请求 → proxy_pass 转发到 backend:8142 传给后端
+ *   ↑                                                        ↓
+ * Nginx 返回给浏览器  ←  返回数据  ←  后端处理：/api/users  ←
  * */
 
 /*

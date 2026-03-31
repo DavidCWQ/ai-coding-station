@@ -35,8 +35,24 @@ npm install
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+### Compile and Minify for Production
 
 ```sh
-npm run build
+npm run build-only
 ```
+
+## Environment Variables
+
+- `.env.development`
+  - `VITE_APP_DEPLOY_BASE_URL`: deploy preview domain used by `getDeployUrl` (usually local nginx/static host in dev).
+  - `VITE_DEV_PROXY_TARGET`: Vite dev server `/api` proxy target (local debug backend).
+  - `VITE_APP_API_BASE_URL=/api`, `VITE_APP_PREVIEW_BASE_URL=/api`.
+  - `OPENAPI_SCHEMA_URL`: OpenAPI schema URL used by `npm run openapi2ts`.
+- `.env.production`
+  - `VITE_APP_DEPLOY_BASE_URL`: public deploy domain used for generated deploy links.
+  - Keep frontend API base as same-origin path: `VITE_APP_API_BASE_URL=/api`.
+  - `OPENAPI_SCHEMA_URL` can point to production backend swagger endpoint.
+
+Notes:
+- Do not hardcode `localhost` / LAN IP in `vite.config.ts` or runtime config.
+- Do not use `http://backend:8142` in browser runtime; use `/api` + reverse proxy in production.

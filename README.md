@@ -164,7 +164,12 @@ npm install
 npm run dev
 ```
 
-Vite 开发服务器默认启动在 `http://localhost:5173`，根据 `.env` 或 `src/config/env.ts` 中配置与后端联调。
+Vite 开发服务器默认启动在 `http://localhost:5876`。推荐通过前端环境变量联调后端：
+
+- `VITE_APP_API_BASE_URL=/api`（浏览器始终走同源路径）
+- `VITE_DEV_PROXY_TARGET=http://127.0.0.1:8142`（或你的本地后端地址）
+
+这样可避免跨域与 Cookie 问题；开发态由 Vite 代理转发到真实后端。
 
 ---
 
@@ -221,6 +226,8 @@ docker compose -f compose.prod.yaml up -d --build
 - 对外统一 API 入口（经 Nginx 转发）：`http://<你的服务器 IP>:8090/api`
 - 容器内部反向代理目标（仅容器网络可见）：`http://backend:8142/api`
 
+说明：浏览器运行时不要直接使用 `http://backend:8142`，应保持前端请求 `/api`，由 Nginx 反向代理到后端容器。
+
 ---
 
 ### 5. 环境变量与配置说明
@@ -247,6 +254,12 @@ docker compose -f compose.prod.yaml up -d --build
 - **前端构建环境**
   - `ai-coding-station-frontend/.env.development`：本地 `npm run dev` 使用；
   - `ai-coding-station-frontend/.env.production`：`vite build`（含 Docker 的 `frontend-build`）自动使用。
+  - 推荐变量口径：
+    - `VITE_APP_DEPLOY_BASE_URL`：部署预览链接域名（`getDeployUrl` 使用）；
+    - `VITE_APP_API_BASE_URL=/api`：前端运行时 API 基路径（开发/生产统一）；
+    - `VITE_APP_PREVIEW_BASE_URL=/api`：静态预览接口基路径；
+    - `VITE_DEV_PROXY_TARGET`：仅开发态使用，Vite `/api` 代理到真实后端；
+    - `OPENAPI_SCHEMA_URL`：`npm run openapi2ts` 使用的 OpenAPI 文档地址。
 
 详细配置可参考：
 
