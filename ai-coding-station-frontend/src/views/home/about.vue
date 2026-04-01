@@ -17,7 +17,10 @@ import { BulbOutlined, HeartOutlined, TeamOutlined } from '@ant-design/icons-vue
           AI Coding Station 面向希望快速落地 AI 能力的开发者和团队：在<strong>应用工坊</strong>里搭建与发现应用，用直观的编辑与部署流程把原型推到可用状态，再通过对话与 AI 协同完成日常任务。
         </p>
         <p class="about__text">
-          我们不堆砌概念，而是把路径收短：界面清爽、步骤清楚，让你把精力放在产品与体验上，而不是被工具绊住。
+          不堆砌概念，也不追求花哨：让你把精力放在产品和体验上，而不是被工具绊住。
+        </p>
+        <p class="about__text">
+          平台目前由个人在业余时间维护，既是 AI 工具台，也是尝试新点子的实验场。财税助手、心灵大师等方向正在规划中。
         </p>
       </section>
 
