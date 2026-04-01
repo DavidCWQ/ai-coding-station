@@ -318,7 +318,7 @@ docker compose -f compose.prod.yaml up -d --build
 - **Q: 构建后端镜像时 Playwright 下载 `chrome-linux64.zip` 很慢？**  
   **A:** `Dockerfile` 已对 `npx playwright install chromium` 使用 BuildKit 缓存挂载，**同一台机器上重复 `docker build` 时一般会复用浏览器缓存**（首次仍会完整下载）。若网络极差，可选择「预拷入 ms-playwright 缓存」：
   1）在任意 Linux 环境（或 WSL）进入 `scripts/`，执行 `npm ci && npx playwright install chromium`；  
-  2）将本机 `~/.cache/ms-playwright` 目录打包后解压到仓库的 `docker/ms-playwright/`；  
+  2）将本机 `~/.cache/ms-playwright` 目录打包后上传并解压到仓库的 `docker/ms-playwright/`;
   3）`Dockerfile` 中的 `COPY docker/ms-playwright /root/.cache/ms-playwright` 会在构建镜像时直接携带这份缓存，再配合 BuildKit 缓存挂载几乎不会重复下载。  
   **注意：**该缓存必须与 `scripts/package-lock.json` 中锁定的 Playwright 版本一致，否则需重新生成一次缓存。
 
