@@ -16,7 +16,7 @@ const pillars = [
   {
     icon: AppstoreOutlined,
     title: '应用工坊',
-    desc: '发现、创建与管理你的 AI 应用，把想法快速变成可运行的产品。',
+    desc: '发现、创建与管理你的 AI 应用，把想法快速变成可运行的工具。',
   },
   {
     icon: CloudUploadOutlined,
@@ -53,7 +53,7 @@ const roadmap = [
       </h1>
       <p class="home__eyebrow">AI Coding Station</p>
       <p class="home__lead">
-        从灵感到上线，一站式完成创建、编辑、部署、与对话。
+        从灵感到上线，一站式完成创建、编辑、对话、与部署。
         界面简洁，让你专注在真正重要的事上。
       </p>
       <div class="home__cta">

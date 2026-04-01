@@ -27,10 +27,15 @@ WORKDIR /app
 
 COPY scripts/package.json scripts/package-lock.json scripts/screenshot.js /app/scripts/
 
+# 预置 Playwright 浏览器缓存：
+# 如果存在 docker/ms-playwright/，会被复制到 /root/.cache/ms-playwright，
+# 配合下方 BuildKit 缓存，可避免每次构建都重新下载浏览器。
+COPY docker/ms-playwright /root/.cache/ms-playwright
+
 WORKDIR /app/scripts
-# Playwright 浏览器缓存：需开启 BuildKit（Docker 24+ 默认开启）。
+# Playwright 浏览器缓存：
+# 需开启 BuildKit 缓存挂载，Docker 24+ 默认开启；
 # 同一台构建机会复用 /root/.cache/ms-playwright，避免每次重下 chrome-linux64.zip。
-# 也可在本机先跑一遍 install，把整个目录打包上传到构建机后解压到同名路径（见 README）。
 RUN --mount=type=cache,target=/root/.cache/ms-playwright,id=playwright-browsers \
     npm ci \
     && npx playwright install-deps chromium \
