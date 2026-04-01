@@ -138,6 +138,11 @@ public class ProjectAiCodingStationApplication {
  * */
 
 /*
+ * 根据 nginx 的配置，浏览器可能会缓存 index.html 或 JS 一段时间，导致页面不更新
+ * 可以手动 Ctrl+Shift+R 强制刷新，或者修改 nginx 配置 为 no-cache。
+ * */
+
+/*
  * 传统分页查询的问题（offset） vs 游标查询（select by id/time）
  * - 在传统分页中，数据通常是「基于页码或偏移量」进行加载的。如果数据在分页过程发生了变化，
  * - 比如插入新数据、删除老数据，用户看到的分页数据可能不一致，导致用户错过或重复某些数据。
