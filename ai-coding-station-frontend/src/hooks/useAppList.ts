@@ -33,7 +33,7 @@ export function useAppList(kind: AppListKind) {
         pageNum: query.pageNum,
         pageSize: Math.min(query.pageSize, 15),
         appName: name || undefined,
-        sortField: kind === 'my' ? 'update_time': 'create_time',
+        sortField: kind === 'my' ? 'update_time' : 'priority',
         sortOrder: 'desc',
       })
       const res =
