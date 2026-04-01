@@ -35,9 +35,14 @@ public class MultiCodeFileSaverTemplate extends CodeFileSaverTemplate<MultiFileC
     @Override
     protected void validateInput(MultiFileCodeResult result) {
         super.validateInput(result);
-        // 至少要有 HTML 代码，CSS 和 JS 可以为空
-        BusinessAssert.notBlank(
-                result.getHtmlCode(), ErrorCode.SYSTEM_ERROR, "HTML代码内容不能为空"
+        // 至少要有一类代码内容（HTML / CSS / JS）
+        boolean hasHtml = result.getHtmlCode() != null && !result.getHtmlCode().trim().isEmpty();
+        boolean hasCss = result.getCssCode() != null && !result.getCssCode().trim().isEmpty();
+        boolean hasJs = result.getJsCode() != null && !result.getJsCode().trim().isEmpty();
+        BusinessAssert.requireTrue(
+                hasHtml || hasCss || hasJs,
+                ErrorCode.SYSTEM_ERROR,
+                "HTML/CSS/JS 至少需要提供一种代码内容"
         );
     }
 }
