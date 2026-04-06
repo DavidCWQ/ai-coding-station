@@ -7,20 +7,24 @@ import { BulbOutlined, HeartOutlined, TeamOutlined } from '@ant-design/icons-vue
     <header class="about__hero">
       <p class="about__eyebrow">关于我们</p>
       <h1 class="about__title">AI Coding Station</h1>
-      <p class="about__tagline">让 AI 应用的创建与使用，保持简单、可靠、有一点温度。</p>
+      <p class="about__tagline">
+        这里是个人 AI 应用开发与测试的记录台，也是面向技术爱好者的开放实验场。
+      </p>
     </header>
 
     <div class="about__body">
       <section class="about__block" aria-labelledby="about-mission">
         <h2 id="about-mission" class="about__heading">我们在做什么</h2>
         <p class="about__text">
-          AI Coding Station 面向希望快速落地 AI 能力的开发者和团队：在<strong>应用工坊</strong>里搭建与发现应用，用直观的编辑与部署流程把原型推到可用状态，再通过对话与 AI 协同完成日常任务。
+          AI Coding Station
+          面向希望系统性记录实践、快速验证想法的技术爱好者：在<strong>应用工坊</strong
+          >里搭建与发现应用，用直观的编辑与部署流程把原型推到可用状态，再通过对话与 AI 协同完成日常任务。
         </p>
         <p class="about__text">
-          不堆砌概念，也不追求花哨：让你把精力放在产品和体验上，而不是被工具绊住。
+          本站以「个人 AI 应用开发测试记录」为核心定位，同时作为技术分享博客，主要发布编程学习笔记与开源项目经验，不含企业信息，也不承载商业推广。
         </p>
         <p class="about__text">
-          平台目前由个人在业余时间维护，既是 AI 工具台，也是尝试新点子的实验场。财税助手、心灵大师等方向正在规划中。
+          平台目前由个人在业余时间持续维护，既是 AI 工具台，也是尝试新点子和新工作流的实验场。财税助手、心灵大师等方向正在规划中，并将根据实践反馈稳步迭代。
         </p>
       </section>
 
@@ -45,7 +49,7 @@ import { BulbOutlined, HeartOutlined, TeamOutlined } from '@ant-design/icons-vue
               <HeartOutlined />
             </div>
             <h3 class="about__value-title">长期主义</h3>
-            <p class="about__value-desc">财税助手、心灵大师等方向正在规划中，欢迎与我们一同见证产品成长。</p>
+            <p class="about__value-desc">财税助手、心灵大师等方向正在规划中，欢迎继续关注本站迭代。</p>
           </li>
         </ul>
       </section>
@@ -68,18 +72,6 @@ import { BulbOutlined, HeartOutlined, TeamOutlined } from '@ant-design/icons-vue
       </section>
 
       <footer class="about__footer">
-        <p class="about__credit">
-          项目由
-          <a
-            href="https://github.com/DavidCWQ"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="about__link"
-          >
-            DavidCWQ
-          </a>
-          发起与维护。
-        </p>
         <RouterLink to="/" class="about__back">返回首页</RouterLink>
       </footer>
     </div>
@@ -259,22 +251,6 @@ import { BulbOutlined, HeartOutlined, TeamOutlined } from '@ant-design/icons-vue
   text-align: center;
   padding-top: 8px;
   border-top: 1px solid var(--about-border);
-}
-
-.about__credit {
-  font-size: 14px;
-  color: var(--about-muted);
-  margin: 0 0 12px;
-}
-
-.about__link {
-  color: var(--about-accent);
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.about__link:hover {
-  text-decoration: underline;
 }
 
 .about__back {

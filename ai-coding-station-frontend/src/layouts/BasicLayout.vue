@@ -28,7 +28,7 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
 .basic-layout__content-inner {
   margin: 0 auto;
   max-width: 1200px;
-  min-height: calc(100vh - 64px - 56px - 48px);
+  min-height: calc(100vh - 64px - 120px - 48px);
   background: #fff;
   border-radius: 12px;
   padding: 24px;

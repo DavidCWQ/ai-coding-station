@@ -22,7 +22,7 @@ public class AppDeployConfig {
     /**
      * 服务端访问部署页的基址（如容器内截图用 http://nginx）。
      */
-    private String deployHost = "http://localhost";
+    private String deployHost = "http://localhost:8088";
 
     /**
      * 返回给客户端的部署页基址；不配置时与 deployHost 相同。
