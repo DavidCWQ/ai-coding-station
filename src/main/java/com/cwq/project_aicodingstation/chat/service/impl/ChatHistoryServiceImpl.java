@@ -12,6 +12,7 @@ import com.cwq.project_aicodingstation.chat.mapper.ChatHistoryMapper;
 import com.cwq.project_aicodingstation.chat.service.ChatHistoryService;
 import com.cwq.project_aicodingstation.chat.service.ChatSessionService;
 import com.cwq.project_aicodingstation.chat.vo.ChatHistoryVO;
+import com.cwq.project_aicodingstation.common.auth.ResourceAuthHelper;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
 import com.cwq.project_aicodingstation.user.constant.UserConstant;
@@ -51,26 +52,19 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     @Resource
     private ChatSessionService chatSessionService;
 
+    @Resource
+    private ResourceAuthHelper resourceAuthHelper;
+
     /**
      * 校验是否可读取该会话下的历史：应用可访问，且会话属于该应用，且（管理员 / 会话本人 / 应用创建者）。
      */
     private void assertHistoryReadable(Long appId, Long sessionId, UserLoginVO userVO) {
-        chatSessionService.assertAppAccessible(appId, userVO);
+        App app = resourceAuthHelper.requireAppReadable(appId, userVO);
         ChatSession session = chatSessionService.getById(sessionId);
         BusinessAssert.notNull(session, ErrorCode.NOT_FOUND, "会话不存在");
         BusinessAssert.equals(session.getAppId(), appId, ErrorCode.PARAMS_ERROR, "会话与应用不匹配");
-
-        QueryWrapper appQw = QueryWrapper.create();
-        appQw.select("id", "user_id").eq("id", appId);
-        App app = appMapper.selectOneByQuery(appQw);
-
-        BusinessAssert.notNull(app, ErrorCode.NOT_FOUND, "应用不存在");
-        boolean admin = UserConstant.ADMIN_ROLE.equals(userVO.getUserRole());
-        boolean sessionOwner = session.getUserId() != null && session.getUserId().equals(userVO.getId());
-        boolean appOwner = app.getUserId() != null && app.getUserId().equals(userVO.getId());
-        BusinessAssert.requireTrue(admin || sessionOwner || appOwner,
-                ErrorCode.NO_PERMISSION, "无权限查看该会话消息"
-        );
+        resourceAuthHelper.requireAdminOrSessionOwnerOrAppOwner(
+                userVO, session.getUserId(), app.getUserId(), "无权限查看该会话消息");
     }
 
     @Override

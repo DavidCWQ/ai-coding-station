@@ -114,6 +114,11 @@ public class ProjectAiCodingStationApplication {
  * */
 
 /*
+ * padding: 内边距，e.g.某按钮与内部文字的距离
+ * margin:  外边距，e.g.某按钮与外部组件的距离
+ * */
+
+/*
  * 反向代理（proxy）
  * 你（浏览器）→ 前台接待（Nginx）→ 后端部门（Java 服务）
  *               ↑

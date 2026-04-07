@@ -61,6 +61,8 @@ springdoc:
       packages-to-scan: com.cwq.project_aicodingstation.app.controller
     - group: 'chat'
       packages-to-scan: com.cwq.project_aicodingstation.chat.controller
+    - group: 'agent'
+      packages-to-scan: com.cwq.project_aicodingstation.agent.controller
 
 # --------------- API doc tools ---------------
 # Knife4j Swagger 增强 UI 配置

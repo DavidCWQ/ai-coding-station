@@ -1,6 +1,5 @@
 package com.cwq.project_aicodingstation.app.controller;
 
-import cn.hutool.json.JSONUtil;
 import com.cwq.project_aicodingstation.app.dto.AppAddRequest;
 import com.cwq.project_aicodingstation.app.dto.AppChatGenCodeRequest;
 import com.cwq.project_aicodingstation.app.dto.AppDeployRequest;
@@ -15,6 +14,7 @@ import com.cwq.project_aicodingstation.common.request.DeleteRequest;
 import com.cwq.project_aicodingstation.common.response.BaseResponse;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
 import com.cwq.project_aicodingstation.common.utils.ResultUtils;
+import com.cwq.project_aicodingstation.ai.utils.SSEStreamUtils;
 import com.cwq.project_aicodingstation.core.download.ProjectDownloadService;
 import com.cwq.project_aicodingstation.user.service.UserService;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
@@ -27,10 +27,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.io.File;
-import java.util.Map;
 
 /**
  * @apiNote App Control Layer (普通用户)
@@ -127,7 +125,7 @@ public class AppController {
                                                        @RequestParam Long sessionId,
                                                        @RequestParam String message,
                                                        HttpServletRequest request) {
-        return toSSE(appService // 调用 Service，封装 JSON + 追加 done 事件
+        return SSEStreamUtils.toJsonDataSSE(appService
                 .chatToGenCode(appId, sessionId, message, userService.getUserLoginVO(request))
         );
     }
@@ -138,27 +136,10 @@ public class AppController {
     @PostMapping(value = "/chat/genCode", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestBody @Valid AppChatGenCodeRequest req,
                                                        HttpServletRequest request) {
-        return toSSE(appService
+        return SSEStreamUtils.toJsonDataSSE(appService
                 .chatToGenCode(req.getAppId(), req.getSessionId(), req.getMessage(),
                         userService.getUserLoginVO(request))
         );
-    }
-
-    private Flux<ServerSentEvent<String>> toSSE(Flux<String> source) {
-        return source
-                .map(chunk -> {
-                    Map<String, String> wrapper = Map.of("d", chunk);
-                    String json = JSONUtil.toJsonStr(wrapper);
-                    return ServerSentEvent.<String>builder()
-                            .data(json)
-                            .build();
-                })
-                .concatWith(Mono.just(
-                        ServerSentEvent.<String>builder()
-                                .event("done")
-                                .data("")
-                                .build()
-                ));
     }
 
     /**

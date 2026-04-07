@@ -17,14 +17,6 @@ import java.time.LocalDateTime;
 public interface ChatSessionService extends IService<ChatSession> {
 
     /**
-     * 校验当前用户是否可访问该应用（创建者或管理员）。
-     *
-     * @param appId  应用 id（用于校验应用是否存在）
-     * @param userVO 当前登录用户（用于校验对应用的访问权限）
-     */
-    void assertAppAccessible(Long appId, UserLoginVO userVO);
-
-    /**
      * 创建会话（雪花 id 由持久层生成）。须为应用创建者或管理员；新会话归属 {@code userId}（通常为当前登录用户）。
      *
      * @param appId  应用 id
