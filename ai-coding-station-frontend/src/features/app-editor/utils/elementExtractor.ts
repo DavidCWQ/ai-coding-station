@@ -1,4 +1,4 @@
-import type { VisualEditorSelectedElement } from '@/utils/visualEditor'
+import type { VisualEditorSelectedElement } from '@/features/app-editor/utils/visualEditor'
 
 /**
  * 将选中元素上下文拼入发给模型的消息（与需求示例一致）。

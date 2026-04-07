@@ -1,9 +1,9 @@
-import { createVisualEditorBootstrapScript } from '@/utils/visualEditorBootstrapSource'
+import { createVisualEditorBootstrapScript } from '@/features/app-editor/utils/visualEditorBootstrapSource'
 import {
   VISUAL_EDITOR_DOM_FLAG,
   VISUAL_EDITOR_MSG_COMMAND,
   VISUAL_EDITOR_MSG_ELEMENT_SELECTED,
-} from '@/utils/visualEditorConstants'
+} from '@/features/app-editor/utils/visualEditorConstants'
 
 /** JSON 可序列化的 DOMRect */
 export interface VisualEditorDOMRectJson {

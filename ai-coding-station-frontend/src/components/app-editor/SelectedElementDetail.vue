@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { VisualEditorSelectedElement } from '@/utils/visualEditor'
+import type { VisualEditorSelectedElement } from '@/features/app-editor/utils/visualEditor'
 
 const props = defineProps<{
   element: VisualEditorSelectedElement

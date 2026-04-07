@@ -2,7 +2,7 @@ import {
   VISUAL_EDITOR_DOM_FLAG,
   VISUAL_EDITOR_MSG_COMMAND,
   VISUAL_EDITOR_MSG_ELEMENT_SELECTED,
-} from '@/utils/visualEditorConstants'
+} from '@/features/app-editor/utils/visualEditorConstants'
 
 /**
  * 生成注入到 iframe 的引导脚本（IIFE，不挂载 window 属性；状态在闭包内）。

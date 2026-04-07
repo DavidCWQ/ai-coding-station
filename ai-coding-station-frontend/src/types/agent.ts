@@ -7,3 +7,13 @@ export type AgentSessionRow = {
   createTime?: string
   updateTime?: string
 }
+
+/** 智能体聊天区消息行（页面 / 历史合并用） */
+export type AgentChatRow = {
+  key: string
+  id?: string
+  role: 'user' | 'assistant'
+  content: string
+  streaming?: boolean
+  createTime?: string
+}

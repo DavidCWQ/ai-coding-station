@@ -9,8 +9,8 @@ import {
   isTrustedVisualEditorMessage,
   parseElementSelectedFromMessage,
   postVisualEditorActive,
-} from '@/utils/visualEditor'
-import type { VisualEditorSelectedElement } from '@/utils/visualEditor'
+} from '@/features/app-editor/utils/visualEditor'
+import type { VisualEditorSelectedElement } from '@/features/app-editor/utils/visualEditor'
 
 const props = defineProps<{
   src: string

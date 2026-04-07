@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SessionActionMenu from '@/components/agent/SessionActionMenu.vue'
-import type { AgentSessionRow } from '@/types/agentSession'
+import type { AgentSessionRow } from '@/types/agent'
 
 defineProps<{
   sessions: AgentSessionRow[]

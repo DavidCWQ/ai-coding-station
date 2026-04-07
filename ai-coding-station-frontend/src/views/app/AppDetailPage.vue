@@ -11,10 +11,10 @@ import {
 } from '@ant-design/icons-vue'
 
 import BackButton from '@/components/common/backButton.vue'
-import ChatInput from '@/components/app/ChatInput.vue'
-import ChatMessage from '@/components/app/ChatMessage.vue'
-import IframePreview from '@/components/app/IframePreview.vue'
-import SelectedElementDetail from '@/components/app/SelectedElementDetail.vue'
+import ChatInput from '@/components/chat/ChatInput.vue'
+import ChatMessage from '@/components/chat/ChatMessage.vue'
+import IframePreview from '@/components/app-editor/IframePreview.vue'
+import SelectedElementDetail from '@/components/app-editor/SelectedElementDetail.vue'
 import AppDetail from '@/components/app/AppDetail.vue'
 import DeleteConfirm from '@/components/app/DeleteConfirm.vue'
 import SuccessfulDeploy from '@/components/app/SuccessfulDeploy.vue'
@@ -25,14 +25,14 @@ import { streamChatGenCode } from '@/hooks/useSSEChat'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { apiLongId, idFromData } from '@/utils/id'
 import { getErrorMessage } from '@/utils/error'
-import { waitForStaticPreviewReady } from '@/utils/appPreview'
+import { waitForStaticPreviewReady } from '@/features/app-editor/utils/appPreview'
 import {
   parseFilenameFromContentDisposition,
   sanitizeDownloadFilename,
   triggerBlobDownload,
 } from '@/utils/fileDownload'
-import { buildAugmentedChatMessage } from '@/utils/elementExtractor'
-import type { VisualEditorSelectedElement } from '@/utils/visualEditor'
+import { buildAugmentedChatMessage } from '@/features/app-editor/utils/elementExtractor'
+import type { VisualEditorSelectedElement } from '@/features/app-editor/utils/visualEditor'
 
 type ChatRow = {
   key: string
