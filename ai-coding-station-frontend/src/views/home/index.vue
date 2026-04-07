@@ -197,6 +197,7 @@ const roadmap = [
 
 .home__pillars {
   margin-bottom: 48px;
+  padding-left: 2px;
 }
 
 .home__pillar-list {

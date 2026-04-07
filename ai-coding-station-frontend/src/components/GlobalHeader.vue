@@ -34,7 +34,12 @@ const visibleMenuItems = computed(() => {
 })
 
 const selectedKeys = computed(() => {
-  const match = visibleMenuItems.value.find((m) => m.path === route.value.path)
+  const path = route.value.path
+  const match = visibleMenuItems.value.find((m) => {
+    if (m.path === path) return true
+    if (m.path !== '/agents') return false
+    return path.startsWith('/agents')
+  })
   return match ? [match.key] : []
 })
 

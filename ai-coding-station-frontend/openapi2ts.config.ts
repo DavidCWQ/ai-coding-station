@@ -1,9 +1,17 @@
+import { loadEnv } from 'vite'
+
 declare const process: {
+  cwd?: () => string
   env?: Record<string, string | undefined>
 }
 
+const mode = process.env?.NODE_ENV || 'development'
+const envFromFile = loadEnv(mode, process.cwd?.() || '.', '')
+
 const schemaPath =
-  process.env?.OPENAPI_SCHEMA_URL || 'http://127.0.0.1:8142/api/v3/api-docs'
+  envFromFile.OPENAPI_SCHEMA_URL ||
+  process.env?.OPENAPI_SCHEMA_URL ||
+  'http://127.0.0.1:8142/api/v3/api-docs'
 
 export default {
   // 生成代码中 使用的请求方法封装

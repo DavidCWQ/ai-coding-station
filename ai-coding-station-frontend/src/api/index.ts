@@ -7,6 +7,7 @@ import * as userController from "./userController";
 import * as chatController from "./chatController";
 import * as appController from "./appController";
 import * as appAdminController from "./appAdminController";
+import * as agentController from "./agentController";
 import * as staticResourceController from "./staticResourceController";
 export default {
   adminUserController,
@@ -14,5 +15,6 @@ export default {
   chatController,
   appController,
   appAdminController,
+  agentController,
   staticResourceController,
 };
