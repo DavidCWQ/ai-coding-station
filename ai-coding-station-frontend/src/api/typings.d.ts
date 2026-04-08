@@ -358,6 +358,9 @@ declare namespace API {
     updateTime?: string;
   };
 
+  /** Current session user (same shape as {@link UserLoginVO} from login / getLoginUser). */
+  type LoginUserVO = UserLoginVO;
+
   type UserQueryRequest = {
     pageNum?: number;
     pageSize?: number;
