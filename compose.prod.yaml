@@ -50,7 +50,7 @@ services:
 
   # 可选：仅当后端启用 ai.rag.enabled=true 时需要；不需要 RAG 时可从本文件中移除此服务以节省资源
   postgres-rag:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:0.8.1-pg18-trixie
     container_name: postgres-rag
     restart: unless-stopped
     environment:
