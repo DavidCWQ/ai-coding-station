@@ -68,7 +68,7 @@ public class AgentChatAssistServiceImpl implements AgentChatAssistService {
         String systemPrompt = agentSystemPromptResolver.resolve(agent);
 
         StringBuilder accumulator = new StringBuilder();
-        return agentChatFacade.chatStream(sessionId, systemPrompt, userText)
+        return agentChatFacade.chatStream(sessionId, agent.getCode(), systemPrompt, userText)
                 .doOnNext(accumulator::append)
                 .doOnComplete(() -> {
                     String full = accumulator.toString();

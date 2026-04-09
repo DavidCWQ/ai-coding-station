@@ -1,6 +1,7 @@
 package com.cwq.project_aicodingstation.ai.rag.ingest;
 
-import com.cwq.project_aicodingstation.ai.rag.config.RagEmbeddingConfig;
+import com.cwq.project_aicodingstation.agent.enums.AgentCodeEnum;
+import com.cwq.project_aicodingstation.ai.rag.config.RagModelConfig;
 import com.cwq.project_aicodingstation.ai.rag.config.RagProperties;
 import com.cwq.project_aicodingstation.ai.rag.repository.RagFileRepository;
 import dev.langchain4j.data.document.Document;
@@ -39,7 +40,7 @@ public class RagIngestService {
     private final ApplicationContext applicationContext;
 
     public RagIngestService(
-            @Qualifier(RagEmbeddingConfig.RAG_EMBEDDING_MODEL_BEAN) EmbeddingModel embeddingModel,
+            @Qualifier(RagModelConfig.RAG_EMBEDDING_MODEL_BEAN) EmbeddingModel embeddingModel,
             EmbeddingStore<TextSegment> embeddingStore,
             RagFileRepository fileRepository,
             RagProperties ragProperties,
@@ -53,41 +54,48 @@ public class RagIngestService {
     }
 
     public void ingestFromClasspath(String classpathPattern) throws IOException {
+        ingestFromClasspath(classpathPattern, null);
+    }
+
+    /**
+     * 从 classpath 扫描并注入向量。
+     *
+     * @param classpathPattern 资源扫描表达式
+     * @param corpus           文档集标识（为空时将从文件路径自动推断）
+     */
+    public void ingestFromClasspath(String classpathPattern, String corpus) throws IOException {
         Resource[] resources = applicationContext.getResources(classpathPattern);
         List<DocPayload> payloads = new ArrayList<>();
         for (Resource resource : resources) {
             if (!resource.isReadable()) {
                 continue;
             }
-            String fileKey = resolveFileKey(resource);
-            if (fileKey == null || fileKey.isBlank()) {
+            String fileName = resource.getFilename();
+            if (fileName == null || fileName.isBlank()) {
                 continue;
             }
+            String fileDir = resolveFileDir(resource);
             String text = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
             String contentHash = sha256Hex(text);
-            String fileName = resource.getFilename() == null ? fileKey : resource.getFilename();
-            payloads.add(new DocPayload(fileKey, fileName, text, contentHash));
+            String resolvedCorpus = resolveCorpus(fileDir, corpus);
+            payloads.add(new DocPayload(fileName, fileDir, text, contentHash, resolvedCorpus));
         }
 
-        List<String> activeFileKeys = payloads.stream().map(DocPayload::fileKey).toList();
-        List<DocPayload> hashBackfillOnly = new ArrayList<>();
-        List<DocPayload> fullReingest = new ArrayList<>();
-        for (DocPayload p : payloads) {
-            switch (ingestDisposition(p)) {
-                case SKIP -> { }
-                case HASH_BACKFILL -> hashBackfillOnly.add(p);
-                case FULL_REINGEST -> fullReingest.add(p);
-            }
-        }
+        List<String> activeFileCodes = payloads.stream().map(DocPayload::fileCode).toList();
+        List<DocPayload> changedPayloads = payloads.stream()
+                .filter(this::isNewOrChanged)
+                .toList();
 
-        hashBackfillOnly.forEach(p -> fileRepository.upsert(p.fileKey(), p.contentHash()));
-
-        if (!fullReingest.isEmpty()) {
-            fullReingest.forEach(p -> fileRepository.deleteEmbeddingsByFileKey(p.fileKey()));
-            List<Document> changedDocs = fullReingest.stream()
-                    .map(p -> Document.from(
-                            p.text(),
-                            Metadata.metadata("file_name", p.fileKey())))
+        if (!changedPayloads.isEmpty()) {
+            changedPayloads.forEach(p -> fileRepository.deleteEmbeddingsByFile(p.fileName(), p.fileDir()));
+            List<Document> changedDocs = changedPayloads.stream()
+                    .map(p -> {
+                        Metadata metadata = new Metadata();
+                        metadata.put("file_name", p.fileName());
+                        metadata.put("file_dir", p.fileDir());
+                        metadata.put("corpus", p.corpus());
+                        return Document.from(p.text(), metadata);
+                    })
                     .toList();
             DocumentSplitter splitter = new DocumentByParagraphSplitter(2000, 200);
             EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
@@ -96,61 +104,59 @@ public class RagIngestService {
                     .embeddingStore(embeddingStore)
                     .build();
             ingestor.ingest(changedDocs);
-            fullReingest.forEach(p -> fileRepository.upsert(p.fileKey(), p.contentHash()));
+            changedPayloads.forEach(p -> fileRepository.upsert(p.fileName(), p.fileDir(), p.contentHash()));
         }
 
-        if (hashBackfillOnly.isEmpty() && fullReingest.isEmpty()) {
-            cleanupDeletedIfEnabled(activeFileKeys);
+        if (changedPayloads.isEmpty()) {
+            cleanupDeletedIfEnabled(activeFileCodes);
             return;
         }
 
-        cleanupDeletedIfEnabled(activeFileKeys);
+        cleanupDeletedIfEnabled(activeFileCodes);
         log.info(
-                "RAG ingest complete, hashBackfill={}, reingested={}, activeDocs={}",
-                hashBackfillOnly.size(),
-                fullReingest.size(),
+                "RAG ingest complete, reingested={}, activeDocs={}",
+                changedPayloads.size(),
                 payloads.size());
     }
 
-    private void cleanupDeletedIfEnabled(List<String> activeFileKeys) {
+    private void cleanupDeletedIfEnabled(List<String> activeFileCodes) {
         if (!ragProperties.isCleanupDeleted()) {
             return;
         }
-        fileRepository.deleteEmbeddingsNotIn(activeFileKeys);
-        fileRepository.deleteNotIn(activeFileKeys);
+        fileRepository.deleteEmbeddingsNotIn(activeFileCodes);
+        fileRepository.deleteNotIn(activeFileCodes);
     }
 
-    /**
-     * 迁移库常见：向量已在 rag_embedding，但 content_hash 为空。此时只回填哈希，避免重复调用 embedding API。
-     * 若 classpath 文件与已存向量实际不一致，需手动删该 file_key 的向量或清空 content_hash 后重启 ingest。
-     */
-    private IngestDisposition ingestDisposition(DocPayload payload) {
-        String oldHash = fileRepository.getContentHash(payload.fileKey());
-        if (oldHash != null && !oldHash.isBlank() && oldHash.equals(payload.contentHash())) {
-            return IngestDisposition.SKIP;
+    private boolean isNewOrChanged(DocPayload payload) {
+        String oldHash = fileRepository.getContentHash(payload.fileName(), payload.fileDir());
+        return oldHash == null || !oldHash.equals(payload.contentHash());
+    }
+
+    private String resolveCorpus(String fileDir, String explicitCorpus) {
+        if (explicitCorpus != null && !explicitCorpus.isBlank()) {
+            return explicitCorpus.trim();
         }
-        if (oldHash == null || oldHash.isBlank()) {
-            if (fileRepository.countEmbeddingsByFileKey(payload.fileKey()) > 0) {
-                return IngestDisposition.HASH_BACKFILL;
+        // 约定：resources/rag/docs/<agentCode>/** -> corpus=<agentCode>
+        // fileDir 示例：rag/docs/code_assistant
+        for (AgentCodeEnum agent : AgentCodeEnum.values()) {
+            String code = agent.getCode();
+            if (fileDir.contains("/rag/docs/" + code) || fileDir.contains("\\rag\\docs\\" + code)) {
+                return code;
             }
         }
-        return IngestDisposition.FULL_REINGEST;
+        return "default";
     }
 
-    private enum IngestDisposition {
-        SKIP,
-        HASH_BACKFILL,
-        FULL_REINGEST
-    }
-
-    private String resolveFileKey(Resource resource) {
+    private String resolveFileDir(Resource resource) {
         String description = resource.getDescription();
         int left = description.indexOf('[');
         int right = description.lastIndexOf(']');
         if (left >= 0 && right > left) {
-            return description.substring(left + 1, right);
+            String path = description.substring(left + 1, right).replace('\\', '/');
+            int slash = path.lastIndexOf('/');
+            return slash >= 0 ? path.substring(0, slash) : "";
         }
-        return resource.getFilename();
+        return "";
     }
 
     private String sha256Hex(String text) {
@@ -167,6 +173,9 @@ public class RagIngestService {
         }
     }
 
-    private record DocPayload(String fileKey, String fileName, String text, String contentHash) {
+    private record DocPayload(String fileName, String fileDir, String text, String contentHash, String corpus) {
+        String fileCode() {
+            return fileDir + "/" + fileName;
+        }
     }
 }

@@ -67,6 +67,7 @@ AI Coding Station
 - **工程化与运维支持**
   - **MySQL + MyBatis-Flex**：关系型数据存储与分页查询
   - **Redis + Spring Session + Caffeine Cache**：会话与缓存治理
+  - **PostgreSQL + pgvector（RAG）**：文档向量存储、按智能体检索隔离（同表 metadata 过滤）
   - **Docker Compose**：一键拉起 MySQL / Redis / Nginx / Backend / Frontend Build
   - **Playwright + Node**：后端自动执行截图脚本，为已部署应用生成封面图
   - **Knife4j + OpenAPI 3**：美观的接口文档 UI，按模块分组
@@ -94,6 +95,7 @@ AI Coding Station
 - **基础设施**
   - MySQL（持久化存储，表前缀多为业务模块名）
   - Redis（会话与缓存）
+  - PostgreSQL + pgvector（RAG 向量库）
   - Nginx（静态站点 + 前端路由转发）
   - Docker / Docker Compose（本地与生产环境统一编排）
 
@@ -141,6 +143,18 @@ docker compose -f compose.yaml up -d mysql redis nginx
 
 初始化 SQL 位于 `sql/` 目录，MySQL 容器启动时会自动加载。
 
+如需启用智能体 RAG（可选），再额外启动 pgvector：
+
+```bash
+docker compose -f compose.yaml up -d postgres-rag
+```
+
+并确保本地配置包含：
+
+- `ai.rag.enabled=true`
+- `ai.rag.embedding.api-key=<YOUR DASHSCOPE API KEY>`
+- `rag.datasource.jdbc-url=jdbc:postgresql://localhost:5432/ai_coding_vector_db`
+
 **步骤 3：启动后端**
 
 ```bash
@@ -180,6 +194,7 @@ Vite 开发服务器默认启动在 `http://localhost:5876`。推荐通过前端
 - `mysql`：数据库服务，挂载 `sql/` 目录自动初始化；
 - `redis`：缓存与 Session 存储；
 - `nginx`：前端静态站占位（开发模式下可仅用于静态文件）；
+- `postgres-rag`：可选 RAG 向量库（pgvector），挂载 `sql/rag` 初始化脚本；
 
 启动方式：
 
@@ -246,6 +261,13 @@ docker compose -f compose.prod.yaml up -d --build
     - 从环境变量读取。
   - 本地部署时，`DEEPSEEK_API_KEY` 通过 `application-local.yml` 直接读取。
 
+- **RAG（DashScope + pgvector）**
+  - `DASHSCOPE_API_KEY`：文本向量模型 Key（与 DeepSeek 对话模型独立）；
+  - `ai.rag.enabled`：是否启用 RAG；
+  - `ai.rag.ingest-on-startup`：应用启动时是否扫描并注入文档；
+  - `ai.rag.cleanup-deleted`：是否清理已删除文档向量（默认 `false`）；
+  - `rag.datasource.*`：RAG 专用 PostgreSQL 数据源。
+
 - **部署相关**
   - `PUBLIC_DEPLOY_HOST`：前端可访问的部署站点地址，例如 `http://your-domain.com`；
   - `PUBLIC_COVERS_BASE`：封面图访问基址，例如 `http://your-domain.com`；
@@ -292,6 +314,13 @@ docker compose -f compose.prod.yaml up -d --build
   - Cursor 风格的分页加载（基于 messageId 的「向前加载更多」）
   - 管理员可以按条件查看全局对话历史
 
+- **Agent / RAG 模块**
+  - 智能体类型：`code_assistant` / `tax_assistant` / `life_advisor`
+  - 按智能体动态选择 Tool 列表（如仅编程助手启用面试题检索工具）
+  - RAG 检索同表隔离：`rag_embedding.metadata.corpus` 作为过滤条件
+  - 文档索引键：`file_name + file_dir`（数据库中分列存储）
+  - 变更策略：基于 `content_hash` 的 **replace**（文件内容变化时删除该文件旧向量并重建）
+
 前端则围绕以上模块提供：
 
 - 登录 / 注册 / 个人中心等公共页面；
@@ -314,6 +343,12 @@ docker compose -f compose.prod.yaml up -d --build
 
 - **Q: 下载应用代码提示无权限或找不到？**  
   **A:** 仅应用创建者可下载对应代码；同时需确保已完成代码生成与部署，`tmp/code_output` 中确实存在对应目录。
+
+- **Q: RAG 启动时报 `column "embedding_id" does not exist`？**  
+  **A:** 当前 `langchain4j-pgvector` 会写入 `rag_embedding.embedding_id (UUID)`。请确认已执行最新版 `sql/rag/001_rag_schema.sql`（该脚本为重建模式，请先 DROP 再 CREATE）。
+
+- **Q: 修改文档后为什么会整文件重建向量？**  
+  **A:** 当前采用文件级 replace 策略（非 chunk 增量）：当 `(file_name, file_dir)` 对应文件的 `content_hash` 变化时，先删除该文件旧向量，再重建新向量。
 
 - **Q: 构建后端镜像时 Playwright 下载 `chrome-linux64.zip` 很慢？**  
   **A:** `Dockerfile` 已对 `npx playwright install chromium` 使用 BuildKit 缓存挂载，**同一台机器上重复 `docker build` 时一般会复用浏览器缓存**（首次仍会完整下载）。若网络极差，可选择「预拷入 ms-playwright 缓存」：

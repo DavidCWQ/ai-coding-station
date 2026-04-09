@@ -9,7 +9,7 @@ import org.springframework.util.StringUtils;
 
 @Configuration
 @ConditionalOnProperty(name = "ai.rag.enabled", havingValue = "true")
-public class RagEmbeddingConfig {
+public class RagModelConfig {
 
     public static final String RAG_EMBEDDING_MODEL_BEAN = "ragEmbeddingModel";
 
@@ -26,3 +26,4 @@ public class RagEmbeddingConfig {
                 .build();
     }
 }
+

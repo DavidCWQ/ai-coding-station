@@ -173,10 +173,14 @@ export function useAgentSession(options: {
 
   const runDeleteSession = async () => {
     const item = pendingDeleteItem.value
-    if (!item?.id) return
+    if (!item?.id) {
+      deleteModalOpen.value = false
+      return
+    }
     try {
       await agentDeleteSession({ id: apiLongId(item.id) })
       message.success('删除成功')
+      deleteModalOpen.value = false
       if (activeSessionId.value === item.id) {
         activeSessionId.value = null
         messages.value = []

@@ -26,12 +26,13 @@ public class AgentChatFacade {
      * 按会话发起流式对话（历史由 Factory 内记忆 + DB 预热提供）
      *
      * @param sessionId     智能体会话 id
+     * @param agentCode     智能体编码（用于选择 tools 与 RAG corpus）
      * @param systemPrompt  系统提示词
      * @param userMessage   本轮用户消息
      * @return 助手输出片段流
      */
-    public Flux<String> chatStream(Long sessionId, String systemPrompt, String userMessage) {
-        AgentChatService service = agentChatServiceFactory.getAgentChatService(sessionId);
+    public Flux<String> chatStream(Long sessionId, String agentCode, String systemPrompt, String userMessage) {
+        AgentChatService service = agentChatServiceFactory.getAgentChatService(sessionId, agentCode);
         return service.chatStream(systemPrompt, userMessage);
     }
 }
