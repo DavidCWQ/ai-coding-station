@@ -47,6 +47,23 @@ services:
       - ./nginx/nginx.local.conf:/etc/nginx/nginx.conf:ro
     restart: always
 
+  # 可选：智能体 RAG (pgvector)。仅当 ai.rag.enabled=true 时需要；不需要时可删除本服务
+  postgres-rag:
+    image: pgvector/pgvector:0.8.1-pg18-trixie
+    container_name: postgres-rag
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_coding_vector_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_RAG_PASSWORD:-rag_secret}
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgvector_rag_data:/var/lib/postgresql
+      - ./sql/rag:/docker-entrypoint-initdb.d
+
 volumes:
   mysql_data:
   redis_data:
+  pgvector_rag_data:

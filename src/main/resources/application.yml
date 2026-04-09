@@ -97,6 +97,28 @@ langchain4j:
 ai:
   code:
     output-dir: ${user.dir}/tmp/code_output
+  # 输入护轨：默认开启；可在列表中追加敏感词（小写存储，匹配时忽略大小写）
+  guardrail:
+    enabled: true
+    sensitive-keywords: []
+  # 检索增强：默认关闭。开启后需本地/容器内 PostgreSQL(pgvector) 与 DashScope 嵌入 Key (与 DeepSeek 对话独立)
+  rag:
+    enabled: true
+    ingest-on-startup: true
+    # 清理已删除文档的对应向量；默认 false，避免误删历史知识
+    cleanup-deleted: false
+    docs-classpath-pattern: classpath:rag/docs/**/*.md
+    embedding:
+      api-key: ${DASHSCOPE_API_KEY:}
+      model-name: text-embedding-v4
+
+# RAG 专用库（仅当 ai.rag.enabled=true 时由 PgVectorConfig 使用；使用端口 5432 见 compose.yaml）
+rag:
+  datasource:
+    jdbc-url: jdbc:postgresql://localhost:5432/ai_coding_vector_db
+    username: postgres
+    password: ${POSTGRES_RAG_PASSWORD:rag_secret}
+    driver-class-name: org.postgresql.Driver
 
 # ------------- App Module Config -------------
 # 应用模块配置：用户注册开关、部署目录、截图脚本等

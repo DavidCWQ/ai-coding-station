@@ -1,14 +1,18 @@
 package com.cwq.project_aicodingstation;
 
+import com.cwq.project_aicodingstation.ai.guardrail.InputGuardrailProperties;
+import com.cwq.project_aicodingstation.ai.rag.config.RagProperties;
 import dev.langchain4j.community.store.embedding.redis.spring.RedisEmbeddingStoreAutoConfiguration;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication( // 未使用 embedding 向量检索
+@SpringBootApplication( // 未使用 Redis embedding 自动配置；RAG 使用独立 pgvector 数据源
         exclude = { RedisEmbeddingStoreAutoConfiguration.class }
 )
+@EnableConfigurationProperties({InputGuardrailProperties.class, RagProperties.class})
 @MapperScan({"com.cwq.project_aicodingstation.*.mapper"}) // 添加 Mapper 到 Spring Boot 扫描范围内
 @EnableScheduling
 public class ProjectAiCodingStationApplication {
@@ -210,6 +214,18 @@ public class ProjectAiCodingStationApplication {
 /*
  * 在 Docker 里建议使用 BuildKit 的缓存挂载，缓存 Maven 依赖到 ~/.m2/repository，
  * 同一台构建机上，后续构建时，依赖优先从 /root/.m2 缓存读。
+ * */
+
+/*
+ * Notice: Registering a tool does NOT mean it will be called.
+ * If the answer is in RAG, the model may infer 'I don't need to call tools'.
+ * */
+
+/*
+ * Spring Boot defaults to HikariCP.
+ * But in multi-DB apps, you need to set PRIMARY datasource.
+ * E.g., define it explicitly via `.type(HikariDataSource.class)`.
+ * When using Hikari + driver-class-name, you MUST use: `jdbc-url` instead of `url`.
  * */
 
 // ====== 笔记区（NOTES）结束 ======

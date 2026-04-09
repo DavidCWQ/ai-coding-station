@@ -8,6 +8,16 @@ langchain4j:
     streaming-chat-model:
       api-key: ${DEEPSEEK_API_KEY:}
 
+# 若启用智能体 RAG (ai.rag.enabled=true)，请在 compose 中部署 postgres-rag，并保证下列 JDBC 可达
+# 可选：ai.rag.cleanup-deleted 默认为 false（不主动清理已删除文档的历史向量）
+rag:
+  datasource:
+    url: jdbc:postgresql://postgres-rag:5432/ai_coding_vector_db
+    jdbc-url: jdbc:postgresql://postgres-rag:5432/ai_coding_vector_db
+    username: postgres
+    password: ${POSTGRES_RAG_PASSWORD:rag_secret}
+    driver-class-name: org.postgresql.Driver
+
 spring:
   # 容器内不再由 Spring 去管理 docker compose
   docker:

@@ -4,23 +4,24 @@ import com.cwq.project_aicodingstation.ai.enums.CodeGenTypeEnum;
 import com.cwq.project_aicodingstation.ai.result.HtmlFileCodeResult;
 import com.cwq.project_aicodingstation.ai.result.MultiFileCodeResult;
 import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
 import reactor.core.publisher.Flux;
 
 public interface AICodeGeneratorService {
 
     // =========== blocking ===========
     @SystemMessage(fromResource = "prompt/codegen/html-file.txt")
-    HtmlFileCodeResult generateHtmlCode(String userMessage);
+    HtmlFileCodeResult generateHtmlCode(@UserMessage String userMessage);
 
     @SystemMessage(fromResource = "prompt/codegen/multi-file.txt")
-    MultiFileCodeResult generateMultiFileCode(String userMessage);
+    MultiFileCodeResult generateMultiFileCode(@UserMessage String userMessage);
 
     // ========== streaming ===========
     @SystemMessage(fromResource = "prompt/codegen/html-file.txt")
-    Flux<String> generateHtmlCodeStream(String userMessage);
+    Flux<String> generateHtmlCodeStream(@UserMessage String userMessage);
 
     @SystemMessage(fromResource = "prompt/codegen/multi-file.txt")
-    Flux<String> generateMultiFileCodeStream(String userMessage);
+    Flux<String> generateMultiFileCodeStream(@UserMessage String userMessage);
 
     // ========== Dispatcher ==========
     default Object generateCode(String msg, CodeGenTypeEnum type) {

@@ -46,6 +46,7 @@ build/
 ### Others ###
 /README_PIC/
 /prompts/
+/src/main/resources/rag/docs/*
 
 ### Node.js ###
 */node_modules
