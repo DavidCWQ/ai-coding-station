@@ -290,7 +290,7 @@ const {
 }
 
 .agent-main__input-box--disabled .agent-main__actions {
-  background: #f5f5f5;
+  background: #EBEBEB;
 }
 
 .agent-main__textarea {

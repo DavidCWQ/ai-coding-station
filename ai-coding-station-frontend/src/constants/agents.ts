@@ -17,19 +17,19 @@ export const AGENT_CARDS: AgentCardMeta[] = [
     code: 'code_assistant',
     title: '编程助手',
     description: '代码解读、基础知识与工程实践建议',
-    color: 'linear-gradient(135deg, #eef4ff 0%, #e5edff 100%)',
+    color: 'linear-gradient(135deg, #f4f5f6 0%, #e8eaec 100%)',
   },
   {
     code: 'tax_assistant',
     title: '财税助手',
     description: '政策口径与计算思路参考（非执业意见）',
-    color: 'linear-gradient(135deg, #eefbf7 0%, #e3f8ef 100%)',
+    color: 'linear-gradient(135deg, #eef4ff 0%, #e5edff 100%)',
   },
   {
     code: 'life_advisor',
-    title: '生活导师',
-    description: '生活导师：情绪支持与哲学思辨（非医疗诊断）',
-    color: 'linear-gradient(135deg, #fff2f8 0%, #ffeaf1 100%)',
+    title: '哲学顾问',
+    description: '哲学思辨与情绪支持（非医疗诊断）',
+    color: 'linear-gradient(135deg, #eefbf7 0%, #e3f8ef 100%)',
   },
 ]
 

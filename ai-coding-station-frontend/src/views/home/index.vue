@@ -37,8 +37,8 @@ const roadmap = [
     status: '规划中',
   },
   {
-    name: '心灵大师',
-    hint: '情绪与心理陪伴方向探索',
+    name: '哲学顾问',
+    hint: '情绪支持与哲学思辨方向探索',
     status: '规划中',
   },
 ] as const

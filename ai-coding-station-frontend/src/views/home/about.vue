@@ -24,7 +24,7 @@ import { BulbOutlined, HeartOutlined, TeamOutlined } from '@ant-design/icons-vue
           本站以「个人 AI 应用开发测试记录」为核心定位，同时作为技术分享博客，主要发布编程学习笔记与开源项目经验，不含企业信息，也不承载商业推广。
         </p>
         <p class="about__text">
-          平台目前由个人在业余时间持续维护，既是 AI 工具台，也是尝试新点子和新工作流的实验场。财税助手、心灵大师等方向正在规划中，并将根据实践反馈稳步迭代。
+          平台目前由个人在业余时间持续维护，既是 AI 工具台，也是尝试新点子和新工作流的实验场。财税助手、哲学顾问等方向正在规划中，并将根据实践反馈稳步迭代。
         </p>
       </section>
 
@@ -49,7 +49,7 @@ import { BulbOutlined, HeartOutlined, TeamOutlined } from '@ant-design/icons-vue
               <HeartOutlined />
             </div>
             <h3 class="about__value-title">长期主义</h3>
-            <p class="about__value-desc">财税助手、心灵大师等方向正在规划中，欢迎继续关注本站迭代。</p>
+            <p class="about__value-desc">财税助手、哲学顾问等方向正在规划中，欢迎继续关注本站迭代。</p>
           </li>
         </ul>
       </section>
@@ -65,7 +65,7 @@ import { BulbOutlined, HeartOutlined, TeamOutlined } from '@ant-design/icons-vue
             <a-tag>敬请期待</a-tag>
           </li>
           <li class="about__soon-item">
-            <span class="about__soon-name">心灵大师</span>
+            <span class="about__soon-name">哲学顾问</span>
             <a-tag>有待开发</a-tag>
           </li>
         </ul>

@@ -24,9 +24,9 @@ public enum AgentCodeEnum {
     TAX_ASSISTANT("tax_assistant", "财税助手"),
 
     /**
-     * 生活导师：情绪支持与哲学思辨（非医疗诊断/危机热线替代）。
+     * 哲学顾问：心理支持与哲学思辨（非医疗诊断/危机热线替代）。
      */
-    LIFE_ADVISOR("life_advisor", "生活导师");
+    LIFE_ADVISOR("life_advisor", "哲学顾问");
 
     /**
      * 持久化与接口使用的编码

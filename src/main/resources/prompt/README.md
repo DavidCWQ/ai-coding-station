@@ -46,8 +46,8 @@ prompt/
 
 #### `life_advisor.txt`
 
-- System prompt defining the behavior of the **life advisor** agent.
-- Focuses on daily life、学习规划、效率提升等方面的建议（不代替专业人士意见）。
+- System prompt for the **哲学大儒** agent (`life_advisor`): classical / Confucian-style dialogue, self-cultivation, and life reflection.
+- Display name and persona can evolve with curated corpora and RAG (e.g. a dedicated character voice); not medical or crisis counseling.
 
 #### `tax_assistant.txt`
 
