@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { getCurrentInstance } from 'vue'
+import { computed, getCurrentInstance, onMounted } from 'vue'
 
-import { AGENT_CARDS } from '@/constants/agents'
+import { visibleAgentCards } from '@/constants/agents'
+import { useLoginUserStore } from '@/stores/loginUser'
 
 const vm = getCurrentInstance()
 const router = vm?.proxy?.$router as any
+const loginUserStore = useLoginUserStore()
+
+const agentCards = computed(() =>
+  visibleAgentCards(loginUserStore.loginUser?.userRole === 'admin'),
+)
 
 const openAgent = (code: string) => {
   void router.push(`/agents/${encodeURIComponent(code)}/chat`)
 }
+
+onMounted(() => {
+  void loginUserStore.fetchLoginUser()
+})
 </script>
 
 <template>
@@ -18,7 +28,7 @@ const openAgent = (code: string) => {
       <p class="agent-list__sub">选择一位助手开始对话，内容将保存在您的账号下。</p>
     </div>
     <a-row :gutter="[16, 16]">
-      <a-col v-for="a in AGENT_CARDS" :key="a.code" :xs="24" :sm="12" :lg="8">
+      <a-col v-for="a in agentCards" :key="a.code" :xs="24" :sm="12" :lg="8">
         <div
           class="agent-card"
           role="button"

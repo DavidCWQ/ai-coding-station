@@ -48,6 +48,7 @@ public class AgentChatAssistServiceImpl implements AgentChatAssistService {
         BusinessAssert.notNull(userVO, ErrorCode.NOT_LOGIN, "用户未登录");
 
         AgentCodeEnum agent = AgentCodeEnum.requireValid(req.getAgentCode());
+        AgentCodeEnum.requireMayUse(agent, userVO);
         Long sessionId = req.getSessionId();
         String userText = req.getMessage().trim();
 

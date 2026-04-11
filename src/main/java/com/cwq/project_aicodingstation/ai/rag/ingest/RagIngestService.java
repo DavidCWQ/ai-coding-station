@@ -94,6 +94,7 @@ public class RagIngestService {
                         metadata.put("file_name", p.fileName());
                         metadata.put("file_dir", p.fileDir());
                         metadata.put("corpus", p.corpus());
+                        InspirationEchoNoteMetadata.apply(metadata, p.corpus(), p.fileName(), p.text());
                         return Document.from(p.text(), metadata);
                     })
                     .toList();

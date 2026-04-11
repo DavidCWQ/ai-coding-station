@@ -127,6 +127,11 @@ export function useAgentChatPageState() {
         await router.replace('/agents')
         return
       }
+      if (agentMeta.value.adminOnly && loginUserStore.loginUser?.userRole !== 'admin') {
+        message.error('无权限使用该智能体')
+        await router.replace('/agents')
+        return
+      }
       messages.value = []
       history.resetPaging()
       history.historyInited.value = true

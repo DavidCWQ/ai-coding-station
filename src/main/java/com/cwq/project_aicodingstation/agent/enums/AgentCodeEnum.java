@@ -3,6 +3,8 @@ package com.cwq.project_aicodingstation.agent.enums;
 import cn.hutool.core.util.StrUtil;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
+import com.cwq.project_aicodingstation.user.constant.UserConstant;
+import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import lombok.Getter;
 
 /**
@@ -26,7 +28,12 @@ public enum AgentCodeEnum {
     /**
      * 哲学顾问：心理支持与哲学思辨（非医疗诊断/危机热线替代）。
      */
-    LIFE_ADVISOR("life_advisor", "哲学顾问");
+    LIFE_ADVISOR("life_advisor", "哲学顾问"),
+
+    /**
+     * 灵感回声：基于管理员私有语料库的联想与对话（仅管理员账号可用）。
+     */
+    INSPIRATION_ECHO("inspiration_echo", "灵感回声");
 
     /**
      * 持久化与接口使用的编码
@@ -72,5 +79,27 @@ public enum AgentCodeEnum {
         AgentCodeEnum e = fromCode(code);
         BusinessAssert.notNull(e, ErrorCode.PARAMS_ERROR, "不支持的智能体编码");
         return e;
+    }
+
+    /**
+     * 是否为仅管理员可调用的内置智能体。
+     */
+    public boolean isAdminOnly() {
+        return this == INSPIRATION_ECHO;
+    }
+
+    /**
+     * 校验当前登录用户是否允许使用该智能体（管理员专属智能体会校验角色）。
+     *
+     * @param agent  智能体（可为 null，此时不校验）
+     * @param userVO 登录用户
+     */
+    public static void requireMayUse(AgentCodeEnum agent, UserLoginVO userVO) {
+        if (agent == null || !agent.isAdminOnly()) {
+            return;
+        }
+        BusinessAssert.notNull(userVO, ErrorCode.NOT_LOGIN, "用户未登录");
+        BusinessAssert.equals(UserConstant.ADMIN_ROLE, userVO.getUserRole(),
+                ErrorCode.NO_PERMISSION, "仅管理员可使用该智能体");
     }
 }

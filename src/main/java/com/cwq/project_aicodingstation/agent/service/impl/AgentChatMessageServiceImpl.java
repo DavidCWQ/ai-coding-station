@@ -80,6 +80,7 @@ public class AgentChatMessageServiceImpl extends ServiceImpl<AgentChatMessageMap
         BusinessAssert.notNull(req, ErrorCode.PARAMS_ERROR, "查询请求为空");
         BusinessAssert.notNull(userVO, ErrorCode.NOT_LOGIN, "用户未登录");
         AgentCodeEnum agent = AgentCodeEnum.requireValid(agentCode);
+        AgentCodeEnum.requireMayUse(agent, userVO);
 
         Long sessionId = req.getSessionId();
         AgentChatSession session = agentChatSessionService.requireSessionAccessible(

@@ -19,6 +19,7 @@ class AgentCodeEnumTest {
         assertEquals(AgentCodeEnum.CODE_ASSISTANT, AgentCodeEnum.fromCode("code_assistant"));
         assertEquals(AgentCodeEnum.TAX_ASSISTANT, AgentCodeEnum.fromCode("tax_assistant"));
         assertEquals(AgentCodeEnum.LIFE_ADVISOR, AgentCodeEnum.fromCode("life_advisor"));
+        assertEquals(AgentCodeEnum.INSPIRATION_ECHO, AgentCodeEnum.fromCode("inspiration_echo"));
     }
 
     @Test

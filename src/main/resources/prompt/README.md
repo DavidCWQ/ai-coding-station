@@ -46,13 +46,14 @@ prompt/
 
 #### `life_advisor.txt`
 
-- System prompt for the **哲学大儒** agent (`life_advisor`): classical / Confucian-style dialogue, self-cultivation, and life reflection.
-- Display name and persona can evolve with curated corpora and RAG (e.g. a dedicated character voice); not medical or crisis counseling.
+- System prompt providing persona inspired by the character **Jingchun Qi** (literary fiction).
+- Focuses on Confucian-style dialogue, layered subtext, and life reflection; integrates external ideas when compatible with that ethos.
+- Optional per-chapter RAG markdown: conventions in `resources/rag/docs/life_advisor/chapters/README.md`; blank chapter skeleton in `resources/rag/doc-templates/life_advisor_chapter.md` (outside ingest glob).
 
 #### `tax_assistant.txt`
 
 - System prompt defining the behavior of the **tax assistant** agent.
-- Focuses on一般性的税务说明与示例（不构成法律或财务建议，具体问题请咨询专业人士）。
+- Focuses on tax illustration and calculation。
 
 ---
 

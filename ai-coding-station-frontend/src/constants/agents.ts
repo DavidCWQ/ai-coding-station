@@ -10,6 +10,8 @@ export type AgentCardMeta = {
   description: string
   /** 卡片主题色 */
   color: string
+  /** 为 true 时仅管理员在列表与对话页可见 */
+  adminOnly?: boolean
 }
 
 export const AGENT_CARDS: AgentCardMeta[] = [
@@ -28,12 +30,24 @@ export const AGENT_CARDS: AgentCardMeta[] = [
   {
     code: 'life_advisor',
     title: '哲学顾问',
-    description: '哲学思辨与情绪支持（非医疗诊断）',
+    description: '儒雅论道、含蓄启思与人生辨析（非医疗诊断）',
     color: 'linear-gradient(135deg, #eefbf7 0%, #e3f8ef 100%)',
+  },
+  {
+    code: 'inspiration_echo',
+    title: '灵感回声',
+    description: '联结个人语料与当下问题（仅管理员）',
+    color: 'linear-gradient(135deg, #f7f0ff 0%, #ede4ff 100%)',
+    adminOnly: true,
   },
 ]
 
 export function findAgentCard(code: string): AgentCardMeta | undefined {
   const c = String(code || '').trim()
   return AGENT_CARDS.find((a) => a.code === c)
+}
+
+/** 智能体列表页：按是否管理员过滤仅管理员可见的卡片 */
+export function visibleAgentCards(isAdmin: boolean): AgentCardMeta[] {
+  return AGENT_CARDS.filter((a) => !a.adminOnly || isAdmin)
 }

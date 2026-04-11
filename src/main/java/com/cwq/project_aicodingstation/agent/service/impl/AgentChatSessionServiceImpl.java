@@ -43,6 +43,7 @@ public class AgentChatSessionServiceImpl extends ServiceImpl<AgentChatSessionMap
         BusinessAssert.notNull(userVO, ErrorCode.NOT_LOGIN, "用户未登录");
         BusinessAssert.notNull(userVO.getId(), ErrorCode.NOT_LOGIN, "用户未登录");
         AgentCodeEnum agent = AgentCodeEnum.requireValid(agentCode);
+        AgentCodeEnum.requireMayUse(agent, userVO);
 
         LocalDateTime now = LocalDateTime.now();
         String finalTitle = StrUtil.isBlank(title) ? AgentConstant.DEFAULT_SESSION_TITLE : title.trim();
@@ -66,6 +67,7 @@ public class AgentChatSessionServiceImpl extends ServiceImpl<AgentChatSessionMap
         BusinessAssert.notNull(req, ErrorCode.PARAMS_ERROR, "查询请求为空");
         BusinessAssert.notNull(userVO, ErrorCode.NOT_LOGIN, "用户未登录");
         AgentCodeEnum agent = AgentCodeEnum.requireValid(req.getAgentCode());
+        AgentCodeEnum.requireMayUse(agent, userVO);
 
         long pageSize = req.getPageSize() == null ? 10L : req.getPageSize();
         BusinessAssert.requireTrue(pageSize > 0 && pageSize <= AppConstant.MAX_PAGE_SIZE,
