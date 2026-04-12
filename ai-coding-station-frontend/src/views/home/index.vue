@@ -32,13 +32,13 @@ const pillars = [
 
 const roadmap = [
   {
-    name: '财税助手',
+    name: '财税助理',
     hint: '智能财税咨询与工具集',
     status: '规划中',
   },
   {
-    name: '哲学顾问',
-    hint: '哲学思辨与启思方向探索',
+    name: '问道先生',
+    hint: '以问代答、启思明理',
     status: '规划中',
   },
 ] as const

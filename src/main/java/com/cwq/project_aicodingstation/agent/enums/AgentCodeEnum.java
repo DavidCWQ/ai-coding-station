@@ -21,14 +21,14 @@ public enum AgentCodeEnum {
     CODE_ASSISTANT("code_assistant", "编程助手"),
 
     /**
-     * 财税助手：政策口径与计算思路说明（非执业税务/会计意见）。
+     * 财税助理：政策口径与计算思路说明（非执业税务/会计意见）。
      */
-    TAX_ASSISTANT("tax_assistant", "财税助手"),
+    TAX_ASSISTANT("tax_assistant", "财税助理"),
 
     /**
-     * 哲学顾问：心理支持与哲学思辨（非医疗诊断/危机热线替代）。
+     * 问道先生：疑惑解答与启思明理（非医疗诊断/危机热线替代）。
      */
-    LIFE_ADVISOR("life_advisor", "哲学顾问"),
+    LIFE_ADVISOR("life_advisor", "问道先生"),
 
     /**
      * 灵感回声：基于管理员私有语料库的联想与对话（仅管理员账号可用）。

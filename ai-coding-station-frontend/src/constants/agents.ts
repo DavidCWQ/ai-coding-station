@@ -23,13 +23,13 @@ export const AGENT_CARDS: AgentCardMeta[] = [
   },
   {
     code: 'tax_assistant',
-    title: '财税助手',
+    title: '财税助理',
     description: '政策口径与计算思路参考（非执业意见）',
     color: 'linear-gradient(135deg, #eef4ff 0%, #e5edff 100%)',
   },
   {
     code: 'life_advisor',
-    title: '哲学顾问',
+    title: '问道先生',
     description: '儒雅论道、含蓄启思与人生辨析（非医疗诊断）',
     color: 'linear-gradient(135deg, #eefbf7 0%, #e3f8ef 100%)',
   },

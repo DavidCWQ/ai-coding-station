@@ -1,7 +1,6 @@
-AI Coding Station
-=================
+# AI Coding Station
 
-一个面向开发者与小团队的 **AI 应用工坊**：通过「应用配置 + 对话生成代码 + 一键部署」的方式，帮助你快速搭建、管理并发布自己的 AI 小工具与业务助手。
+**AI Coding Station**：个人业余维护的 **AI 应用开发与测试记录台**，面向技术爱好者做原型、学习与自用。站内 **应用工坊**（创建—编辑—对话—部署）与 **智能体对话** 相互独立，侧重把想法做成可用小工具、以及与 AI 日常协作。
 
 > 推荐使用桌面端或宽屏浏览阅读本文档。
 
@@ -27,50 +26,43 @@ AI Coding Station
 
 ### 1. 项目简介
 
-**AI Coding Station** 的定位是一个「轻量但工程化完整」的 AI 应用工坊，提供以下闭环：
+**个人向记录台 + 开放实验场**：应用工坊里搭应用、编辑部署；兼作技术博客。能力随业余时间迭代，适合 **自用、小范围试用、读源码**。
 
-- **应用工坊**：在 Web 端创建、配置你的 AI 应用（如财税助手、哲学顾问智能体等）。
-- **对话生成代码**：通过与 LLM（当前接入 DeepSeek Chat）对话，生成对应的前后端代码骨架。
-- **一键部署与预览**：后端负责打包构建、静态资源部署至 Nginx，并支持自动截图与封面管理。
+- **应用工坊**：创建 **AI 应用**，在 **与应用绑定的会话** 里用 DeepSeek Chat 生成前后端骨架；ZIP 下载、部署到 Nginx、预览链接与封面截图。
+- **内置智能体**：选用平台已有角色（编程助手、财税助理、问道先生；管理员另有「灵感回声」），**独立会话与记忆**；可选 **RAG**（pgvector，见 §5）。**应用 ≠ 智能体**：建应用不会创建智能体；**当前仅内置列表**，日后或支持自建 / 配置。
 
-本项目采用 **前后端分离 + 全容器化** 方案，适合：
-
-- 希望快速尝试/孵化 AI side project 的个人开发者；
-- 想要为团队搭建 AI 工具箱的工程实践者；
-- 想要参考一套完整的「AI 应用 + SaaS 管理台」技术实现的学习者。
+**工程形态**：前后端分离（Spring Boot + Vue 3），依赖可用 Docker Compose 拉起。
 
 ---
 
 ### 2. 功能特性
 
-- **应用管理（App Module）**
-  - 创建 / 更新 / 删除个人应用
-  - 精选应用列表与详情查看
-  - 应用代码生成、代码下载（ZIP）
-  - 一键部署到 Nginx，支持独立预览链接与封面图
-
-- **AI 对话与代码生成（Chat Module）**
-  - 基于 LangChain4j + DeepSeek Chat 的对话能力
-  - SSE 流式输出（后端 `Flux<ServerSentEvent<String>>`，前端基于 `useSSEChat` Hook）
-  - 支持长文本 POST 接口规避 `431` 等请求头限制
-
-- **用户与权限体系（User Module）**
-  - 用户注册 / 登录 / 个人信息
-  - 基于角色的访问控制（普通用户 / 管理员）
-  - 支持通过配置关闭新用户注册（生产环境默认关闭）
-
-- **前端工坊与可视化预览**
-  - 前端基于 Vue 3 + Vite + Ant Design Vue
-  - 应用首页 / 列表 / 详情 / 编辑页 / 管理后台 / AI 聊天等页面
-  - Visual Editor 相关工具（`visualEditor.ts` 系列）用于组件抽取与预览
-
-- **工程化与运维支持**
-  - **MySQL + MyBatis-Flex**：关系型数据存储与分页查询
-  - **Redis + Spring Session + Caffeine Cache**：会话与缓存治理
-  - **PostgreSQL + pgvector（RAG）**：文档向量存储、按智能体检索隔离（同表 metadata 过滤）
-  - **Docker Compose**：一键拉起 MySQL / Redis / Nginx / Backend / Frontend Build
-  - **Playwright + Node**：后端自动执行截图脚本，为已部署应用生成封面图
-  - **Knife4j + OpenAPI 3**：美观的接口文档 UI，按模块分组
+- **应用工坊（App Module）**
+  - 应用 CRUD、分页、精选、详情
+  - **代码生成对话**：落盘默认 `tmp/code_output`，**ZIP** 下载
+  - **部署**：产物进 `tmp/code_deploy`，Nginx 预览；**Playwright** 封面（路径见配置）
+- **代码生成对话（Chat Module，依附于 App）**
+  - LangChain4j + DeepSeek；SSE（后端 `Flux<ServerSentEvent<String>>`，前端 `useSSEChat`）
+  - `ChatSession` / `ChatHistory` 持久化，按 `appId` 隔离与鉴权
+  - **长文本 POST**，缓解超长对话请求头限制
+- **内置智能体（Agent Module）**
+  - 编码仅限内置：`code_assistant` / `tax_assistant` / `life_advisor` / `inspiration_echo`；**暂无自建入口**，日后或开放
+  - **独立会话**（Redis 记忆与代码生成会话隔离）、历史分页、SSE
+  - **按智能体挂载 Tools**（如编程助手的面试题检索）
+  - **可选 RAG**：PostgreSQL + pgvector + DashScope 嵌入；默认索引 `classpath:rag/docs/**/*.md`；`metadata.corpus` 按智能体隔离
+  - **输入输出护轨**（可关）：敏感词等前置拦截
+- **用户与权限（User Module）**
+  - 注册 / 登录 / 资料；用户与 **管理员**；生产可 **关闭注册**
+  - `inspiration_echo` 等仅管理员
+- **前端（Vue SPA）**
+  - Vue 3 + TS + Vite + Ant Design Vue；首页、应用、关于等
+  - **Visual Editor**（`visualEditor.ts` 等）辅助编辑与预览
+  - OpenAPI → TS（`npm run openapi2ts`），`src/api` 统一调用
+- **工程化与运维**
+  - **业务主库**：MySQL + MyBatis-Flex；Redis（Session、记忆、缓存）+ 本地 **Caffeine**
+  - **本地运行**：`compose.yaml`：MySQL、Redis、Nginx；**可选** `postgres-rag`（pgvector + `sql/rag`）
+  - **生产编排**：`compose.prod.yaml`：`backend`、`frontend`、健康检查、可选 `postgres-rag`
+  - **快速测试**：Knife4j：OpenAPI 3，按 `user` / `app` / `chat` / `agent` 分组
 
 ---
 
@@ -81,31 +73,27 @@ AI Coding Station
   - Spring Boot 3.5.x
   - Spring Web / Spring AOP / Spring Session Data Redis / Spring Cache (Caffeine)
   - MyBatis-Flex（含代码生成器）
-  - LangChain4j（OpenAI 兼容接口，当前配置为 DeepSeek Chat）
+  - LangChain4j（OpenAI 兼容接口接 **DeepSeek Chat**；可选 **DashScope** 嵌入模型供 RAG）
   - Jedis / Redis / HikariCP
   - Knife4j OpenAPI 3
-
 - **前端**
   - Vue 3 + TypeScript
   - Vite 7
   - Ant Design Vue 4
   - Pinia / Vue Router
   - Axios + OpenAPI TypeScript SDK（`@umijs/openapi`）
-
 - **基础设施**
-  - MySQL（持久化存储，表前缀多为业务模块名）
-  - Redis（会话与缓存）
-  - PostgreSQL + pgvector（RAG 向量库）
-  - Nginx（静态站点 + 前端路由转发）
-  - Docker / Docker Compose（本地与生产环境统一编排）
-
-整体架构可以理解为：
-
+  - MySQL（业务持久化）
+  - Redis（会话、对话记忆、缓存）
+  - **可选** PostgreSQL + **pgvector**（仅智能体 RAG：`postgres-rag` 服务 + `sql/rag` 初始化）
+  - Nginx（已部署静态站、封面等）
+  - Docker / Docker Compose（本地依赖与生产编排）
 - 浏览器（前端 Vue SPA）
-  → 通过 Axios 调用后端 `/api/**` 接口（SSE/REST）
-  → Spring Boot 应用（业务模块：`user`、`app`、`chat` 等）
-  → MySQL / Redis / 文件系统（`tmp/code_output`、`tmp/code_deploy`、`tmp/covers`）
-  → Nginx 负责对外暴露静态站点与封面资源。
+→ **Axios** 调用后端 `/api/`**（REST / SSE）
+→ **Spring Boot**（业务域：`user`/`app`/`chat`/`agent` 等；智能体相关 Bean 在 `ai.rag.enabled=false` 时不加载 RAG 子系统）
+→ **MySQL**（业务数据）/ **Redis**（Session、对话记忆）/ **本地目录**（`tmp/code_output|code_deploy|covers`）
+→ **PostgreSQL(pgvector)** 仅在为智能体启用 RAG 时使用
+→ **Nginx** 对外提供已部署静态站与封面等静态资源
 
 ---
 
@@ -178,12 +166,7 @@ npm install
 npm run dev
 ```
 
-Vite 开发服务器默认启动在 `http://localhost:5876`。推荐通过前端环境变量联调后端：
-
-- `VITE_APP_API_BASE_URL=/api`（浏览器始终走同源路径）
-- `VITE_DEV_PROXY_TARGET=http://127.0.0.1:8142`（或你的本地后端地址）
-
-这样可避免跨域与 Cookie 问题；开发态由 Vite 代理转发到真实后端。
+Vite 默认 `http://localhost:5876`。联调建议：`VITE_APP_API_BASE_URL=/api`、`VITE_DEV_PROXY_TARGET=http://127.0.0.1:8142`（或你的后端），由 Vite 代理避免跨域与 Cookie 问题。
 
 ---
 
@@ -202,7 +185,7 @@ Vite 开发服务器默认启动在 `http://localhost:5876`。推荐通过前端
 docker compose -f compose.yaml up -d
 ```
 
-此文件不会构建后端 Jar，只用于本地依赖服务。如果你希望后端也以容器方式运行，请使用下一节的生产部署编排。
+此编排不构建后端 Jar；后端容器见下一节。
 
 ---
 
@@ -218,16 +201,16 @@ docker compose -f compose.yaml up -d
 **核心流程**
 
 1. `frontend-build` 容器使用 `Dockerfile.frontend`：
-   - 安装前端依赖 → `npm run build-only`（即 `vite build`）→ 生成 `/frontend/dist`；
-   - `vite build` 默认是 `production` mode，会自动读取前端根目录 `.env.production`（若存在）；
-   - 将构建产物复制到宿主 `./tmp/code_deploy` 目录（通过 volume 挂载）。
+  - 安装前端依赖 → `npm run build-only`（即 `vite build`）→ 生成 `/frontend/dist`；
+  - `vite build` 默认是 `production` mode，会自动读取前端根目录 `.env.production`（若存在）；
+  - 将构建产物复制到宿主 `./tmp/code_deploy` 目录（通过 volume 挂载）。
 2. `backend` 容器：
-   - 通过 `Dockerfile` 打包后端 Jar；
-   - 再安装 Node + Playwright 以支持截图脚本 `scripts/screenshot.js`；
-   - 暴露 `8142` 端口，读取环境变量 `.env` 中的 DeepSeek API Key、数据库与 Redis 账号等。
+  - 通过 `Dockerfile` 打包后端 Jar；
+  - 再安装 Node + Playwright 以支持截图脚本 `scripts/screenshot.js`；
+  - 暴露 `8142` 端口，读取环境变量 `.env` 中的 DeepSeek API Key、数据库与 Redis 账号等。
 3. `nginx` 容器：
-   - 挂载 `./tmp/code_deploy` 作为 `/usr/share/nginx/html`；
-   - 通过 `nginx.prod.conf` 将静态站暴露到外网。
+  - 挂载 `./tmp/code_deploy` 作为 `/usr/share/nginx/html`；
+  - 通过 `nginx.prod.conf` 将静态站暴露到外网。
 
 **一键启动示例**
 
@@ -241,121 +224,120 @@ docker compose -f compose.prod.yaml up -d --build
 - 对外统一 API 入口（经 Nginx 转发）：`http://<你的服务器 IP>:8090/api`
 - 容器内部反向代理目标（仅容器网络可见）：`http://backend:8142/api`
 
-说明：浏览器运行时不要直接使用 `http://backend:8142`，应保持前端请求 `/api`，由 Nginx 反向代理到后端容器。
+浏览器请走 `/api`，由 Nginx 转发到 `backend:8142`，勿直连容器内后端地址。
 
 ---
 
 ### 5. 环境变量与配置说明
 
-根目录提供 `.env` 文件（默认空），以及若干 `application*.yml` 与 Compose 配置，常用变量包括：
+根目录 `.env`、`application*.yml`、Compose 编排。分节：**MySQL/Redis** → **DeepSeek** → **可选 RAG** → **护轨与部署**。
 
-- **数据库 Mysql / Redis**
-  - `MYSQL_USERNAME` / `MYSQL_PASSWORD` / `MYSQL_ROOT_PASSWORD`
-  - `REDIS_USERNAME` / `REDIS_PASSWORD`
+#### 5.1 数据库与缓存（MySQL / Redis）
 
-- **AI 服务（DeepSeek）**
-  - `DEEPSEEK_API_KEY`：在 `compose.prod.yaml` 中通过 `environment` 传给后端；
-  - 后端 `application-prod.yml` 中通过：
-    - `langchain4j.open-ai.chat-model.api-key`
-    - `langchain4j.open-ai.streaming-chat-model.api-key`
-    - 从环境变量读取。
-  - 本地部署时，`DEEPSEEK_API_KEY` 通过 `application-local.yml` 直接读取。
+- Compose：`MYSQL_*`、`REDIS_PASSWORD` 等，默认值见 `compose.yaml`。
+- JDBC / Redis 地址：`application.yml`（本地）与 `application-prod.yml`（容器内 `mysql`、`redis`）。
 
-- **RAG（DashScope + pgvector）**
-  - `DASHSCOPE_API_KEY`：文本向量模型 Key（与 DeepSeek 对话模型独立）；
-  - `ai.rag.enabled`：是否启用 RAG；
-  - `ai.rag.ingest-on-startup`：应用启动时是否扫描并注入文档；
-  - `ai.rag.cleanup-deleted`：是否清理已删除文档向量（默认 `false`）；
-  - `rag.datasource.*`：RAG 专用 PostgreSQL 数据源。
+#### 5.2 对话模型（DeepSeek / LangChain4j）
 
-- **部署相关**
-  - `PUBLIC_DEPLOY_HOST`：前端可访问的部署站点地址，例如 `http://your-domain.com`；
-  - `PUBLIC_COVERS_BASE`：封面图访问基址，例如 `http://your-domain.com`；
-  - `SPRING_PROFILES_ACTIVE`：生产容器中设置为 `prod`，启用 `application-prod.yml`（已在 compose.prod.yaml 写死）。
-  - `APP_USER_REGISTRATION_ENABLED`：是否允许用户注册（`true`/`false`），对应 `app.user.registration-enabled`，生产默认关闭。
+- `**DEEPSEEK_API_KEY`**：生产经 `compose.prod.yaml` 注入，对应 `application-prod.yml` 里 chat / streaming 的 `api-key`。
+- 本地多在 `**application-local.yml**`（勿提交真实 Key）。
+- 其余见 `application.yml` 的 `langchain4j.open-ai.*`（`base-url`、`model-name`、`max-tokens`、日志等）。
 
-- **前端构建环境**
-  - `ai-coding-station-frontend/.env.development`：本地 `npm run dev` 使用；
-  - `ai-coding-station-frontend/.env.production`：`vite build`（含 Docker 的 `frontend-build`）自动使用。
-  - 推荐变量口径：
-    - `VITE_APP_DEPLOY_BASE_URL`：部署预览链接域名（`getDeployUrl` 使用）；
-    - `VITE_APP_API_BASE_URL=/api`：前端运行时 API 基路径（开发/生产统一）；
-    - `VITE_APP_PREVIEW_BASE_URL=/api`：静态预览接口基路径；
-    - `VITE_DEV_PROXY_TARGET`：仅开发态使用，Vite `/api` 代理到真实后端；
-    - `OPENAPI_SCHEMA_URL`：`npm run openapi2ts` 使用的 OpenAPI 文档地址。
+#### 5.3 可选：智能体 RAG（DashScope + pgvector）
 
-详细配置可参考：
+`**ai.rag.enabled=true**` 时加载 RAG Bean（独立数据源、`RagIngestService`、`ContentRetrieverFactory` 等）。需 PostgreSQL **pgvector**、表结构就绪；`sql/rag/` 由 `**postgres-rag`** 首次启动执行。
 
-- `src/main/resources/application.yml`：本地开发默认配置；
-- `src/main/resources/application-prod.yml`：生产容器部署配置；
-- `compose.yaml` / `compose.prod.yaml`：服务编排与环境变量注入。
+`**ai.rag.*`（`RagProperties`）**
+
+
+| 配置项                             | 含义                                       |
+| ------------------------------- | ---------------------------------------- |
+| `ai.rag.enabled`                | 总开关                                      |
+| `ai.rag.ingest-on-startup`      | 启动时扫描 `docs-classpath-pattern` 并入库       |
+| `ai.rag.cleanup-deleted`        | 是否清理已移除 classpath 文档的向量（默认 `false`）      |
+| `ai.rag.docs-classpath-pattern` | 待索引 glob，默认 `classpath:rag/docs/**/*.md` |
+| `ai.rag.embedding.api-key`      | DashScope，建议 `**DASHSCOPE_API_KEY`**     |
+| `ai.rag.embedding.model-name`   | 默认 `text-embedding-v4`                   |
+
+
+`**rag.datasource.*`（仅 RAG 开启时）**
+
+
+| 配置项                     | 说明                                                                         |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `jdbc-url`              | 本地见 `application.yml`；生产指向 `**postgres-rag:5432`**（`application-prod.yml`） |
+| `username` / `password` | 与 Compose `**POSTGRES_RAG_PASSWORD**` 等对齐                                  |
+| `driver-class-name`     | `org.postgresql.Driver`                                                    |
+
+
+`**rag_embedding` 维度**须与嵌入模型及 `RagStoreConfig` 常量一致；表结构变更见 `sql/rag` 与 FAQ（`embedding_id`）。
+
+#### 5.4 输入护轨（`ai.guardrail`）
+
+- `enabled`：开关。`sensitive-keywords`：额外敏感词（小写存，匹配忽略大小写）。
+
+#### 5.5 部署、注册与前端
+
+- `**PUBLIC_DEPLOY_HOST`**、`**PUBLIC_COVERS_BASE**`：部署页与封面基址（见 `application-prod.yml` 中 `app.deploy` / `app.screenshot`）。
+- `**SPRING_PROFILES_ACTIVE=prod**`；`**APP_USER_REGISTRATION_ENABLED**`：注册开关（生产 Compose 常 `false`）。
+- 前端 `.env.development` / `.env.production`：`VITE_APP_API_BASE_URL=/api`、`VITE_DEV_PROXY_TARGET`、`VITE_APP_DEPLOY_BASE_URL`、`OPENAPI_SCHEMA_URL`（`openapi2ts`）。
+
+**详见**：`application.yml`、`application-prod.yml`、`compose.yaml`、`compose.prod.yaml`。
 
 ---
 
 ### 6. 主要功能模块说明
 
-后端代码按业务域纵向拆分，典型模块包括：
+后端按业务域分包，与 `springdoc.group-configs` 大致对应。
 
-- **User 模块**
-  - 用户注册 / 登录 / 登出
-  - 当前登录用户信息获取
-  - 管理员角色管理与权限检查（`@AuthCheck` 等）
+#### 6.1 User
 
-- **App 模块**
-  - 应用的增删改查、分页查询
-  - 精选应用列表
-  - 代码生成与存储（输出目录：`tmp/code_output`）
-  - 应用部署：将构建后的静态资源拷贝到 `tmp/code_deploy`，由 Nginx 负责对外提供
-  - 代码下载：后端根据应用配置打包成 ZIP 下发
+注册 / 登录 / 登出 / 资料；普通用户与管理员；`**@AuthCheck`** 等鉴权；生产可关注册（`app.user.registration-enabled`）。
 
-- **Chat 模块（根据 prompts 中的设计）**
-  - 对话历史与会话管理（`ChatHistory` / `ChatSession`）
-  - 支持基于 appId 的数据隔离与权限校验
-  - Cursor 风格的分页加载（基于 messageId 的「向前加载更多」）
-  - 管理员可以按条件查看全局对话历史
+#### 6.2 App
 
-- **Agent / RAG 模块**
-  - 智能体类型：`code_assistant` / `tax_assistant` / `life_advisor`
-  - 按智能体动态选择 Tool 列表（如仅编程助手启用面试题检索工具）
-  - RAG 检索同表隔离：`rag_embedding.metadata.corpus` 作为过滤条件
-  - 文档索引键：`file_name + file_dir`（数据库中分列存储）
-  - 变更策略：基于 `content_hash` 的 **replace**（文件内容变化时删除该文件旧向量并重建）
+应用 CRUD、分页、精选、详情；输出 / 部署目录与预览基址见 `application.yml` 的 `app.deploy`；部署与封面逻辑在 **service**（默认 `tmp/`）。
 
-前端则围绕以上模块提供：
+#### 6.3 Chat（应用代码生成）
 
-- 登录 / 注册 / 个人中心等公共页面；
-- 应用列表、详情、编辑与管理页；
-- AI 聊天与历史记录页面；
-- 管理后台（用户管理、应用审核等）。
+`ChatSession` / `ChatHistory`，按 `**appId`** 隔离；`chat.controller` + 前端 `**useSSEChat**`；按 `**messageId**` 向前分页；管理端可查全局历史。
+
+#### 6.4 Agent（内置智能体）
+
+`agent.controller`：会话、重命名、流式、历史。编码：`code_assistant`、`tax_assistant`、`life_advisor`、`inspiration_echo`（展示名 `**AgentCodeEnum**`）。`**inspiration_echo**` 仅管理员。提示词 `resources/prompt/agent/*.txt`，`**AgentSystemPromptResolver**` 解析。`**AgentChatServiceFactory**`：Redis 记忆、可选 RAG `**ContentRetriever**`、`**AgentToolRegistry**`、可选护轨。表与 Redis key 与 Chat 路径分离。
+
+#### 6.5 `ai` 包
+
+- `**ai.tool**`：按智能体选 Tools。  
+- `**ai.guardrail**`：输入护轨。  
+- `**ai.rag**`（`enabled=true`）：`config`（`RagProperties`、`RagStoreConfig`、`RagModelConfig`）、`ingest`（`content_hash`、按文件 replace）、`retriever`（`metadata.corpus`）、`repository`（与 `rag_embedding` 协同；细节见代码与 FAQ）。
+
+#### 6.6 前端
+
+路由含首页、关于、用户、应用工坊、应用内聊天、智能体对话、后台等；Pinia；`src/api` + OpenAPI 生成类型。
+
+不用 RAG 时设 `**ai.rag.enabled=false**`，Compose 可不启 `**postgres-rag**`。
 
 ---
 
 ### 7. 常见问题（FAQ）
 
-- **Q: 首次启动时访问前端空白或 404？**  
-  **A:** 请确认前端是否已成功构建并将 `dist` 内容挂载到 Nginx 对应目录（开发态下使用 Vite 开发服务器；生产态由 `frontend-build` + Nginx 提供静态资源）。
-
-- **Q: DeepSeek 调用失败或无响应？**  
-  **A:** 检查 `DEEPSEEK_API_KEY` 是否正确配置；同时查看后端日志中 LangChain4j 的请求 / 响应日志（`log-requests` 与 `log-responses` 默认为 `true`）。
-
-- **Q: 登录态频繁丢失？**  
-  **A:** 请确认 Redis 与 Spring Session 配置是否一致，生产环境中建议使用稳定的 Redis 服务，并注意 `session` 与 `cookie.max-age` 的配置（当前默认为约 1 个月）。
-
-- **Q: 下载应用代码提示无权限或找不到？**  
-  **A:** 仅应用创建者可下载对应代码；同时需确保已完成代码生成与部署，`tmp/code_output` 中确实存在对应目录。
-
-- **Q: RAG 启动时报 `column "embedding_id" does not exist`？**  
-  **A:** 当前 `langchain4j-pgvector` 会写入 `rag_embedding.embedding_id (UUID)`。请确认已执行最新版 `sql/rag/001_rag_schema.sql`（该脚本为重建模式，请先 DROP 再 CREATE）。
-
-- **Q: 修改文档后为什么会整文件重建向量？**  
-  **A:** 当前采用文件级 replace 策略（非 chunk 增量）：当 `(file_name, file_dir)` 对应文件的 `content_hash` 变化时，先删除该文件旧向量，再重建新向量。
-
-- **Q: 构建后端镜像时 Playwright 下载 `chrome-linux64.zip` 很慢？**  
-  **A:** `Dockerfile` 已对 `npx playwright install chromium` 使用 BuildKit 缓存挂载，**同一台机器上重复 `docker build` 时一般会复用浏览器缓存**（首次仍会完整下载）。若网络极差，可选择「预拷入 ms-playwright 缓存」：
-  1）在任意 Linux 环境（或 WSL）进入 `scripts/`，执行 `npm ci && npx playwright install chromium`；  
-  2）将本机 `~/.cache/ms-playwright` 目录打包后上传并解压到仓库的 `docker/ms-playwright/`;
-  3）`Dockerfile` 中的 `COPY docker/ms-playwright /root/.cache/ms-playwright` 会在构建镜像时直接携带这份缓存，再配合 BuildKit 缓存挂载几乎不会重复下载。  
-  **注意：**该缓存必须与 `scripts/package-lock.json` 中锁定的 Playwright 版本一致，否则需重新生成一次缓存。
+- **Q: 首次启动前端空白或 404？**  
+**A:** 开发用 Vite；生产需已构建 `dist` 并挂到 Nginx（`frontend-build` 卷）。
+- **Q: DeepSeek 无响应？**  
+**A:** 查 `DEEPSEEK_API_KEY`；后端 LangChain4j 默认打请求/响应日志。
+- **Q: 登录态丢失？**  
+**A:** 对齐 Redis 与 Spring Session；看 `session`、`cookie.max-age`（当前约一月）。
+- **Q: 下载代码无权限或找不到？**  
+**A:** 仅创建者可下；确认已生成且 `tmp/code_output` 有目录。
+- **Q: 不想装 PostgreSQL / pgvector？**  
+**A:** `**ai.rag.enabled=false`**，可不启 `**postgres-rag**`；智能体仍可用，无 RAG。
+- **Q: RAG 报 `embedding_id` 列不存在？**  
+**A:** 执行最新 `sql/rag/001_rag_schema.sql`（重建脚本，注意 DROP）。
+- **Q: 改文档为何整文件重建向量？**  
+**A:** 按文件 replace：`content_hash` 变则删旧向量再全量重建。
+- **Q: 镜像构建时 Playwright 下载很慢？**  
+**A:** Dockerfile 已用 BuildKit 缓存，重复 build 常能复用。极差网络可预下载 `chromium` 缓存拷到 `docker/ms-playwright/`（版本须与 `scripts/package-lock.json` 中 Playwright 一致）。
 
 ---
 
@@ -367,7 +349,6 @@ docker compose -f compose.prod.yaml up -d --build
   - 统一异常与错误码：`BusinessException + ErrorCode`
   - 必要的业务校验通过 `BusinessAssert` 完成
   - 数据库字段使用下划线命名，实体使用驼峰命名，并使用软删除字段 `is_deleted`
-
 - **前端**
   - 使用 Vue 3 + `<script setup>` + TypeScript
   - 状态管理统一使用 Pinia
@@ -382,8 +363,8 @@ docker compose -f compose.prod.yaml up -d --build
 
 1. Fork 本仓库并创建特性分支，例如 `feature/xxx-module`；
 2. 确保本地通过基础检查：
-   - 后端：`mvn test`（如后续补充单元测试）；
-   - 前端：`npm run build` 与 `npm run type-check`；
+  - 后端：`mvn test`（如后续补充单元测试）；
+  - 前端：`npm run build` 与 `npm run type-check`；
 3. 提交时请使用清晰的 Commit Message，并在 PR 中说明变更目的与影响范围；
 4. 如涉及数据库结构变更，请同步更新 `sql/` 初始化脚本与相关文档。
 
@@ -395,4 +376,4 @@ docker compose -f compose.prod.yaml up -d --build
 - 本项目参考开源项目 [AI零代码应用生成平台](https://github.com/liyupi/yu-ai-code-mother/)。
 - 本项目由 **[DavidCWQ](https://github.com/DavidCWQ)** 发起与维护。
 
-如果本项目对你有帮助，欢迎 Star 或分享给更多需要「AI 应用工坊」的朋友。
+如果本项目对你有帮助，欢迎 Star 或分享给同样在折腾 AI 应用与智能体的开发者。
