@@ -1,4 +1,4 @@
-import { nextTick, ref, type ComputedRef, type Ref } from 'vue'
+import { nextTick, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { agentListHistory } from '@/api/agentController'
 import type { AgentChatRow } from '@/types/agent'
@@ -55,6 +55,14 @@ export function useAgentHistory(options: {
     historyCursor.value = {}
     hasMoreHistory.value = false
   }
+
+  // 删除当前会话且暂无下一选中项时不会走 loadHistory('initial')，需清掉「加载更多」状态
+  watch(
+    () => activeSessionId.value,
+    (id) => {
+      if (id == null) resetPaging()
+    },
+  )
 
   const loadHistory = async (mode: 'initial' | 'more') => {
     if (historyLoading.value) return
