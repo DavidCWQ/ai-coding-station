@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { SITE_DOCUMENT_TITLE } from '@/constants/siteFooter'
+
 import { homeRoutes } from './routes/home'
 import { userRoutes } from './routes/user'
 import { adminRoutes } from './routes/admin'
@@ -19,6 +21,11 @@ const router = createRouter({
     ...aiRoutes,
     ...commonRoutes,
   ],
+})
+
+router.afterEach((to) => {
+  const page = to.meta?.title as string | undefined
+  document.title = page ? `${page} - ${SITE_DOCUMENT_TITLE}` : SITE_DOCUMENT_TITLE
 })
 
 export default router
