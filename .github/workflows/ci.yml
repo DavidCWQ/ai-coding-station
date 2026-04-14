@@ -32,6 +32,13 @@ jobs:
           ./mvnw -B verify
           -Dtest='*Test,*Tests,!AICodeGeneratorServiceTest,!AICodeGeneratorFacadeTest,!WebScreenshotServiceTest'
 
+      - name: Run excluded tests separately (non-blocking)
+        if: ${{ always() }}
+        run: >
+          ./mvnw -B test
+          -Dtest='AICodeGeneratorServiceTest,AICodeGeneratorFacadeTest,WebScreenshotServiceTest'
+        continue-on-error: true
+
   frontend-tests:
     name: Frontend Typecheck Build and Tests
     runs-on: ubuntu-latest
