@@ -112,6 +112,7 @@ services:
       PUBLIC_DEPLOY_HOST: ${PUBLIC_DEPLOY_HOST:-http://your-domain.com:port}
       PUBLIC_COVERS_BASE: ${PUBLIC_COVERS_BASE:-http://your-domain.com:port}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      AI_RAG_ENABLED: ${AI_RAG_ENABLED:-false}
       # 仅当 ai.rag.enabled=true 时需要：DashScope 嵌入与 RAG 库密码
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       POSTGRES_RAG_PASSWORD: ${POSTGRES_RAG_PASSWORD:-rag_secret}
