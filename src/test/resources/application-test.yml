@@ -1,0 +1,22 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+  session:
+    store-type: none
+  datasource:
+    url: jdbc:h2:mem:ai_coding_station_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      username:
+      password:
+
+ai:
+  rag:
+    enabled: false
+    ingest-on-startup: false

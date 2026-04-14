@@ -30,7 +30,7 @@ jobs:
       - name: Run Maven verify with coverage gate (CI-safe tests)
         run: >
           ./mvnw -B verify
-          -Dtest='*Test,!AICodeGeneratorServiceTest,!AICodeGeneratorFacadeTest,!WebScreenshotServiceTest,!ProjectAiCodingStationApplicationTests'
+          -Dtest='*Test,*Tests,!AICodeGeneratorServiceTest,!AICodeGeneratorFacadeTest,!WebScreenshotServiceTest'
 
   frontend-tests:
     name: Frontend Typecheck Build and Tests
