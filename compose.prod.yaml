@@ -78,10 +78,12 @@ services:
         condition: service_completed_successfully
     ports:
       - "8088:80"
+      - "443:443"
     volumes:
       - ./tmp/code_deploy:/usr/share/nginx/html
       - ./tmp/covers:/usr/share/nginx/static/covers
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
     restart: unless-stopped
 
   backend:

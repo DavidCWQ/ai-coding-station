@@ -104,7 +104,7 @@ ai:
     sensitive-keywords: []
   # 检索增强：默认关闭。开启后需本地/容器内 PostgreSQL(pgvector) 与 DashScope 嵌入 Key (与 DeepSeek 对话独立)
   rag:
-    enabled: true
+    enabled: false
     ingest-on-startup: true
     # 清理已删除文档的对应向量；默认 false，避免误删历史知识
     cleanup-deleted: false
