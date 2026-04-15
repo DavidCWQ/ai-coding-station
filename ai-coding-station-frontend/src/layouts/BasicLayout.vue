@@ -7,7 +7,7 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
 
 const route = useRoute()
 
-const hideFooter = computed(() => route.meta?.hideFooter === true)
+const showFooter = computed(() => route.meta?.showFooter === true)
 const fullWidth = computed(() => route.meta?.fullWidth === true)
 const noContentCard = computed(() => route.meta?.noContentCard === true)
 </script>
@@ -20,7 +20,7 @@ const noContentCard = computed(() => route.meta?.noContentCard === true)
         <router-view />
       </div>
     </a-layout-content>
-    <GlobalFooter v-if="!hideFooter" />
+    <GlobalFooter v-if="showFooter" />
   </a-layout>
 </template>
 

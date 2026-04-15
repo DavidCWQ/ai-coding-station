@@ -5,13 +5,13 @@ export const homeRoutes: RouteRecordRaw[] = [
     path: '/',
     name: 'home',
     component: () => import('@/views/home/index.vue'),
-    meta: { layout: 'basic', title: '首页' },
+    meta: { layout: 'basic', title: '首页', showFooter: true },
   },
   {
     path: '/about',
     name: 'about',
     component: () => import('@/views/home/about.vue'),
-    meta: { layout: 'basic', title: '关于' },
+    meta: { layout: 'basic', title: '关于', showFooter: true },
   },
 ]
 

@@ -56,6 +56,15 @@ const applySuggestion = (s: Suggestion) => {
   promptText.value = `轻松创建一个：${s.prompt}`
 }
 
+const onComposerEnter = (e: Event) => {
+  const ke = e as KeyboardEvent
+  if (ke.shiftKey) {
+    return
+  }
+  ke.preventDefault()
+  void onCreate()
+}
+
 const onCreate = async () => {
   const t = promptText.value.trim() + "\n保持代码部分简洁，无需代码注释"
   if (!t) {
@@ -118,7 +127,7 @@ onMounted(() => {
           class="app-home__textarea"
           placeholder="使用 AI Coding 高效创建一个网站，比如：个人博客，企业官网，产品展示网站……"
           :disabled="creating"
-          @keydown.enter.exact.ctrl.prevent="onCreate"
+          @press-enter="onComposerEnter"
         />
         <div class="app-home__composer-bar">
           <div class="app-home__composer-left">

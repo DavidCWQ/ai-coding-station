@@ -41,6 +41,11 @@ spring:
     # 默认使用 Caffeine 本地缓存
     type: caffeine
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
 # --------------- Server Config ---------------
 # 后端服务默认配置
 server:
@@ -132,6 +137,12 @@ app:
     output-dir: ${user.dir}/tmp/code_output
     deploy-dir: ${user.dir}/tmp/code_deploy
     deploy-host: http://localhost:8088
+  asset:
+    preferred-image-size-bytes: 2097152
+    auto-compress-oversize-image: true
+    jpeg-compression-quality: 0.82
+    max-image-count-per-app: 200
+    max-total-image-size-bytes-per-app: 104857600
   screenshot:
     script-path: ${user.dir}/scripts/screenshot.js
     output-dir: ${user.dir}/tmp/covers

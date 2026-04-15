@@ -73,6 +73,16 @@ declare namespace API {
     appId: number;
   };
 
+  type AppReplaceImageRequest = {
+    appId: number;
+    newImagePath: string;
+    targetXpath?: string;
+    targetTag?: string;
+    targetId?: string;
+    targetClassList?: string[];
+    targetTagPath?: string[];
+  };
+
   type AppQueryRequest = {
     pageNum?: number;
     pageSize?: number;
