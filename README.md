@@ -1,6 +1,6 @@
 # AI Coding Station
 
-**AI Coding Station**：个人业余维护的 **AI 应用开发与测试记录台**，面向技术爱好者做原型、学习与自用。站内 **应用工坊**（创建—编辑—对话—部署）与 **智能体对话** 相互独立，侧重把想法做成可用小工具、以及与 AI 日常协作。
+个人业余维护的 **AI 应用开发与测试记录台**，面向技术爱好者做原型、学习与自用。站内 **应用工坊**（创建—编辑—对话—部署）与 **智能体对话** 相互独立，侧重把想法做成可用小工具、以及与 AI 日常协作。
 
 > 推荐使用桌面端或宽屏浏览阅读本文档。
 
@@ -28,7 +28,7 @@
 
 ### 1. 项目简介
 
-**个人向记录台 + 开放实验场**：应用工坊里搭应用、编辑部署；兼作技术博客。能力随业余时间迭代，适合 **自用、小范围试用、读源码**。
+**个人向记录台 + 开放实验场**：应用工坊里搭应用、编辑部署；兼作技术博客。能力随业余时间迭代，适合 **自用、小范围试用**。
 
 - **应用工坊**：创建 **AI 应用**，在 **与应用绑定的会话** 里用 DeepSeek Chat 生成前后端骨架；ZIP 下载、部署到 Nginx、预览链接与封面截图。
 - **内置智能体**：选用平台已有角色（编程助手、财税助理、问道先生；管理员另有「灵感回声」），**独立会话与记忆**；内置 **RAG**（PostgreSQL + pgvector + DashScope 嵌入，见第 5 节）。**应用 ≠ 智能体**：建应用不会创建智能体；**当前仅内置列表**，日后或支持自建 / 配置。
@@ -97,7 +97,7 @@
 - 浏览器（前端 Vue SPA）
   - **Axios** 调用后端 `/api/`（REST / SSE）
   - **Spring Boot**（业务域：`user`/`app`/`chat`/`agent` 等；默认加载 RAG 子系统，测试 profile 除外）
-  - **MySQL**（业务数据）/ **Redis**（Session、对话记忆）/ **本地目录**（`tmp/code_output|code_deploy|covers`）
+  - **MySQL**（业务数据）/ **Redis**（Session/对话记忆）/ **本地目录**（`tmp/code_output|code_deploy|covers`）
   - **PostgreSQL(pgvector)**（向量库，默认启用）
   - **Nginx** 对外提供已部署静态站与封面等静态资源
 
@@ -122,7 +122,7 @@
 **步骤 1：克隆仓库**
 
 ```bash
-git clone https://github.com/你的用户名/project_ai-coding-station.git
+git clone https://github.com/<你的用户名>/project_ai-coding-station.git
 cd project_ai-coding-station
 ```
 
@@ -248,15 +248,15 @@ docker compose -f compose.prod.yaml up -d --build
 
 #### 5.2 对话模型（DeepSeek / LangChain4j）
 
-- `**DEEPSEEK_API_KEY`**：生产经 `compose.prod.yaml` 注入，对应 `application-prod.yml` 里 chat / streaming 的 `api-key`。
-- 本地多在 `**application-local.yml**`（勿提交真实 Key）。
+- **`DEEPSEEK_API_KEY`**：生产经 `compose.prod.yaml` 注入，对应 `application-prod.yml` 里 chat / streaming 的 `api-key`。
+- 本地多在 **`application-local.yml`**（勿提交真实 Key）。
 - 其余见 `application.yml` 的 `langchain4j.open-ai.*`（`base-url`、`model-name`、`max-tokens`、日志等）。
 
 #### 5.3 智能体 RAG（DashScope + pgvector，默认开启）
 
-默认 `**ai.rag.enabled=true**`，加载 RAG Bean（独立数据源、`RagIngestService`、`ContentRetrieverFactory` 等）。须部署 PostgreSQL **pgvector**、表结构就绪；`sql/rag/` 由 `**postgres-rag**`（或等价实例）首次启动执行。单元与集成测试使用 `**application-test.yml**` 将 `**ai.rag.enabled**` 设为 `**false**` 并关闭 Docker Compose，以免 CI 依赖真实向量库。
+默认 **`ai.rag.enabled=true`**，加载 RAG Bean（独立数据源、`RagIngestService`、`ContentRetrieverFactory` 等）。须部署 PostgreSQL **pgvector**、表结构就绪；`sql/rag/` 由 **`postgres-rag`**（或等价实例）首次启动执行。单元与集成测试使用 **`application-test.yml`** 将 **`ai.rag.enabled`** 设为 **`false`** 并关闭 Docker Compose，以免 CI 依赖真实向量库。
 
-`**ai.rag.*`（`RagProperties`）**
+**`ai.rag.*`（`RagProperties`）**
 
 
 | 配置项                             | 含义                                       |
@@ -265,21 +265,21 @@ docker compose -f compose.prod.yaml up -d --build
 | `ai.rag.ingest-on-startup`      | 启动时扫描 `docs-classpath-pattern` 并入库       |
 | `ai.rag.cleanup-deleted`        | 是否清理已移除 classpath 文档的向量（默认 `false`）      |
 | `ai.rag.docs-classpath-pattern` | 待索引 glob，默认 `classpath:rag/docs/**/*.md` |
-| `ai.rag.embedding.api-key`      | DashScope，建议 `**DASHSCOPE_API_KEY`**     |
+| `ai.rag.embedding.api-key`      | DashScope，建议 **`DASHSCOPE_API_KEY`**     |
 | `ai.rag.embedding.model-name`   | 默认 `text-embedding-v4`                   |
 
 
-`**rag.datasource.*`**
+**`rag.datasource.*`**
 
 
 | 配置项                     | 说明                                                                         |
 | ----------------------- | -------------------------------------------------------------------------- |
-| `jdbc-url`              | 本地见 `application.yml`；生产指向 `**postgres-rag:5432`**（`application-prod.yml`） |
-| `username` / `password` | 与 Compose `**POSTGRES_RAG_PASSWORD**` 等对齐                                  |
+| `jdbc-url`              | 本地见 `application.yml`；生产指向 **`postgres-rag:5432`**（`application-prod.yml`） |
+| `username` / `password` | 与 Compose **`POSTGRES_RAG_PASSWORD`** 等对齐                                  |
 | `driver-class-name`     | `org.postgresql.Driver`                                                    |
 
 
-`**rag_embedding` 维度**须与嵌入模型及 `RagStoreConfig` 常量一致；表结构变更见 `sql/rag` 与 FAQ（`embedding_id`）。
+**`rag_embedding` 维度**须与嵌入模型及 **`RagStoreConfig`** 常量一致；表结构变更见 `sql/rag` 与 FAQ（`embedding_id`）。
 
 #### 5.4 输入护轨（`ai.guardrail`）
 
@@ -287,8 +287,8 @@ docker compose -f compose.prod.yaml up -d --build
 
 #### 5.5 部署、注册与前端
 
-- `**PUBLIC_DEPLOY_HOST`**、`**PUBLIC_COVERS_BASE**`：部署页与封面基址（见 `application-prod.yml` 中 `app.deploy` / `app.screenshot`）。
-- `**SPRING_PROFILES_ACTIVE=prod**`；`**APP_USER_REGISTRATION_ENABLED**`：注册开关（生产 Compose 常 `false`）。
+- **`PUBLIC_DEPLOY_HOST`**、**`PUBLIC_COVERS_BASE`**：部署页与封面基址（见 `application-prod.yml` 中 `app.deploy` / `app.screenshot`）。
+- **`SPRING_PROFILES_ACTIVE=prod`**；**`APP_USER_REGISTRATION_ENABLED`**：注册开关（生产 Compose 常 `false`）。
 - 前端 `.env.development` / `.env.production`：`VITE_APP_API_BASE_URL=/api`、`VITE_DEV_PROXY_TARGET`、`VITE_APP_DEPLOY_BASE_URL`、`OPENAPI_SCHEMA_URL`（`openapi2ts`）。
 
 **详见**：`application.yml`、`application-prod.yml`、`compose.yaml`、`compose.prod.yaml`。
@@ -303,7 +303,7 @@ docker compose -f compose.prod.yaml up -d --build
 
 #### 6.1 User
 
-注册 / 登录 / 登出 / 资料；普通用户与管理员；`**@AuthCheck`** 等鉴权；生产可关注册（`app.user.registration-enabled`）。
+注册 / 登录 / 登出 / 资料；普通用户与管理员；**`@AuthCheck`** 等鉴权；生产可关注册（`app.user.registration-enabled`）。
 
 #### 6.2 App
 
@@ -311,23 +311,23 @@ docker compose -f compose.prod.yaml up -d --build
 
 #### 6.3 Chat（应用代码生成）
 
-`ChatSession` / `ChatHistory`，按 `**appId`** 隔离；`chat.controller` + 前端 `**useSSEChat**`；按 `**messageId**` 向前分页；管理端可查全局历史。
+`ChatSession` / `ChatHistory`，按 **`appId`** 隔离；`chat.controller` + 前端 **`useSSEChat`**；按 **`messageId`** 向前分页；管理端可查全局历史。
 
 #### 6.4 Agent（内置智能体）
 
-`agent.controller`：会话、重命名、流式、历史。编码：`code_assistant`、`tax_assistant`、`life_advisor`、`inspiration_echo`（展示名 `**AgentCodeEnum**`）。`**inspiration_echo**` 仅管理员。提示词 `resources/prompt/agent/*.txt`，`**AgentSystemPromptResolver**` 解析。`**AgentChatServiceFactory**`：Redis 记忆、RAG `**ContentRetriever**`、`**AgentToolRegistry**`、可选护轨。表与 Redis key 与 Chat 路径分离。
+`agent.controller`：会话、重命名、流式、历史。编码：`code_assistant`、`tax_assistant`、`life_advisor`、`inspiration_echo`（展示名 **`AgentCodeEnum`**）。**`inspiration_echo`** 仅管理员。提示词 `resources/prompt/agent/*.txt`，**`AgentSystemPromptResolver`** 解析。**`AgentChatServiceFactory`**：Redis 记忆、RAG **`ContentRetriever`**、**`AgentToolRegistry`**、可选护轨。表与 Redis key 与 Chat 路径分离。
 
 #### 6.5 `ai` 包
 
-- `**ai.tool**`：按智能体选 Tools。  
-- `**ai.guardrail**`：输入护轨。  
-- `**ai.rag**`（默认开启；测试 profile 关闭）：`config`（`RagProperties`、`RagStoreConfig`、`RagModelConfig`）、`ingest`（`content_hash`、按文件 replace）、`retriever`（`metadata.corpus`）、`repository`（与 `rag_embedding` 协同；细节见代码与 FAQ）。
+- **`ai.tool`**：按智能体选 Tools。  
+- **`ai.guardrail`**：输入护轨。  
+- **`ai.rag`**（默认开启；测试 profile 关闭）：`config`（`RagProperties`、`RagStoreConfig`、`RagModelConfig`）、`ingest`（`content_hash`、按文件 replace）、`retriever`（`metadata.corpus`）、`repository`（与 `rag_embedding` 协同；细节见代码与 FAQ）。
 
 #### 6.6 前端
 
 路由含首页、关于、用户、应用工坊、应用内聊天、智能体对话、后台等；Pinia；`src/api` + OpenAPI 生成类型。
 
-若仅在本地做极简调试、暂不接向量库，可在专用 profile 或 `**application-local.yml**` 中设 `**ai.rag.enabled=false**` 并省略 RAG 数据源（与仓库默认约定不同，需自行承担行为差异）。
+若仅在本地做极简调试、暂不接向量库，可在专用 profile 或 **`application-local.yml`** 中设 **`ai.rag.enabled=false`** 并省略 RAG 数据源（与仓库默认约定不同，需自行承担行为差异）。
 
 ---
 
