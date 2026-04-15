@@ -61,7 +61,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgvector_rag_data:/var/lib/postgresql/data
+      # PG 18+：数据卷挂 /var/lib/postgresql（勿用 /var/lib/postgresql/data）
+      - pgvector_rag_data:/var/lib/postgresql
       - ./sql/rag:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d ai_coding_vector_db"]
