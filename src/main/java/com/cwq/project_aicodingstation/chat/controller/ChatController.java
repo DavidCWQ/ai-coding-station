@@ -10,6 +10,8 @@ import com.cwq.project_aicodingstation.chat.service.ChatSessionService;
 import com.cwq.project_aicodingstation.chat.vo.ChatHistoryVO;
 import com.cwq.project_aicodingstation.chat.vo.ChatSessionVO;
 import com.cwq.project_aicodingstation.common.annotation.AuthCheck;
+import com.cwq.project_aicodingstation.common.error.ErrorCode;
+import com.cwq.project_aicodingstation.common.exception.BaseException;
 import com.cwq.project_aicodingstation.common.request.DeleteRequest;
 import com.cwq.project_aicodingstation.common.response.BaseResponse;
 import com.cwq.project_aicodingstation.common.utils.ResultUtils;
@@ -43,6 +45,20 @@ public class ChatController {
     private UserService userService;
 
     /**
+     * 按需获取登录用户：未登录时返回 null（用于匿名可读接口），其余异常继续抛出。
+     */
+    private UserLoginVO resolveLoginUserOrNull(HttpServletRequest request) {
+        try {
+            return userService.getUserLoginVO(request);
+        } catch (BaseException e) {
+            if (e.getCode() == ErrorCode.NOT_LOGIN.getCode()) {
+                return null;
+            }
+            throw e;
+        }
+    }
+
+    /**
      * 新增一条对话消息（用于消息持久化）。
      */
     @PostMapping("/history/add")
@@ -60,7 +76,7 @@ public class ChatController {
     @PostMapping("/history/list")
     public BaseResponse<List<ChatHistoryVO>> listHistory(@RequestBody @Valid ChatHistoryQueryRequest req,
                                                          HttpServletRequest request) {
-        UserLoginVO userVO = userService.getUserLoginVO(request);
+        UserLoginVO userVO = resolveLoginUserOrNull(request);
         return ResultUtils.success(chatHistoryService.listHistory(req, userVO));
     }
 

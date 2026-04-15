@@ -89,6 +89,11 @@ const isOwner = computed(() => {
 })
 const canOperate = computed(() => isOwner.value || isAdmin.value)
 const canChat = computed(() => isOwner.value)
+const canViewHistory = computed(() => {
+  if (isOwner.value || isAdmin.value) return true
+  const p = Number(appVo.value?.priority ?? 0)
+  return Number.isFinite(p) && p >= 99
+})
 const showPreviewPanel = computed(() => historyInited.value && messages.value.length >= 2)
 const formattedCreateTime = computed(() => {
   const t = appVo.value?.createTime
@@ -202,7 +207,7 @@ const ensureSession = async () => {
 
 const loadHistory = async (mode: 'initial' | 'more') => {
   if (historyLoading.value) return
-  if (!canChat.value) {
+  if (!canViewHistory.value) {
     historyInited.value = true
     hasMoreHistory.value = false
     return
@@ -633,7 +638,7 @@ onBeforeUnmount(() => {
               <a-empty
                 v-if="historyInited && messages.length === 0"
                 class="app-detail__empty"
-                :description="canChat ? '暂无历史消息，快来发送第一条吧' : '暂无可查看的历史消息'"
+                :description="canChat ? '暂无历史消息，快来发送第一条吧' : (canViewHistory ? '暂无历史消息' : '暂无可查看的历史消息')"
               />
             </div>
             <a-tooltip :title="canChat ? '' : '亲，无法在别人的作品下对话哦~'">

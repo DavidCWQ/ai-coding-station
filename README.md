@@ -201,7 +201,8 @@ docker compose -f compose.yaml up -d
 `compose.prod.yaml` 提供了完整的生产级编排，包含：
 
 - `mysql` / `redis` / `postgres-rag` / `nginx` 与本地栈一致；其中数据库类服务带 **healthcheck**；
-- `backend`：基于 `Dockerfile` 构建 Spring Boot 应用镜像；启动前等待 `mysql`、`redis`、`postgres-rag` 健康；
+- `db-migrate`：一次性迁移任务容器，等待 `mysql` 健康后，按文件名顺序执行 `sql/*.sql`（要求 SQL 幂等）；
+- `backend`：基于 `Dockerfile` 构建 Spring Boot 应用镜像；启动前等待 `db-migrate` 完成，以及 `redis`、`postgres-rag` 健康；
 - `frontend`：基于 `Dockerfile.frontend` 构建前端静态资源并拷贝到共享卷（一次性任务容器）；
 - **注意**：需自行配置 `.env`。`compose.prod.yaml` 已在 `backend.environment` 中固定 `SPRING_PROFILES_ACTIVE=prod`。
 
@@ -211,11 +212,14 @@ docker compose -f compose.yaml up -d
   - 安装前端依赖 → `npm run build-only`（即 `vite build`）→ 生成 `/frontend/dist`；
   - `vite build` 默认是 `production` mode，会自动读取前端根目录 `.env.production`（若存在）；
   - 将构建产物复制到宿主 `./tmp/code_deploy` 目录（通过 volume 挂载）。
-2. `backend` 容器：
+2. `db-migrate` 容器：
+  - 等待 `mysql` 健康后，重放 `sql/*.sql`；
+  - 适合持续补齐新增表/索引/列（请确保脚本幂等：`IF NOT EXISTS` 等）。
+3. `backend` 容器：
   - 通过 `Dockerfile` 打包后端 Jar；
   - 再安装 Node + Playwright 以支持截图脚本 `scripts/screenshot.js`；
   - 暴露 `8142` 端口，读取环境变量 `.env` 中的 DeepSeek API Key、数据库与 Redis 账号等。
-3. `nginx` 容器：
+4. `nginx` 容器：
   - 挂载 `./tmp/code_deploy` 作为 `/usr/share/nginx/html`；
   - 通过 `nginx.prod.conf` 将静态站暴露到外网。
 

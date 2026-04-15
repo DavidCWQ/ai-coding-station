@@ -26,6 +26,36 @@ services:
       retries:  30
       start_period: 20s
 
+  # 生产迁移任务：每次 up 都重放 sql/*.sql（需保持脚本幂等）
+  db-migrate:
+    image: mysql:9.5.0
+    container_name: mysql-migrate
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ai_coding_station_memo
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_secret}
+      TZ: Asia/Shanghai
+    volumes:
+      - ./sql:/sql:ro
+    command: >
+      sh -c '
+      set -eu;
+      echo "[db-migrate] wait mysql...";
+      until mysqladmin ping -h"$${MYSQL_HOST}" -P"$${MYSQL_PORT}" -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}" --silent; do sleep 2; done;
+      echo "[db-migrate] apply sql files...";
+      for f in /sql/*.sql; do
+        echo "[db-migrate] apply $$f";
+        mysql -h"$${MYSQL_HOST}" -P"$${MYSQL_PORT}" -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}" "$${MYSQL_DATABASE}" < "$$f";
+      done;
+      echo "[db-migrate] done";
+      '
+    restart: "no"
+
   redis:
     image: redis:8.4.0
     container_name: redis-cache
@@ -96,6 +126,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       postgres-rag:

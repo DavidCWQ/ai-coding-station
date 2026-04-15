@@ -2,6 +2,7 @@ package com.cwq.project_aicodingstation.common.auth;
 
 import com.cwq.project_aicodingstation.app.entity.App;
 import com.cwq.project_aicodingstation.app.mapper.AppMapper;
+import com.cwq.project_aicodingstation.app.constant.AppConstant;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
 import com.cwq.project_aicodingstation.user.constant.UserConstant;
@@ -54,6 +55,32 @@ public class ResourceAuthHelper {
     }
 
     /**
+     * 历史只读场景下的应用访问校验：
+     * 未登录仅可读取「精选应用」；已登录则管理员、应用创建者或精选应用可读取。
+     *
+     * @param appId  应用 id
+     * @param userVO 当前用户
+     * @return 应用
+     */
+    public App requireAppHistoryReadable(Long appId, UserLoginVO userVO) {
+        BusinessAssert.notNull(appId, ErrorCode.PARAMS_MISSING, "应用 id 为空");
+        QueryWrapper qw = QueryWrapper.create();
+        qw.select("id", "user_id", "priority").eq("id", appId);
+        App app = appMapper.selectOneByQuery(qw);
+        BusinessAssert.notNull(app, ErrorCode.NOT_FOUND, "应用不存在");
+
+        boolean featured = app.getPriority() != null && app.getPriority() >= AppConstant.GOOD_APP_PRIORITY;
+        if (userVO == null) {
+            BusinessAssert.requireTrue(featured, ErrorCode.NO_PERMISSION, "无权限访问该应用");
+            return app;
+        }
+        boolean admin = UserConstant.ADMIN_ROLE.equals(userVO.getUserRole());
+        boolean owner = app.getUserId() != null && app.getUserId().equals(userVO.getId());
+        BusinessAssert.requireTrue(admin || owner || featured, ErrorCode.NO_PERMISSION, "无权限访问该应用");
+        return app;
+    }
+
+    /**
      * 资源属主或管理员可操作（如会话行上的 user_id、智能体会话属主）。
      *
      * @param userVO              当前用户（须已登录）
@@ -67,22 +94,4 @@ public class ResourceAuthHelper {
         BusinessAssert.requireTrue(owner || admin, ErrorCode.NO_PERMISSION, noPermissionMsg);
     }
 
-    /**
-     * 读取应用下某会话历史时的放宽规则：管理员、会话创建者、或应用创建者均可读。
-     *
-     * @param userVO             当前用户
-     * @param sessionOwnerUserId 会话上的 user_id
-     * @param appOwnerUserId     应用上的 user_id
-     * @param message            拒绝提示
-     */
-    public void requireAdminOrSessionOwnerOrAppOwner(UserLoginVO userVO,
-                                                     Long sessionOwnerUserId,
-                                                     Long appOwnerUserId,
-                                                     String message) {
-        requireLogin(userVO);
-        boolean admin = UserConstant.ADMIN_ROLE.equals(userVO.getUserRole());
-        boolean sessionOwner = sessionOwnerUserId != null && sessionOwnerUserId.equals(userVO.getId());
-        boolean appOwner = appOwnerUserId != null && appOwnerUserId.equals(userVO.getId());
-        BusinessAssert.requireTrue(admin || sessionOwner || appOwner, ErrorCode.NO_PERMISSION, message);
-    }
 }
