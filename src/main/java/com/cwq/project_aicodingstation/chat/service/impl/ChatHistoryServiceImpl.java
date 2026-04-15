@@ -56,15 +56,14 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     private ResourceAuthHelper resourceAuthHelper;
 
     /**
-     * 校验是否可读取该会话下的历史：应用可访问，且会话属于该应用，且（管理员 / 会话本人 / 应用创建者）。
+     * 校验是否可读取该会话下的历史：
+     * 应用满足历史只读权限（管理员 / 应用创建者 / 精选应用），且会话属于该应用。
      */
     private void assertHistoryReadable(Long appId, Long sessionId, UserLoginVO userVO) {
-        App app = resourceAuthHelper.requireAppReadable(appId, userVO);
+        resourceAuthHelper.requireAppHistoryReadable(appId, userVO);
         ChatSession session = chatSessionService.getById(sessionId);
         BusinessAssert.notNull(session, ErrorCode.NOT_FOUND, "会话不存在");
         BusinessAssert.equals(session.getAppId(), appId, ErrorCode.PARAMS_ERROR, "会话与应用不匹配");
-        resourceAuthHelper.requireAdminOrSessionOwnerOrAppOwner(
-                userVO, session.getUserId(), app.getUserId(), "无权限查看该会话消息");
     }
 
     @Override
@@ -118,7 +117,6 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     @Override
     public List<ChatHistoryVO> listHistory(ChatHistoryQueryRequest req, UserLoginVO userVO) {
         BusinessAssert.notNull(req, ErrorCode.PARAMS_ERROR, "查询请求为空");
-        BusinessAssert.notNull(userVO, ErrorCode.NOT_LOGIN, "用户未登录");
 
         Long appId = req.getAppId();
         Long sessionId = req.getSessionId();
