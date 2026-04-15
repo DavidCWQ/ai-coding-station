@@ -4,8 +4,10 @@
 -- Author: CWQ
 -- Date: 2026-01-08
 -- =====================================================
+USE `ai_coding_station_memo`;
+
 -- 修改表
 ALTER TABLE `sys_user`
-    ADD COLUMN `vip_code`           VARCHAR(128)        NULL COMMENT '会员兑换码',
-    ADD COLUMN `vip_number`         BIGINT              NULL COMMENT '会员编号',
-    ADD COLUMN `vip_expire_time`    DATETIME            NULL COMMENT '会员过期时间';
+    ADD COLUMN IF NOT EXISTS `vip_code`        VARCHAR(128) NULL COMMENT '会员兑换码',
+    ADD COLUMN IF NOT EXISTS `vip_number`      BIGINT       NULL COMMENT '会员编号',
+    ADD COLUMN IF NOT EXISTS `vip_expire_time` DATETIME     NULL COMMENT '会员过期时间';
