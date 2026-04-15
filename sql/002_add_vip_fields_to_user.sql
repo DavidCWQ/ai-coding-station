@@ -6,8 +6,7 @@
 -- =====================================================
 USE `ai_coding_station_memo`;
 
--- 修改表
-ALTER TABLE `sys_user`
-    ADD COLUMN IF NOT EXISTS `vip_code`        VARCHAR(128) NULL COMMENT '会员兑换码',
-    ADD COLUMN IF NOT EXISTS `vip_number`      BIGINT       NULL COMMENT '会员编号',
-    ADD COLUMN IF NOT EXISTS `vip_expire_time` DATETIME     NULL COMMENT '会员过期时间';
+-- 分开执行，每个 ADD COLUMN 单独一个 ALTER TABLE
+ALTER TABLE `sys_user` ADD COLUMN IF NOT EXISTS `vip_code` VARCHAR(128) NULL COMMENT '会员兑换码';
+ALTER TABLE `sys_user` ADD COLUMN IF NOT EXISTS `vip_number` BIGINT NULL COMMENT '会员编号';
+ALTER TABLE `sys_user` ADD COLUMN IF NOT EXISTS `vip_expire_time` DATETIME NULL COMMENT '会员过期时间';
