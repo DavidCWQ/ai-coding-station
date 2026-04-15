@@ -3,6 +3,7 @@ package com.cwq.project_aicodingstation.chat.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.cwq.project_aicodingstation.app.constant.AppConstant;
+import com.cwq.project_aicodingstation.app.entity.App;
 import com.cwq.project_aicodingstation.chat.dto.ChatSessionQueryRequest;
 import com.cwq.project_aicodingstation.chat.entity.ChatSession;
 import com.cwq.project_aicodingstation.chat.mapper.ChatSessionMapper;
@@ -11,6 +12,7 @@ import com.cwq.project_aicodingstation.chat.vo.ChatSessionVO;
 import com.cwq.project_aicodingstation.common.auth.ResourceAuthHelper;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
+import com.cwq.project_aicodingstation.user.constant.UserConstant;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
@@ -63,7 +65,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     public Page<ChatSessionVO> listByAppId(ChatSessionQueryRequest req, UserLoginVO userVO) {
         BusinessAssert.notNull(req, ErrorCode.PARAMS_ERROR, "查询请求为空");
         Long appId = req.getAppId();
-        resourceAuthHelper.requireAppReadable(appId, userVO);
+        App app = resourceAuthHelper.requireAppHistoryReadable(appId, userVO);
 
         long pageSize = req.getPageSize();
         BusinessAssert.requireTrue(pageSize > 0 && pageSize <= AppConstant.MAX_PAGE_SIZE,
@@ -73,8 +75,12 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         long pageNum = req.getPageNum();
         BusinessAssert.requireTrue(pageNum >= 1, ErrorCode.PARAMS_ERROR, "页码须从 1 开始");
 
+        boolean admin = UserConstant.ADMIN_ROLE.equals(userVO.getUserRole());
+        boolean owner = app.getUserId() != null && app.getUserId().equals(userVO.getId());
+        Long queryUserId = (admin || owner) ? userVO.getId() : null;
+
         // 列名与 sql/004_create_chat_history_table.sql 中 chat_session 表一致；逻辑删除由实体 isDeleted 注解处理，与 app/user 一致
-        QueryWrapper qw = getQueryWrapperForSessionPage(appId, userVO.getId());
+        QueryWrapper qw = getQueryWrapperForSessionPage(appId, queryUserId);
 
         Page<ChatSession> page = this.page(Page.of(pageNum, pageSize), qw);
         Page<ChatSessionVO> voPage = new Page<>(pageNum, pageSize, page.getTotalRow());
@@ -124,7 +130,9 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     private QueryWrapper getQueryWrapperForSessionPage(Long appId, Long userId) {
         QueryWrapper qw = QueryWrapper.create();
         qw.eq("app_id", appId);
-        qw.eq("user_id", userId);
+        if (userId != null && userId > 0) {
+            qw.eq("user_id", userId);
+        }
         qw.orderBy("last_msg_time", false);
         return qw;
     }
