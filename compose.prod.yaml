@@ -49,6 +49,12 @@ services:
       until mysqladmin ping -h"$${MYSQL_HOST}" -P"$${MYSQL_PORT}" -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}" --silent; do sleep 2; done;
       echo "[db-migrate] apply sql files...";
       for f in /sql/*.sql; do
+        case "$$f" in
+          /sql/002_add_vip_fields_to_user.sql)
+            echo "[db-migrate] skip $$f (bootstrap-only migration)";
+            continue
+            ;;
+        esac;
         echo "[db-migrate] apply $$f";
         mysql -h"$${MYSQL_HOST}" -P"$${MYSQL_PORT}" -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}" "$${MYSQL_DATABASE}" < "$$f";
       done;
