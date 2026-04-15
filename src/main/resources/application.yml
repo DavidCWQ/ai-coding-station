@@ -102,9 +102,9 @@ ai:
   guardrail:
     enabled: true
     sensitive-keywords: []
-  # 检索增强：默认关闭。开启后需本地/容器内 PostgreSQL(pgvector) 与 DashScope 嵌入 Key (与 DeepSeek 对话独立)
+  # 检索增强：默认开启。需本地/容器内 PostgreSQL(pgvector) 与 DashScope 嵌入 Key（与 DeepSeek 对话独立）
   rag:
-    enabled: false
+    enabled: true
     # 清理已删除文档的对应向量；默认 false，避免误删历史知识
     cleanup-deleted: false
     ingest-on-startup: true
@@ -113,7 +113,7 @@ ai:
       api-key: ${DASHSCOPE_API_KEY:}
       model-name: text-embedding-v4
 
-# RAG 专用库（仅当 ai.rag.enabled=true 时由 PgVectorConfig 使用；使用端口 5432 见 compose.yaml）
+# RAG 专用库（PgVectorConfig；本地端口 5432 见 compose.yaml 中 postgres-rag）
 rag:
   datasource:
     jdbc-url: jdbc:postgresql://localhost:5432/ai_coding_vector_db

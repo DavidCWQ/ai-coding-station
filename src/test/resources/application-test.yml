@@ -16,6 +16,7 @@ spring:
       username:
       password:
 
+# 主配置默认开启 RAG；测试使用 H2、无 pgvector，故关闭 RAG 与启动入库
 ai:
   rag:
     enabled: false

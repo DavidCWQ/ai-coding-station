@@ -47,7 +47,7 @@ services:
       - ./nginx/nginx.local.conf:/etc/nginx/nginx.conf:ro
     restart: always
 
-  # 可选：智能体 RAG (pgvector)。仅当 ai.rag.enabled=true 时需要；不需要时可删除本服务
+  # 智能体 RAG 必需：pgvector，首次启动执行 sql/rag
   postgres-rag:
     image: pgvector/pgvector:0.8.1-pg18-trixie
     container_name: postgres-rag

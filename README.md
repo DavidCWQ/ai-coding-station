@@ -8,32 +8,36 @@
 
 ### 目录
 
-- **1. 项目简介**
-- **2. 功能特性**
-- **3. 技术栈与整体架构**
-- **4. 运行与部署**
-  - 4.1 本地开发（后端 + 前端）
-  - 4.2 使用 Docker Compose 一键启动
-  - 4.3 生产部署（compose.prod.yaml）
-- **5. 环境变量与配置说明**
-- **6. 主要功能模块说明**
-- **7. 常见问题（FAQ）**
-- **8. 开发规范与约定**
-- **9. 贡献指南**
-- **X. 许可证与鸣谢**
+- [1. 项目简介](#readme-1)
+- [2. 功能特性](#readme-2)
+- [3. 技术栈与整体架构](#readme-3)
+- [4. 运行与部署](#readme-4)
+  - [4.1 本地开发（推荐）](#readme-4-1)
+  - [4.2 使用 Docker Compose 一键启动（本地 / 测试环境）](#readme-4-2)
+  - [4.3 生产部署（compose.prod.yaml）](#readme-4-3)
+- [5. 环境变量与配置说明](#readme-5)
+- [6. 主要功能模块说明](#readme-6)
+- [7. 常见问题（FAQ）](#readme-7)
+- [8. 开发规范与约定](#readme-8)
+- [9. 贡献指南](#readme-9)
+- [X. 许可证与鸣谢](#readme-x)
 
 ---
+
+<a id="readme-1"></a>
 
 ### 1. 项目简介
 
 **个人向记录台 + 开放实验场**：应用工坊里搭应用、编辑部署；兼作技术博客。能力随业余时间迭代，适合 **自用、小范围试用、读源码**。
 
 - **应用工坊**：创建 **AI 应用**，在 **与应用绑定的会话** 里用 DeepSeek Chat 生成前后端骨架；ZIP 下载、部署到 Nginx、预览链接与封面截图。
-- **内置智能体**：选用平台已有角色（编程助手、财税助理、问道先生；管理员另有「灵感回声」），**独立会话与记忆**；可选 **RAG**（pgvector，见 §5）。**应用 ≠ 智能体**：建应用不会创建智能体；**当前仅内置列表**，日后或支持自建 / 配置。
+- **内置智能体**：选用平台已有角色（编程助手、财税助理、问道先生；管理员另有「灵感回声」），**独立会话与记忆**；内置 **RAG**（PostgreSQL + pgvector + DashScope 嵌入，见第 5 节）。**应用 ≠ 智能体**：建应用不会创建智能体；**当前仅内置列表**，日后或支持自建 / 配置。
 
 **工程形态**：前后端分离（Spring Boot + Vue 3），依赖可用 Docker Compose 拉起。
 
 ---
+
+<a id="readme-2"></a>
 
 ### 2. 功能特性
 
@@ -49,7 +53,7 @@
   - 编码仅限内置：`code_assistant` / `tax_assistant` / `life_advisor` / `inspiration_echo`；**暂无自建入口**，日后或开放
   - **独立会话**（Redis 记忆与代码生成会话隔离）、历史分页、SSE
   - **按智能体挂载 Tools**（如编程助手的面试题检索）
-  - **可选 RAG**：PostgreSQL + pgvector + DashScope 嵌入；默认索引 `classpath:rag/docs/**/*.md`；`metadata.corpus` 按智能体隔离
+  - **RAG**：PostgreSQL + pgvector + DashScope 嵌入；默认索引 `classpath:rag/docs/**/*.md`；`metadata.corpus` 按智能体隔离
   - **输入输出护轨**（可关）：敏感词等前置拦截
 - **用户与权限（User Module）**
   - 注册 / 登录 / 资料；用户与 **管理员**；生产可 **关闭注册**
@@ -60,11 +64,13 @@
   - OpenAPI → TS（`npm run openapi2ts`），`src/api` 统一调用
 - **工程化与运维**
   - **业务主库**：MySQL + MyBatis-Flex；Redis（Session、记忆、缓存）+ 本地 **Caffeine**
-  - **本地运行**：`compose.yaml`：MySQL、Redis、Nginx；**可选** `postgres-rag`（pgvector + `sql/rag`）
-  - **生产编排**：`compose.prod.yaml`：`backend`、`frontend`、健康检查、可选 `postgres-rag`
+  - **本地运行**：`compose.yaml`：MySQL、Redis、Nginx、**postgres-rag**（pgvector + `sql/rag`）
+  - **生产编排**：`compose.prod.yaml`：`backend`、`frontend`、各服务健康检查、**postgres-rag**（后端启动前须就绪）
   - **快速测试**：Knife4j：OpenAPI 3，按 `user` / `app` / `chat` / `agent` 分组
 
 ---
+
+<a id="readme-3"></a>
 
 ### 3. 技术栈与整体架构
 
@@ -73,7 +79,7 @@
   - Spring Boot 3.5.x
   - Spring Web / Spring AOP / Spring Session Data Redis / Spring Cache (Caffeine)
   - MyBatis-Flex（含代码生成器）
-  - LangChain4j（OpenAI 兼容接口接 **DeepSeek Chat**；可选 **DashScope** 嵌入模型供 RAG）
+  - LangChain4j（OpenAI 兼容接口接 **DeepSeek Chat**；**DashScope** 嵌入模型供 RAG）
   - Jedis / Redis / HikariCP
   - Knife4j OpenAPI 3
 - **前端**
@@ -85,19 +91,23 @@
 - **基础设施**
   - MySQL（业务持久化）
   - Redis（会话、对话记忆、缓存）
-  - **可选** PostgreSQL + **pgvector**（仅智能体 RAG：`postgres-rag` 服务 + `sql/rag` 初始化）
+  - PostgreSQL + **pgvector**（智能体 RAG：`postgres-rag` 服务 + `sql/rag` 初始化）
   - Nginx（已部署静态站、封面等）
   - Docker / Docker Compose（本地依赖与生产编排）
 - 浏览器（前端 Vue SPA）
-→ **Axios** 调用后端 `/api/`**（REST / SSE）
-→ **Spring Boot**（业务域：`user`/`app`/`chat`/`agent` 等；智能体相关 Bean 在 `ai.rag.enabled=false` 时不加载 RAG 子系统）
-→ **MySQL**（业务数据）/ **Redis**（Session、对话记忆）/ **本地目录**（`tmp/code_output|code_deploy|covers`）
-→ **PostgreSQL(pgvector)** 仅在为智能体启用 RAG 时使用
-→ **Nginx** 对外提供已部署静态站与封面等静态资源
+  - **Axios** 调用后端 `/api/`（REST / SSE）
+  - **Spring Boot**（业务域：`user`/`app`/`chat`/`agent` 等；默认加载 RAG 子系统，测试 profile 除外）
+  - **MySQL**（业务数据）/ **Redis**（Session、对话记忆）/ **本地目录**（`tmp/code_output|code_deploy|covers`）
+  - **PostgreSQL(pgvector)**（向量库，默认启用）
+  - **Nginx** 对外提供已部署静态站与封面等静态资源
 
 ---
 
+<a id="readme-4"></a>
+
 ### 4. 运行与部署
+
+<a id="readme-4-1"></a>
 
 #### 4.1 本地开发（推荐）
 
@@ -118,30 +128,23 @@ cd project_ai-coding-station
 
 **步骤 2：准备数据库 Mysql 与 Redis**
 
-方式一：直接使用仓库自带的 `compose.yaml` 启动 MySQL + Redis + Nginx 静态站位（开发态）：
+方式一：直接使用仓库自带的 `compose.yaml` 启动 MySQL、Redis、Nginx 与 **postgres-rag**（开发态依赖齐全）：
 
 ```bash
-docker compose -f compose.yaml up -d mysql redis nginx
+docker compose -f compose.yaml up -d mysql redis nginx postgres-rag
 ```
 
-方式二：本地已有 MySQL / Redis，则确保与 `src/main/resources/application.yml` 中配置匹配：
+方式二：本地已有 MySQL / Redis / PostgreSQL(pgvector)，则确保与 `src/main/resources/application.yml` 中配置匹配：
 
 - MySQL：`jdbc:mysql://localhost:3306/ai_coding_station_memo`
 - Redis：`localhost:6380`（或按需调整）
+- RAG 库：`rag.datasource.jdbc-url` 默认 `jdbc:postgresql://localhost:5432/ai_coding_vector_db`
 
-初始化 SQL 位于 `sql/` 目录，MySQL 容器启动时会自动加载。
+初始化 SQL 位于 `sql/` 目录，MySQL 容器启动时会自动加载；`sql/rag` 在 **postgres-rag** 首次启动时执行。
 
-如需启用智能体 RAG（可选），再额外启动 pgvector：
+还须配置 **DashScope** 嵌入（与 DeepSeek 独立），例如环境变量或 `application-local.yml`（勿提交真实 Key）：
 
-```bash
-docker compose -f compose.yaml up -d postgres-rag
-```
-
-并确保本地配置包含：
-
-- `ai.rag.enabled=true`
-- `ai.rag.embedding.api-key=<YOUR DASHSCOPE API KEY>`
-- `rag.datasource.jdbc-url=jdbc:postgresql://localhost:5432/ai_coding_vector_db`
+- `DASHSCOPE_API_KEY=<YOUR DASHSCOPE API KEY>`
 
 **步骤 3：启动后端**
 
@@ -170,6 +173,8 @@ Vite 默认 `http://localhost:5876`。联调建议：`VITE_APP_API_BASE_URL=/api
 
 ---
 
+<a id="readme-4-2"></a>
+
 #### 4.2 使用 Docker Compose 一键启动（本地 / 测试环境）
 
 根目录已提供标准的 `compose.yaml`，主要包含：
@@ -177,7 +182,7 @@ Vite 默认 `http://localhost:5876`。联调建议：`VITE_APP_API_BASE_URL=/api
 - `mysql`：数据库服务，挂载 `sql/` 目录自动初始化；
 - `redis`：缓存与 Session 存储；
 - `nginx`：前端静态站占位（开发模式下可仅用于静态文件）；
-- `postgres-rag`：可选 RAG 向量库（pgvector），挂载 `sql/rag` 初始化脚本；
+- `postgres-rag`：RAG 向量库（pgvector），挂载 `sql/rag` 初始化脚本，带健康检查；
 
 启动方式：
 
@@ -189,18 +194,20 @@ docker compose -f compose.yaml up -d
 
 ---
 
+<a id="readme-4-3"></a>
+
 #### 4.3 生产部署（compose.prod.yaml）
 
 `compose.prod.yaml` 提供了完整的生产级编排，包含：
 
-- `mysql` / `redis` / `nginx` 与 `compose.yaml` 一致但加入了 **healthcheck**；
-- `backend`：基于 `Dockerfile` 构建 Spring Boot 应用镜像；
-- `frontend-build`：基于 `Dockerfile.frontend` 构建前端静态资源并拷贝到共享卷；
+- `mysql` / `redis` / `postgres-rag` / `nginx` 与本地栈一致；其中数据库类服务带 **healthcheck**；
+- `backend`：基于 `Dockerfile` 构建 Spring Boot 应用镜像；启动前等待 `mysql`、`redis`、`postgres-rag` 健康；
+- `frontend`：基于 `Dockerfile.frontend` 构建前端静态资源并拷贝到共享卷（一次性任务容器）；
 - **注意**：需自行配置 `.env`。`compose.prod.yaml` 已在 `backend.environment` 中固定 `SPRING_PROFILES_ACTIVE=prod`。
 
 **核心流程**
 
-1. `frontend-build` 容器使用 `Dockerfile.frontend`：
+1. `frontend` 服务使用 `Dockerfile.frontend`：
   - 安装前端依赖 → `npm run build-only`（即 `vite build`）→ 生成 `/frontend/dist`；
   - `vite build` 默认是 `production` mode，会自动读取前端根目录 `.env.production`（若存在）；
   - 将构建产物复制到宿主 `./tmp/code_deploy` 目录（通过 volume 挂载）。
@@ -228,9 +235,11 @@ docker compose -f compose.prod.yaml up -d --build
 
 ---
 
+<a id="readme-5"></a>
+
 ### 5. 环境变量与配置说明
 
-根目录 `.env`、`application*.yml`、Compose 编排。分节：**MySQL/Redis** → **DeepSeek** → **可选 RAG** → **护轨与部署**。
+根目录 `.env`、`application*.yml`、Compose 编排。分节：**MySQL/Redis** → **DeepSeek** → **RAG（pgvector + DashScope）** → **护轨与部署**。
 
 #### 5.1 数据库与缓存（MySQL / Redis）
 
@@ -243,16 +252,16 @@ docker compose -f compose.prod.yaml up -d --build
 - 本地多在 `**application-local.yml**`（勿提交真实 Key）。
 - 其余见 `application.yml` 的 `langchain4j.open-ai.*`（`base-url`、`model-name`、`max-tokens`、日志等）。
 
-#### 5.3 可选：智能体 RAG（DashScope + pgvector）
+#### 5.3 智能体 RAG（DashScope + pgvector，默认开启）
 
-`**ai.rag.enabled=true**` 时加载 RAG Bean（独立数据源、`RagIngestService`、`ContentRetrieverFactory` 等）。需 PostgreSQL **pgvector**、表结构就绪；`sql/rag/` 由 `**postgres-rag`** 首次启动执行。
+默认 `**ai.rag.enabled=true**`，加载 RAG Bean（独立数据源、`RagIngestService`、`ContentRetrieverFactory` 等）。须部署 PostgreSQL **pgvector**、表结构就绪；`sql/rag/` 由 `**postgres-rag**`（或等价实例）首次启动执行。单元与集成测试使用 `**application-test.yml**` 将 `**ai.rag.enabled**` 设为 `**false**` 并关闭 Docker Compose，以免 CI 依赖真实向量库。
 
 `**ai.rag.*`（`RagProperties`）**
 
 
 | 配置项                             | 含义                                       |
 | ------------------------------- | ---------------------------------------- |
-| `ai.rag.enabled`                | 总开关                                      |
+| `ai.rag.enabled`                | 总开关（默认 `true`；测试 profile 为 `false`）                    |
 | `ai.rag.ingest-on-startup`      | 启动时扫描 `docs-classpath-pattern` 并入库       |
 | `ai.rag.cleanup-deleted`        | 是否清理已移除 classpath 文档的向量（默认 `false`）      |
 | `ai.rag.docs-classpath-pattern` | 待索引 glob，默认 `classpath:rag/docs/**/*.md` |
@@ -260,7 +269,7 @@ docker compose -f compose.prod.yaml up -d --build
 | `ai.rag.embedding.model-name`   | 默认 `text-embedding-v4`                   |
 
 
-`**rag.datasource.*`（仅 RAG 开启时）**
+`**rag.datasource.*`**
 
 
 | 配置项                     | 说明                                                                         |
@@ -286,6 +295,8 @@ docker compose -f compose.prod.yaml up -d --build
 
 ---
 
+<a id="readme-6"></a>
+
 ### 6. 主要功能模块说明
 
 后端按业务域分包，与 `springdoc.group-configs` 大致对应。
@@ -304,34 +315,36 @@ docker compose -f compose.prod.yaml up -d --build
 
 #### 6.4 Agent（内置智能体）
 
-`agent.controller`：会话、重命名、流式、历史。编码：`code_assistant`、`tax_assistant`、`life_advisor`、`inspiration_echo`（展示名 `**AgentCodeEnum**`）。`**inspiration_echo**` 仅管理员。提示词 `resources/prompt/agent/*.txt`，`**AgentSystemPromptResolver**` 解析。`**AgentChatServiceFactory**`：Redis 记忆、可选 RAG `**ContentRetriever**`、`**AgentToolRegistry**`、可选护轨。表与 Redis key 与 Chat 路径分离。
+`agent.controller`：会话、重命名、流式、历史。编码：`code_assistant`、`tax_assistant`、`life_advisor`、`inspiration_echo`（展示名 `**AgentCodeEnum**`）。`**inspiration_echo**` 仅管理员。提示词 `resources/prompt/agent/*.txt`，`**AgentSystemPromptResolver**` 解析。`**AgentChatServiceFactory**`：Redis 记忆、RAG `**ContentRetriever**`、`**AgentToolRegistry**`、可选护轨。表与 Redis key 与 Chat 路径分离。
 
 #### 6.5 `ai` 包
 
 - `**ai.tool**`：按智能体选 Tools。  
 - `**ai.guardrail**`：输入护轨。  
-- `**ai.rag**`（`enabled=true`）：`config`（`RagProperties`、`RagStoreConfig`、`RagModelConfig`）、`ingest`（`content_hash`、按文件 replace）、`retriever`（`metadata.corpus`）、`repository`（与 `rag_embedding` 协同；细节见代码与 FAQ）。
+- `**ai.rag**`（默认开启；测试 profile 关闭）：`config`（`RagProperties`、`RagStoreConfig`、`RagModelConfig`）、`ingest`（`content_hash`、按文件 replace）、`retriever`（`metadata.corpus`）、`repository`（与 `rag_embedding` 协同；细节见代码与 FAQ）。
 
 #### 6.6 前端
 
 路由含首页、关于、用户、应用工坊、应用内聊天、智能体对话、后台等；Pinia；`src/api` + OpenAPI 生成类型。
 
-不用 RAG 时设 `**ai.rag.enabled=false**`，Compose 可不启 `**postgres-rag**`。
+若仅在本地做极简调试、暂不接向量库，可在专用 profile 或 `**application-local.yml**` 中设 `**ai.rag.enabled=false**` 并省略 RAG 数据源（与仓库默认约定不同，需自行承担行为差异）。
 
 ---
+
+<a id="readme-7"></a>
 
 ### 7. 常见问题（FAQ）
 
 - **Q: 首次启动前端空白或 404？**  
-**A:** 开发用 Vite；生产需已构建 `dist` 并挂到 Nginx（`frontend-build` 卷）。
+**A:** 开发用 Vite；生产需已构建 `dist` 并挂到 Nginx（`compose.prod.yaml` 中 `frontend` 服务写入的共享卷）。
 - **Q: DeepSeek 无响应？**  
 **A:** 查 `DEEPSEEK_API_KEY`；后端 LangChain4j 默认打请求/响应日志。
 - **Q: 登录态丢失？**  
 **A:** 对齐 Redis 与 Spring Session；看 `session`、`cookie.max-age`（当前约一月）。
 - **Q: 下载代码无权限或找不到？**  
 **A:** 仅创建者可下；确认已生成且 `tmp/code_output` 有目录。
-- **Q: 不想装 PostgreSQL / pgvector？**  
-**A:** `**ai.rag.enabled=false`**，可不启 `**postgres-rag**`；智能体仍可用，无 RAG。
+- **Q: 本地未起 postgres-rag，后端启动报连不上向量库？**  
+**A:** 默认配置要求 RAG 库可达。请 `docker compose -f compose.yaml up -d postgres-rag`，或改 `rag.datasource.*` 指向你已有的 pgvector 实例，并配置 `DASHSCOPE_API_KEY`。
 - **Q: RAG 报 `embedding_id` 列不存在？**  
 **A:** 执行最新 `sql/rag/001_rag_schema.sql`（重建脚本，注意 DROP）。
 - **Q: 改文档为何整文件重建向量？**  
@@ -340,6 +353,8 @@ docker compose -f compose.prod.yaml up -d --build
 **A:** Dockerfile 已用 BuildKit 缓存，重复 build 常能复用。极差网络可预下载 `chromium` 缓存拷到 `docker/ms-playwright/`（版本须与 `scripts/package-lock.json` 中 Playwright 一致）。
 
 ---
+
+<a id="readme-8"></a>
 
 ### 8. 开发规范与约定
 
@@ -357,6 +372,8 @@ docker compose -f compose.prod.yaml up -d --build
 
 ---
 
+<a id="readme-9"></a>
+
 ### 9. 贡献指南
 
 欢迎 Issue / PR，建议流程如下：
@@ -369,6 +386,8 @@ docker compose -f compose.prod.yaml up -d --build
 4. 如涉及数据库结构变更，请同步更新 `sql/` 初始化脚本与相关文档。
 
 ---
+
+<a id="readme-x"></a>
 
 ### X. 许可证与鸣谢
 

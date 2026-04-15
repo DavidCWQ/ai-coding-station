@@ -48,7 +48,7 @@ services:
       timeout: 3s
       retries: 10
 
-  # 可选：仅当后端启用 ai.rag.enabled=true 时需要；不需要 RAG 时可从本文件中移除此服务以节省资源
+  # 智能体 RAG 必需：pgvector，首次启动执行 sql/rag
   postgres-rag:
     image: pgvector/pgvector:0.8.1-pg18-trixie
     container_name: postgres-rag
@@ -97,6 +97,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      postgres-rag:
+        condition: service_healthy
       nginx:
         condition: service_started
       frontend:
@@ -112,8 +114,8 @@ services:
       PUBLIC_DEPLOY_HOST: ${PUBLIC_DEPLOY_HOST:-http://your-domain.com:port}
       PUBLIC_COVERS_BASE: ${PUBLIC_COVERS_BASE:-http://your-domain.com:port}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      AI_RAG_ENABLED: ${AI_RAG_ENABLED:-false}
-      # 仅当 ai.rag.enabled=true 时需要：DashScope 嵌入与 RAG 库密码
+      AI_RAG_ENABLED: "true"
+      # DashScope 嵌入与 RAG 库密码（RAG 固定开启）
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       POSTGRES_RAG_PASSWORD: ${POSTGRES_RAG_PASSWORD:-rag_secret}
     ports:
