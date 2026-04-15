@@ -182,10 +182,6 @@ const mergeHistoryToMessages = (incoming: API.ChatHistoryVO[], mode: 'prepend' |
 }
 
 const ensureSession = async () => {
-  if (!canChat.value) {
-    sessionId.value = null
-    return
-  }
   if (sessionId.value != null) return
   const idNum = apiLongId(appId.value)
   const res = await listSessions({
@@ -197,6 +193,10 @@ const ensureSession = async () => {
   const first = records[0]
   if (first?.id != null) {
     sessionId.value = String(first.id)
+    return
+  }
+  if (!canChat.value) {
+    sessionId.value = null
     return
   }
   const created = await createSession({ appId: idNum })
