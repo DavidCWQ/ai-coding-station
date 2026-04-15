@@ -47,6 +47,23 @@ services:
       - ./nginx/nginx.local.conf:/etc/nginx/nginx.conf:ro
     restart: always
 
+  # 智能体 RAG 必需：pgvector，首次启动执行 sql/rag
+  postgres-rag:
+    image: pgvector/pgvector:0.8.1-pg18-trixie
+    container_name: postgres-rag
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_coding_vector_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_RAG_PASSWORD:-rag_secret}
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgvector_rag_data:/var/lib/postgresql
+      - ./sql/rag:/docker-entrypoint-initdb.d
+
 volumes:
   mysql_data:
   redis_data:
+  pgvector_rag_data:

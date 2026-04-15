@@ -1,4 +1,53 @@
 declare namespace API {
+  type AgentChatMessageVO = {
+    id?: number;
+    userId?: number;
+    sessionId?: number;
+    messageType?: string;
+    message?: string;
+    createTime?: string;
+  };
+
+  type AgentChatSessionVO = {
+    id?: number;
+    userId?: number;
+    agentCode?: string;
+    title?: string;
+    lastMsgTime?: string;
+    createTime?: string;
+    updateTime?: string;
+  };
+
+  type AgentChatStreamRequest = {
+    sessionId: number;
+    agentCode: string;
+    message: string;
+  };
+
+  type AgentHistoryQueryRequest = {
+    agentCode: string;
+    sessionId: number;
+    beforeMessageId?: number;
+    beforeCreateTime?: string;
+    pageSize?: number;
+  };
+
+  type AgentSessionAddRequest = {
+    agentCode: string;
+    title?: string;
+  };
+
+  type AgentSessionQueryRequest = {
+    agentCode: string;
+    pageNum?: number;
+    pageSize?: number;
+  };
+
+  type AgentSessionUpdateTitleRequest = {
+    sessionId: number;
+    title: string;
+  };
+
   type AppAddRequest = {
     appName?: string;
     cover?: string;
@@ -72,6 +121,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseListAgentChatMessageVO = {
+    code?: number;
+    data?: AgentChatMessageVO[];
+    message?: string;
+  };
+
   type BaseResponseListChatHistoryVO = {
     code?: number;
     data?: ChatHistoryVO[];
@@ -81,6 +136,12 @@ declare namespace API {
   type BaseResponseLong = {
     code?: number;
     data?: number;
+    message?: string;
+  };
+
+  type BaseResponsePageAgentChatSessionVO = {
+    code?: number;
+    data?: PageAgentChatSessionVO;
     message?: string;
   };
 
@@ -214,6 +275,15 @@ declare namespace API {
     pageSize?: number;
   };
 
+  type PageAgentChatSessionVO = {
+    records?: AgentChatSessionVO[];
+    pageNumber?: number;
+    pageSize?: number;
+    totalPage?: number;
+    totalRow?: number;
+    optimizeCountQuery?: boolean;
+  };
+
   type PageAppVO = {
     records?: AppVO[];
     pageNumber?: number;
@@ -287,6 +357,9 @@ declare namespace API {
     createTime?: string;
     updateTime?: string;
   };
+
+  /** Current session user (same shape as {@link UserLoginVO} from login / getLoginUser). */
+  type LoginUserVO = UserLoginVO;
 
   type UserQueryRequest = {
     pageNum?: number;

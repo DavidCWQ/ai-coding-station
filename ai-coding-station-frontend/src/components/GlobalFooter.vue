@@ -3,6 +3,7 @@ import {
   SITE_COPYRIGHT_NAME,
   SITE_GITHUB_HANDLE,
   SITE_GITHUB_URL,
+  SITE_ICP_TEXT,
 } from '@/constants/siteFooter'
 
 const year = new Date().getFullYear()
@@ -34,7 +35,7 @@ const year = new Date().getFullYear()
         target="_blank"
         rel="noopener noreferrer"
       >
-        沪ICP备XXXXXXXX号（备案审核中，占位）
+        {{ SITE_ICP_TEXT }}
       </a>
       <span aria-hidden="true" class="global-footer__sep"> ｜ </span>
       <span class="global-footer__muted">沪公网安备XXXXXXXXXXXX号（公安联网备案审核中，占位）</span>

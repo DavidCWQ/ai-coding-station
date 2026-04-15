@@ -1,6 +1,6 @@
 {
   "name": "ai-coding-station-frontend",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
-    "openapi2ts": "openapi2ts"
+    "openapi2ts": "openapi2ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "ant-design-vue": "^4.2.6",
@@ -34,6 +35,7 @@
     "typescript": "~5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-vue-devtools": "^8.0.6",
+    "vitest": "^3.2.4",
     "vue-tsc": "^3.2.4"
   },
   "engines": {

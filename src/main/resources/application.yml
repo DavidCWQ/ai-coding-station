@@ -21,7 +21,8 @@ spring:
 
   datasource:
     # 本地开发数据库地址；Docker 环境在 application-prod.yml 中覆盖
-    url: jdbc:mysql://localhost:3306/ai_coding_station_memo?useSSL=false&serverTimezone=Asia/Shanghai
+    # MySQL 8+/9 默认 caching_sha2_password，在本地非 TLS 连接场景需要开启 PublicKeyRetrieval
+    url: jdbc:mysql://localhost:3306/ai_coding_station_memo?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
     username: ai_user
     password: ai_secret
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -61,6 +62,8 @@ springdoc:
       packages-to-scan: com.cwq.project_aicodingstation.app.controller
     - group: 'chat'
       packages-to-scan: com.cwq.project_aicodingstation.chat.controller
+    - group: 'agent'
+      packages-to-scan: com.cwq.project_aicodingstation.agent.controller
 
 # --------------- API doc tools ---------------
 # Knife4j Swagger 增强 UI 配置
@@ -95,6 +98,28 @@ langchain4j:
 ai:
   code:
     output-dir: ${user.dir}/tmp/code_output
+  # 输入护轨：默认开启；可在列表中追加敏感词（小写存储，匹配时忽略大小写）
+  guardrail:
+    enabled: true
+    sensitive-keywords: []
+  # 检索增强：默认开启。需本地/容器内 PostgreSQL(pgvector) 与 DashScope 嵌入 Key（与 DeepSeek 对话独立）
+  rag:
+    enabled: true
+    # 清理已删除文档的对应向量；默认 false，避免误删历史知识
+    cleanup-deleted: false
+    ingest-on-startup: true
+    docs-classpath-pattern: classpath:rag/docs/**/*.md
+    embedding:
+      api-key: ${DASHSCOPE_API_KEY:}
+      model-name: text-embedding-v4
+
+# RAG 专用库（PgVectorConfig；本地端口 5432 见 compose.yaml 中 postgres-rag）
+rag:
+  datasource:
+    jdbc-url: jdbc:postgresql://localhost:5432/ai_coding_vector_db
+    username: postgres
+    password: ${POSTGRES_RAG_PASSWORD:rag_secret}
+    driver-class-name: org.postgresql.Driver
 
 # ------------- App Module Config -------------
 # 应用模块配置：用户注册开关、部署目录、截图脚本等

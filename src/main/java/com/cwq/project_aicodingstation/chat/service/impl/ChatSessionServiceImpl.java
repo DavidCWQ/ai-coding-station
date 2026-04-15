@@ -3,16 +3,14 @@ package com.cwq.project_aicodingstation.chat.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.cwq.project_aicodingstation.app.constant.AppConstant;
-import com.cwq.project_aicodingstation.app.entity.App;
-import com.cwq.project_aicodingstation.app.mapper.AppMapper;
 import com.cwq.project_aicodingstation.chat.dto.ChatSessionQueryRequest;
 import com.cwq.project_aicodingstation.chat.entity.ChatSession;
 import com.cwq.project_aicodingstation.chat.mapper.ChatSessionMapper;
 import com.cwq.project_aicodingstation.chat.service.ChatSessionService;
 import com.cwq.project_aicodingstation.chat.vo.ChatSessionVO;
+import com.cwq.project_aicodingstation.common.auth.ResourceAuthHelper;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
-import com.cwq.project_aicodingstation.user.constant.UserConstant;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
@@ -37,24 +35,12 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     private static final String DEFAULT_SESSION_TITLE = "新对话";
 
     @Resource
-    private AppMapper appMapper;
-
-    public void assertAppAccessible(Long appId, UserLoginVO userVO) {
-        BusinessAssert.notNull(userVO, ErrorCode.NOT_LOGIN, "用户未登录");
-        BusinessAssert.notNull(appId, ErrorCode.PARAMS_MISSING, "应用 id 为空");
-        QueryWrapper qw = QueryWrapper.create();
-        qw.select("id", "user_id").eq("id", appId);
-        App app = appMapper.selectOneByQuery(qw);
-        BusinessAssert.notNull(app, ErrorCode.NOT_FOUND, "应用不存在");
-        boolean owner = app.getUserId() != null && app.getUserId().equals(userVO.getId());
-        boolean admin = UserConstant.ADMIN_ROLE.equals(userVO.getUserRole());
-        BusinessAssert.requireTrue(owner || admin, ErrorCode.NO_PERMISSION, "无权限访问该应用");
-    }
+    private ResourceAuthHelper resourceAuthHelper;
 
     @Override
     public Long createSession(Long appId, Long userId, String title, UserLoginVO userVO) {
         BusinessAssert.notNull(userId, ErrorCode.PARAMS_MISSING, "用户 id 为空");
-        assertAppAccessible(appId, userVO);
+        resourceAuthHelper.requireAppReadable(appId, userVO);
 
         LocalDateTime now = LocalDateTime.now();
         String finalTitle = StrUtil.isBlank(title) ? DEFAULT_SESSION_TITLE : title.trim();
@@ -77,7 +63,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     public Page<ChatSessionVO> listByAppId(ChatSessionQueryRequest req, UserLoginVO userVO) {
         BusinessAssert.notNull(req, ErrorCode.PARAMS_ERROR, "查询请求为空");
         Long appId = req.getAppId();
-        assertAppAccessible(appId, userVO);
+        resourceAuthHelper.requireAppReadable(appId, userVO);
 
         long pageSize = req.getPageSize();
         BusinessAssert.requireTrue(pageSize > 0 && pageSize <= AppConstant.MAX_PAGE_SIZE,
@@ -117,19 +103,16 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     }
 
     /**
-     * 验证「会话」是否存在，和「用户」是否有权限访问该应用（创建者或管理员）
+     * 校验会话存在且当前用户为会话属主或管理员。
      *
-     * @param sessionId 会话id
+     * @param sessionId 会话 id
      * @param userVO    当前用户
-     * */
-    private void assertSessionAccessible (Long sessionId, UserLoginVO userVO) {
-        BusinessAssert.notNull(userVO, ErrorCode.NOT_LOGIN, "用户未登录");
+     */
+    private void assertSessionAccessible(Long sessionId, UserLoginVO userVO) {
         BusinessAssert.notNull(sessionId, ErrorCode.PARAMS_MISSING, "会话 id 为空");
         ChatSession session = this.getById(sessionId);
         BusinessAssert.notNull(session, ErrorCode.NOT_FOUND, "会话不存在");
-        boolean owner = session.getUserId() != null && session.getUserId().equals(userVO.getId());
-        boolean admin = UserConstant.ADMIN_ROLE.equals(userVO.getUserRole());
-        BusinessAssert.requireTrue(owner || admin, ErrorCode.NO_PERMISSION, "无权限操作该会话");
+        resourceAuthHelper.requireOwnerOrAdmin(userVO, session.getUserId(), "无权限操作该会话");
     }
 
     /**

@@ -4,9 +4,6 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 .gitattributes
-.mvn/
-mvnw
-mvnw.cmd
 /tmp/*
 /bash/*
 
@@ -41,11 +38,13 @@ build/
 ### Confidential ###
 /src/main/resources/application-local.yml
 /src/main/resources/application-local.properties
+/nginx/ssl/*
 .env
 
 ### Others ###
 /README_PIC/
 /prompts/
+/src/main/resources/rag/docs/*
 
 ### Node.js ###
 */node_modules

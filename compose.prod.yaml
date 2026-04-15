@@ -48,6 +48,28 @@ services:
       timeout: 3s
       retries: 10
 
+  # 智能体 RAG 必需：pgvector，首次启动执行 sql/rag
+  postgres-rag:
+    image: pgvector/pgvector:0.8.1-pg18-trixie
+    container_name: postgres-rag
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_coding_vector_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_RAG_PASSWORD:-rag_secret}
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgvector_rag_data:/var/lib/postgresql/data
+      - ./sql/rag:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ai_coding_vector_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
   nginx:
     image: nginx:stable-alpine3.23-perl
     container_name: nginx-proxy
@@ -56,10 +78,12 @@ services:
         condition: service_completed_successfully
     ports:
       - "8088:80"
+      - "443:443"
     volumes:
       - ./tmp/code_deploy:/usr/share/nginx/html
       - ./tmp/covers:/usr/share/nginx/static/covers
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
     restart: unless-stopped
 
   backend:
@@ -72,6 +96,8 @@ services:
       mysql:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      postgres-rag:
         condition: service_healthy
       nginx:
         condition: service_started
@@ -88,6 +114,10 @@ services:
       PUBLIC_DEPLOY_HOST: ${PUBLIC_DEPLOY_HOST:-http://your-domain.com:port}
       PUBLIC_COVERS_BASE: ${PUBLIC_COVERS_BASE:-http://your-domain.com:port}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      AI_RAG_ENABLED: "true"
+      # DashScope 嵌入与 RAG 库密码（RAG 固定开启）
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      POSTGRES_RAG_PASSWORD: ${POSTGRES_RAG_PASSWORD:-rag_secret}
     ports:
       - "8142:8142"
     volumes:
@@ -108,3 +138,4 @@ services:
 volumes:
   mysql_data:
   redis_data:
+  pgvector_rag_data:

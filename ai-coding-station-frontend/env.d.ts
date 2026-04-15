@@ -9,13 +9,3 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
-
-declare module 'vue-router' {
-  interface RouteMeta {
-    title?: string
-    layout?: string
-    auth?: boolean
-    access?: 'NOT_LOGIN' | 'USER' | 'ADMIN'
-    hideInMenu?: boolean
-  }
-}
