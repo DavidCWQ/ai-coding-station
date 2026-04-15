@@ -8,6 +8,8 @@ import com.cwq.project_aicodingstation.common.response.BaseResponse;
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -15,6 +17,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler({MaxUploadSizeExceededException.class, MultipartException.class})
+    public BaseResponse<?> handleMultipartException(Exception e) {
+        log.info("Multipart upload rejected: {}", e.getMessage());
+        return BaseResponse.error(
+                ErrorCode.PARAMS_ERROR.getCode(),
+                "文件过大，请上传不超过 5MB 的图片"
+        );
+    }
 
     @ExceptionHandler(BaseException.class)
     public BaseResponse<?> handleBaseException(BaseException e) {

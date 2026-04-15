@@ -84,6 +84,7 @@
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
+            <version>3.7.16</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -224,7 +225,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
-                            <rules>
+                            <rules>reac
                                 <rule>
                                     <element>BUNDLE</element>
                                     <limits>

@@ -19,6 +19,7 @@ import AppDetail from '@/components/app/AppDetail.vue'
 import DeleteConfirm from '@/components/app/DeleteConfirm.vue'
 import SuccessfulDeploy from '@/components/app/SuccessfulDeploy.vue'
 import { adminDeleteApp } from '@/api/appAdminController'
+import { uploadAppImage, replaceAppImage } from '@/api/appAssetController'
 import { deleteApp, deployApp, downloadAppCode, getApp } from '@/api/appController'
 import { addMessage, createSession, listHistory, listSessions } from '@/api/chatController'
 import { streamChatGenCode } from '@/hooks/useSSEChat'
@@ -69,6 +70,10 @@ const deleteLoading = ref(false)
 /** 预览 iframe 内点选元素（可视化编辑） */
 const visualEditMode = ref(false)
 const selectedElement = ref<VisualEditorSelectedElement | null>(null)
+const uploadedImagePath = ref('')
+const uploadedImageName = ref('')
+const imageUploading = ref(false)
+const imageReplacing = ref(false)
 
 const historyLoading = ref(false)
 const historyInited = ref(false)
@@ -95,6 +100,12 @@ const canViewHistory = computed(() => {
   return Number.isFinite(p) && p >= 99
 })
 const showPreviewPanel = computed(() => historyInited.value && messages.value.length >= 2)
+const selectedIsImage = computed(() => selectedElement.value?.tag === 'img')
+const canReplaceImage = computed(() => canChat.value
+  && selectedIsImage.value
+  && !!uploadedImagePath.value
+  && !imageUploading.value
+  && !imageReplacing.value)
 const formattedCreateTime = computed(() => {
   const t = appVo.value?.createTime
   if (!t) return '—'
@@ -560,6 +571,71 @@ const clearSelectedElement = () => {
   selectedElement.value = null
 }
 
+const clearUploadedImage = () => {
+  uploadedImagePath.value = ''
+  uploadedImageName.value = ''
+}
+
+const onChooseImage = async (file: File) => {
+  if (!canChat.value) {
+    message.warning('亲，无法在别人的作品下上传图片哦~')
+    return
+  }
+  if (!selectedIsImage.value) {
+    message.warning('请先在预览区选中一张图片，再上传附件')
+    return
+  }
+  try {
+    imageUploading.value = true
+    const sid = sessionId.value ? apiLongId(sessionId.value) : undefined
+    const res = await uploadAppImage(apiLongId(appId.value), file, sid)
+    const path = res.data?.data
+    if (!path) {
+      throw new Error('上传成功但未返回图片路径')
+    }
+    uploadedImagePath.value = path
+    uploadedImageName.value = file.name
+    message.success('图片上传成功，点击“替换图片”即可生效')
+  } catch (e) {
+    message.error(getErrorMessage(e, '图片上传失败'))
+  } finally {
+    imageUploading.value = false
+  }
+}
+
+const onReplaceImage = async () => {
+  if (!selectedElement.value || !selectedIsImage.value) {
+    message.warning('请先选中预览中的图片元素')
+    return
+  }
+  if (!uploadedImagePath.value) {
+    message.warning('请先上传图片附件')
+    return
+  }
+  try {
+    imageReplacing.value = true
+    await replaceAppImage({
+      appId: apiLongId(appId.value),
+      newImagePath: uploadedImagePath.value,
+      targetXpath: selectedElement.value.xpath,
+      targetTag: selectedElement.value.tag,
+      targetId: selectedElement.value.id,
+      targetClassList: selectedElement.value.classList,
+      targetTagPath: selectedElement.value.tagPath,
+    })
+    message.success('图片替换成功')
+    if (previewUrl.value) {
+      previewUrl.value = withCacheBust(previewUrl.value.split('?')[0] || previewUrl.value)
+    } else {
+      await tryRestorePreview(false)
+    }
+  } catch (e) {
+    message.error(getErrorMessage(e, '图片替换失败'))
+  } finally {
+    imageReplacing.value = false
+  }
+}
+
 const onVisualInjectFailed = () => {
   visualEditMode.value = false
 }
@@ -571,6 +647,7 @@ watch(appId, async () => {
   previewFailed.value = false
   visualEditMode.value = false
   selectedElement.value = null
+  clearUploadedImage()
   historyInited.value = false
   hasMoreHistory.value = false
   historyCursor.value = {}
@@ -652,8 +729,15 @@ onBeforeUnmount(() => {
                   v-model="inputText"
                   :loading="chatLoading"
                   :disabled="!canChat"
+                  :image-uploading="imageUploading"
+                  :replace-loading="imageReplacing"
+                  :can-replace-image="canReplaceImage"
+                  :selected-image-name="uploadedImageName"
                   @submit="sendUser(inputText)"
                   @cancel="cancelStream"
+                  @choose-image="onChooseImage"
+                  @replace-image="onReplaceImage"
+                  @clear-image="clearUploadedImage"
                 />
               </div>
             </a-tooltip>
