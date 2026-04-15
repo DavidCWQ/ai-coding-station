@@ -29,7 +29,7 @@ export const AGENT_CARDS: AgentCardMeta[] = [
   },
   {
     code: 'life_advisor',
-    title: '问道先生',
+    title: '「问道」',
     description: '儒雅论道、含蓄启思与人生辨析（非医疗诊断）',
     color: 'linear-gradient(135deg, #eefbf7 0%, #e3f8ef 100%)',
   },

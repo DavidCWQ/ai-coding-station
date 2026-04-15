@@ -26,9 +26,9 @@ public enum AgentCodeEnum {
     TAX_ASSISTANT("tax_assistant", "财税助理"),
 
     /**
-     * 问道先生：疑惑解答与启思明理（非医疗诊断/危机热线替代）。
+     * 「问道」：疑惑解答与启思明理（非医疗诊断/危机热线替代）。
      */
-    LIFE_ADVISOR("life_advisor", "问道先生"),
+    LIFE_ADVISOR("life_advisor", "「问道」"),
 
     /**
      * 灵感回声：基于管理员私有语料库的联想与对话（仅管理员账号可用）。

@@ -62,3 +62,18 @@ export async function updateMyProfile(
     ...(options || {}),
   });
 }
+
+/** 此处后端没有提供注释 POST /user/change-password */
+export async function changePassword(
+  body: API.UserChangePasswordRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean>("/user/change-password", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}

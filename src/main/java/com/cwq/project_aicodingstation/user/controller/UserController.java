@@ -4,6 +4,7 @@ import com.cwq.project_aicodingstation.common.response.BaseResponse;
 import com.cwq.project_aicodingstation.common.utils.ResultUtils;
 import com.cwq.project_aicodingstation.user.dto.UserLoginRequest;
 import com.cwq.project_aicodingstation.user.dto.UserRegisterRequest;
+import com.cwq.project_aicodingstation.user.dto.UserChangePasswordRequest;
 import com.cwq.project_aicodingstation.user.dto.UserUpdateRequest;
 import com.cwq.project_aicodingstation.user.service.UserService;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
@@ -83,5 +84,14 @@ public class UserController {
     public BaseResponse<Boolean> updateMyProfile(@RequestBody UserUpdateRequest request,
                                                  HttpServletRequest httpRequest) {
         return ResultUtils.success(userService.updateMyProfile(request, httpRequest));
+    }
+
+    /**
+     * 当前登录用户修改密码
+     */
+    @PostMapping("/change-password")
+    public BaseResponse<Boolean> changePassword(@RequestBody UserChangePasswordRequest request,
+                                                HttpServletRequest httpRequest) {
+        return ResultUtils.success(userService.changePassword(request, httpRequest));
     }
 }

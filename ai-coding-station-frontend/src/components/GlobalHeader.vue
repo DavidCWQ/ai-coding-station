@@ -2,7 +2,7 @@
 import { computed, getCurrentInstance, h, onBeforeUnmount, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import type { MenuProps } from 'ant-design-vue'
-import { LogoutOutlined, UserOutlined } from '@ant-design/icons-vue'
+import { LockOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons-vue'
 
 import UserAvatar from '@/components/UserAvatar.vue'
 import { appMenu, type AppMenuItem } from '@/config/menu'
@@ -54,7 +54,12 @@ const userMenuItems = computed<MenuProps['items']>(() => [
   {
     key: 'profile',
     icon: () => h(UserOutlined),
-    label: '个人主页',
+    label: '用户主页',
+  },
+  {
+    key: 'change-password',
+    icon: () => h(LockOutlined),
+    label: '修改密码',
   },
   {
     key: 'logout',
@@ -92,6 +97,10 @@ const onUserMenuClick: MenuProps['onClick'] = async (info) => {
   const key = String(info.key)
   if (key === 'profile') {
     await router.push('/user/profile')
+    return
+  }
+  if (key === 'change-password') {
+    await router.push('/user/change-password')
     return
   }
   if (key === 'logout') {
@@ -184,6 +193,7 @@ onBeforeUnmount(() => {
   gap: 10px;
   min-width: 200px;
   color: rgba(0, 0, 0, 0.88);
+  text-decoration: none;
 }
 
 .global-header__logo {
@@ -200,6 +210,15 @@ onBeforeUnmount(() => {
 .global-header__menu {
   flex: 1;
   min-width: 0;
+}
+
+.global-header__menu :deep(.ant-menu-horizontal) {
+  border-bottom: none;
+}
+
+.global-header__menu :deep(.ant-menu-horizontal > .ant-menu-item::after),
+.global-header__menu :deep(.ant-menu-horizontal > .ant-menu-submenu::after) {
+  border-bottom: none;
 }
 
 .global-header__right {

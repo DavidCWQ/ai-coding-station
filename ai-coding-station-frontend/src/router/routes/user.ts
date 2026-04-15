@@ -7,13 +7,36 @@ export const userRoutes: RouteRecordRaw[] = [
     path: '/user/login',
     name: 'user-login',
     component: () => import('@/views/user/login.vue'),
-    meta: { title: '用户登录', auth: false, layout: 'blank', access: ACCESS_ENUM.NOT_LOGIN },
+    meta: {
+      title: '用户登录',
+      auth: false,
+      layout: 'blank',
+      showHeader: true,
+      access: ACCESS_ENUM.NOT_LOGIN,
+    },
   },
   {
     path: '/user/register',
     name: 'user-register',
     component: () => import('@/views/user/register.vue'),
-    meta: { title: '用户注册', auth: false, layout: 'blank', access: ACCESS_ENUM.NOT_LOGIN },
+    meta: {
+      title: '用户注册',
+      auth: false,
+      layout: 'blank',
+      showHeader: true,
+      access: ACCESS_ENUM.NOT_LOGIN,
+    },
+  },
+  {
+    path: '/user/change-password',
+    name: 'user-change-password',
+    component: () => import('@/views/user/changePassword.vue'),
+    meta: {
+      title: '修改密码',
+      layout: 'blank',
+      showHeader: true,
+      access: ACCESS_ENUM.USER,
+    },
   },
   {
     path: '/user/profile',

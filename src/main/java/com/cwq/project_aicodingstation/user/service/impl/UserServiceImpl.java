@@ -1,8 +1,10 @@
 package com.cwq.project_aicodingstation.user.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
+import com.cwq.project_aicodingstation.user.dto.UserChangePasswordRequest;
 import com.cwq.project_aicodingstation.user.dto.UserLoginRequest;
 import com.cwq.project_aicodingstation.user.dto.UserRegisterRequest;
 import com.cwq.project_aicodingstation.user.dto.UserUpdateRequest;
@@ -15,6 +17,7 @@ import com.cwq.project_aicodingstation.user.vo.UserVO;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,6 +97,41 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
                 ErrorCode.SYSTEM_ERROR, "更新用户资料失败"
         );
 
+        return true;
+    }
+
+    @Override
+    public boolean changePassword(UserChangePasswordRequest request, HttpServletRequest httpRequest) {
+        BusinessAssert.notNull(request, ErrorCode.PARAMS_MISSING, "修改密码请求为空");
+        BusinessAssert.failIf(
+                StrUtil.hasBlank(request.getOldPassword(), request.getNewPassword(), request.getCheckNewPassword()),
+                ErrorCode.PARAMS_MISSING, "密码参数不能为空"
+        );
+        BusinessAssert.failIf(request.getNewPassword().length() < 8,
+                ErrorCode.PARAMS_INVALID, "新密码至少8位");
+        BusinessAssert.equals(request.getNewPassword(), request.getCheckNewPassword(),
+                ErrorCode.PARAMS_ERROR, "两次新密码不一致");
+
+        SysUser current = sysUserService.getLoginUser(httpRequest);
+
+        BusinessAssert.requireTrue(
+                org.springframework.security.crypto.bcrypt.BCrypt.checkpw(
+                        request.getOldPassword(), current.getUserPassword()
+                ),
+                ErrorCode.PARAMS_ERROR,
+                "原密码错误"
+        );
+
+        current.setUserPassword(sysUserService.getEncryptPassword(request.getNewPassword()));
+        current.setUpdateTime(LocalDateTime.now());
+        BusinessAssert.requireTrue(sysUserService.updateById(current),
+                ErrorCode.SYSTEM_ERROR, "修改密码失败");
+
+        // 修改密码成功后，作废当前 HTTP 会话，避免旧会话继续携带登录态，强制用户重新登录
+        HttpSession session = httpRequest.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
         return true;
     }
 
