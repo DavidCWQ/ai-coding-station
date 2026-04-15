@@ -8,19 +8,19 @@
 
 ### 目录
 
-- [1. 项目简介](#readme-1)
-- [2. 功能特性](#readme-2)
-- [3. 技术栈与整体架构](#readme-3)
-- [4. 运行与部署](#readme-4)
-  - [4.1 本地开发（推荐）](#readme-4-1)
-  - [4.2 使用 Docker Compose 一键启动（本地 / 测试环境）](#readme-4-2)
-  - [4.3 生产部署（compose.prod.yaml）](#readme-4-3)
-- [5. 环境变量与配置说明](#readme-5)
-- [6. 主要功能模块说明](#readme-6)
-- [7. 常见问题（FAQ）](#readme-7)
-- [8. 开发规范与约定](#readme-8)
-- [9. 贡献指南](#readme-9)
-- [X. 许可证与鸣谢](#readme-x)
+1. [项目简介](#readme-1)
+2. [功能特性](#readme-2)
+3. [技术栈与整体架构](#readme-3)
+4. [运行与部署](#readme-4)
+  - [本地开发（推荐）](#readme-4-1)
+  - [使用 Docker Compose 一键启动（测试环境）](#readme-4-2)
+  - [生产部署（compose.prod.yaml）](#readme-4-3)
+5. [环境变量与配置说明](#readme-5)
+6. [主要功能模块说明](#readme-6)
+7. [常见问题（FAQ）](#readme-7)
+8. [开发规范与约定](#readme-8)
+9. [贡献指南](#readme-9)
+10. [许可证与鸣谢](#readme-x)
 
 ---
 
@@ -175,7 +175,7 @@ Vite 默认 `http://localhost:5876`。联调建议：`VITE_APP_API_BASE_URL=/api
 
 <a id="readme-4-2"></a>
 
-#### 4.2 使用 Docker Compose 一键启动（本地 / 测试环境）
+#### 4.2 使用 Docker Compose 一键启动（测试环境）
 
 根目录已提供标准的 `compose.yaml`，主要包含：
 
