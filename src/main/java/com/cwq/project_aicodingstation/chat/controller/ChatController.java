@@ -14,6 +14,7 @@ import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.exception.BaseException;
 import com.cwq.project_aicodingstation.common.request.DeleteRequest;
 import com.cwq.project_aicodingstation.common.response.BaseResponse;
+import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
 import com.cwq.project_aicodingstation.common.utils.ResultUtils;
 import com.cwq.project_aicodingstation.user.constant.UserConstant;
 import com.cwq.project_aicodingstation.user.service.UserService;
@@ -51,10 +52,10 @@ public class ChatController {
         try {
             return userService.getUserLoginVO(request);
         } catch (BaseException e) {
-            if (e.getCode() == ErrorCode.NOT_LOGIN.getCode()) {
-                return null;
-            }
-            throw e;
+            BusinessAssert.equals(e.getCode(), ErrorCode.NOT_LOGIN.getCode(),
+                    ErrorCode.BUSINESS_ERROR, "登陆状态异常"
+            );
+            return null;
         }
     }
 

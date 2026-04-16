@@ -25,6 +25,6 @@ export const appRoutes: RouteRecordRaw[] = [
     path: '/app/:appId',
     name: 'app-detail',
     component: () => import('@/views/app/AppDetailPage.vue'),
-    meta: { layout: 'blank', title: '应用对话', access: ACCESS_ENUM.USER },
+    meta: { layout: 'blank', title: '应用对话', access: ACCESS_ENUM.USER, hideFooter: true },
   },
 ]

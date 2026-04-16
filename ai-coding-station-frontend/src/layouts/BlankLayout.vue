@@ -7,6 +7,7 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
 
 const route = useRoute()
 const showHeader = computed(() => route.meta?.showHeader === true)
+const hideFooter = computed(() => route.meta?.hideFooter === true)
 </script>
 
 <template>
@@ -15,7 +16,7 @@ const showHeader = computed(() => route.meta?.showHeader === true)
     <div class="blank-layout__main">
       <router-view />
     </div>
-    <GlobalFooter />
+    <GlobalFooter v-if="!hideFooter" />
   </div>
 </template>
 

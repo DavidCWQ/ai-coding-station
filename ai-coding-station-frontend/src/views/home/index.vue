@@ -48,13 +48,12 @@ const roadmap = [
   <div class="home">
     <section class="home__hero" aria-labelledby="home-hero-title">
       <h1 id="home-hero-title" class="home__title">
-        记录你的 AI 想法，
-        <span class="home__title-accent">构建并测试 AI 应用</span>
+        实现你的灵感，
+        <span class="home__title-accent">对话式速成 AI 应用</span>
       </h1>
       <p class="home__eyebrow">AI Coding Station</p>
       <p class="home__lead">
-        面向技术爱好者的 AI 应用工坊，适合日常开发记录、原型试验与学习分享。
-        从创建、编辑，到对话、部署，流程连贯、界面简洁，让你专注在 AI 应用上。
+        通过对话生成、修改页面，配合图片素材、一键部署，帮你在几分钟内，完成可演示、可上线的原型作品。
       </p>
       <div class="home__cta">
         <RouterLink to="/app" custom v-slot="{ navigate }">

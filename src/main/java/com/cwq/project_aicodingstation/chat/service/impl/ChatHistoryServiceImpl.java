@@ -60,7 +60,7 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
      * 应用满足历史只读权限（管理员 / 应用创建者 / 精选应用），且会话属于该应用。
      */
     private void assertHistoryReadable(Long appId, Long sessionId, UserLoginVO userVO) {
-        resourceAuthHelper.requireAppHistoryReadable(appId, userVO);
+        resourceAuthHelper.requireAppReadable(appId, userVO);
         ChatSession session = chatSessionService.getById(sessionId);
         BusinessAssert.notNull(session, ErrorCode.NOT_FOUND, "会话不存在");
         BusinessAssert.equals(session.getAppId(), appId, ErrorCode.PARAMS_ERROR, "会话与应用不匹配");
