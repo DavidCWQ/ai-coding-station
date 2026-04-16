@@ -37,46 +37,38 @@ public class ResourceAuthHelper {
     }
 
     /**
-     * 校验应用存在且当前用户为应用创建者或管理员，并返回应用实体（避免调用方重复查库）。
+     * 校验应用存在且当前用户为应用创建者或管理员。
      *
      * @param appId  应用 id
      * @param userVO 当前用户
-     * @return 应用
      */
-    public App requireAppReadable(Long appId, UserLoginVO userVO) {
+    public void requireAppEditable(Long appId, UserLoginVO userVO) {
         requireLogin(userVO);
         BusinessAssert.notNull(appId, ErrorCode.PARAMS_MISSING, "应用 id 为空");
         QueryWrapper qw = QueryWrapper.create();
         qw.select("id", "user_id").eq("id", appId);
         App app = appMapper.selectOneByQuery(qw);
         BusinessAssert.notNull(app, ErrorCode.NOT_FOUND, "应用不存在");
-        requireOwnerOrAdmin(userVO, app.getUserId(), "无权限访问该应用");
-        return app;
+        requireOwnerOrAdmin(userVO, app.getUserId(), "无权限编辑该应用");
     }
 
     /**
-     * 历史只读场景下的应用访问校验：
-     * 未登录仅可读取「精选应用」；已登录则管理员、应用创建者或精选应用可读取。
+     * 校验应用可访问：「精选应用」任何情况均可读取；
+     * 登录后管理员可读取全部应用，应用创建者可读取所创建的应用；并返回应用实体（避免调用方重复查库）。
      *
      * @param appId  应用 id
      * @param userVO 当前用户
-     * @return 应用
+     * @return 应用实体（仅含 id / userId / priority 等基础字段）
      */
-    public App requireAppHistoryReadable(Long appId, UserLoginVO userVO) {
+    public App requireAppReadable(Long appId, UserLoginVO userVO) {
         BusinessAssert.notNull(appId, ErrorCode.PARAMS_MISSING, "应用 id 为空");
         QueryWrapper qw = QueryWrapper.create();
         qw.select("id", "user_id", "priority").eq("id", appId);
         App app = appMapper.selectOneByQuery(qw);
         BusinessAssert.notNull(app, ErrorCode.NOT_FOUND, "应用不存在");
-
         boolean featured = app.getPriority() != null && app.getPriority() >= AppConstant.GOOD_APP_PRIORITY;
-        if (userVO == null) {
-            BusinessAssert.requireTrue(featured, ErrorCode.NO_PERMISSION, "无权限访问该应用");
-            return app;
-        }
-        boolean admin = UserConstant.ADMIN_ROLE.equals(userVO.getUserRole());
-        boolean owner = app.getUserId() != null && app.getUserId().equals(userVO.getId());
-        BusinessAssert.requireTrue(admin || owner || featured, ErrorCode.NO_PERMISSION, "无权限访问该应用");
+        if (featured) { return app; } //「精选应用」任何情况均可读取
+        requireOwnerOrAdmin(userVO, app.getUserId(), "无权限访问该应用");
         return app;
     }
 

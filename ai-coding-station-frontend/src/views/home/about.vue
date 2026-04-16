@@ -8,7 +8,7 @@ import { BulbOutlined, HeartOutlined, TeamOutlined } from '@ant-design/icons-vue
       <p class="about__eyebrow">关于我们</p>
       <h1 class="about__title">AI Coding Station</h1>
       <p class="about__tagline">
-        这里是个人 AI 应用开发与测试的记录台，也是面向技术爱好者的开放实验场。
+        这里是迭代 AI 网页应用的全栈实践工作台，也是面向创作者的开放试验场。
       </p>
     </header>
 
@@ -16,15 +16,14 @@ import { BulbOutlined, HeartOutlined, TeamOutlined } from '@ant-design/icons-vue
       <section class="about__block" aria-labelledby="about-mission">
         <h2 id="about-mission" class="about__heading">我们在做什么</h2>
         <p class="about__text">
-          AI Coding Station
-          面向希望系统性记录实践、快速验证想法的技术爱好者：在<strong>应用工坊</strong
-          >里搭建与发现应用，用直观的编辑与部署流程把原型推到可用状态，再通过对话与 AI 协同完成日常任务。
+          AI Coding Station 面向个人创作者、小团队与技术爱好者：
+          在 <strong>应用工坊</strong> 里，用对话快速生成网页应用，并支持编辑、图片上传与一键部署，让原型从「能看」走到「能用、能分享」。
         </p>
         <p class="about__text">
-          本站以「个人 AI 应用开发测试记录」为核心定位，同时作为技术分享博客，主要发布编程学习笔记与开源项目经验，不含企业信息，也不承载商业推广。
+          本站以「AI 应用开发测试记录台」为核心定位，是可持续迭代的工程实验场，也会逐步作为个人技术博客，分享学习笔记与开源项目经验。
         </p>
         <p class="about__text">
-          平台目前由个人在业余时间持续维护，既是 AI 工具台，也是尝试新点子和新工作流的实验场。财税助理、「问道」等方向正在规划中，并将根据实践反馈稳步迭代。
+          项目由个人维护，主要用于学习、演示与技术沉淀；在不追求商业化的前提下，持续以工程化标准完善体验与稳定性，并根据实践反馈稳步拓展更多方向。
         </p>
       </section>
 

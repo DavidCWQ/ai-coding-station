@@ -67,7 +67,7 @@ public class AppAssetServiceImpl implements AppAssetService {
 
     @Override
     public String uploadImage(Long appId, Long sessionId, MultipartFile file, UserLoginVO userVO) {
-        resourceAuthHelper.requireAppReadable(appId, userVO);
+        resourceAuthHelper.requireAppEditable(appId, userVO);
 
         App app = appService.getById(appId);
         BusinessAssert.notNull(app, ErrorCode.NOT_FOUND, "应用不存在");
@@ -212,7 +212,7 @@ public class AppAssetServiceImpl implements AppAssetService {
 
     @Override
     public boolean replaceImage(AppReplaceImageRequest req, UserLoginVO userVO) {
-        resourceAuthHelper.requireAppReadable(req.getAppId(), userVO);
+        resourceAuthHelper.requireAppEditable(req.getAppId(), userVO);
 
         App app = appService.getById(req.getAppId());
         BusinessAssert.notNull(app, ErrorCode.NOT_FOUND, "应用不存在");

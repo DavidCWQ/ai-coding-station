@@ -15,7 +15,6 @@ export const agentRoutes = [
       layout: 'basic',
       title: '智能体对话',
       access: ACCESS_ENUM.NOT_LOGIN,
-      hideFooter: true,
       fullWidth: true,
       noContentCard: true,
     },
