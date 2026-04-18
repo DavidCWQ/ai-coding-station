@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { GithubOutlined } from '@ant-design/icons-vue'
 import {
   SITE_COPYRIGHT_NAME,
   SITE_GITHUB_HANDLE,
   SITE_GITHUB_URL,
   SITE_ICP_TEXT,
+  SITE_ICP_URL,
+  SITE_PSB_TEXT,
+  SITE_PSB_URL,
 } from '@/constants/siteFooter'
 
 const year = new Date().getFullYear()
@@ -25,20 +29,29 @@ const year = new Date().getFullYear()
           rel="noopener noreferrer"
           class="global-footer__link"
         >
+          <GithubOutlined class="global-footer__github-icon" aria-hidden="true" />
           {{ SITE_GITHUB_HANDLE }}
         </a>
       </span>
       <span aria-hidden="true" class="global-footer__sep"> ｜ </span>
       <a
         class="global-footer__link"
-        href="https://beian.miit.gov.cn/"
+        :href="SITE_ICP_URL"
         target="_blank"
         rel="noopener noreferrer"
       >
         {{ SITE_ICP_TEXT }}
       </a>
       <span aria-hidden="true" class="global-footer__sep"> ｜ </span>
-      <span class="global-footer__muted">沪公网安备XXXXXXXXXXXX号（公安联网备案审核中，占位）</span>
+      <a
+        class="global-footer__link global-footer__muted"
+        :href="SITE_PSB_URL"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <img src="/logo_police.png" alt="" class="global-footer__police-icon" />
+        {{ SITE_PSB_TEXT }}
+      </a>
     </p>
   </a-layout-footer>
 </template>
@@ -75,7 +88,25 @@ const year = new Date().getFullYear()
   text-decoration: none;
 }
 
+.global-footer__link.global-footer__muted {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.global-footer__github-icon {
+  margin-bottom: 5px;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
 .global-footer__link:hover {
   text-decoration: underline;
+}
+
+.global-footer__police-icon {
+  width: auto;
+  height: 18px;
+  margin-right: 5px;
+  margin-bottom: 3px;
+  vertical-align: middle;
 }
 </style>
