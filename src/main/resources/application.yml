@@ -78,14 +78,14 @@ knife4j:
     language: en
 
 # -------------- AI Service API ---------------
-# LangChain4j 接 DeepSeek Chat；api-key 由不同 profile 注入
+# LangChain4j 接 DeepSeek V4；api-key 由不同 profile 注入
 langchain4j:
   open-ai:
     chat-model:
       base-url: https://api.deepseek.com
       # api-key: <Your API Key>
-      model-name: deepseek-chat
-      max-tokens: 8192
+      model-name: deepseek-v4-flash
+      max-tokens: 32768
       log-requests: true
       log-responses: true
       response-format: json_object
@@ -93,8 +93,8 @@ langchain4j:
     streaming-chat-model:
       base-url: https://api.deepseek.com
       # api-key: <Your API Key>
-      model-name: deepseek-chat
-      max-tokens: 8192
+      model-name: deepseek-v4-flash
+      max-tokens: 32768
       log-requests: true
       log-responses: true
 
