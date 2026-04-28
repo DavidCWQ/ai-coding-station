@@ -51,8 +51,8 @@ docker compose -f compose.yaml up -d mysql redis nginx postgres-rag
   - `DEEPSEEK_API_KEY`：DeepSeek 接口调用所需的 API Key。
 - **Spring 中相关配置（`application.yml`）**
   - `langchain4j.open-ai.chat-model.base-url`：OpenAI 兼容接口的 Base URL（默认 `https://api.deepseek.com`）。
-  - `langchain4j.open-ai.chat-model.model-name`：对话模型名称（默认 `deepseek-chat`）。
-  - `langchain4j.open-ai.chat-model.max-tokens`：最大输出长度限制（默认 `8192`）。
+- `langchain4j.open-ai.chat-model.model-name`：对话模型名称（默认 `deepseek-v4-flash`，旧名 `deepseek-chat` 为兼容映射）。
+- `langchain4j.open-ai.chat-model.max-tokens`：最大输出长度限制（默认 `384000`，对应 DeepSeek V4 最大输出长度）。
   - `langchain4j.open-ai.streaming-chat-model.*`：流式对话模型配置。
 - **生产覆盖（`application-prod.yml`）**
   - 将 `chat-model.api-key` 与 `streaming-chat-model.api-key` 绑定到 `DEEPSEEK_API_KEY` 环境变量。
