@@ -54,11 +54,13 @@ public class AdminUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> im
         BusinessAssert.notNull(request,
                 ErrorCode.PARAMS_MISSING, "管理员删除请求为空"
         );
-        BusinessAssert.requireTrue(request.getId() <= 0,
-                ErrorCode.PARAMS_ERROR  , "管理员删除请求中id不合法"
+        Long id = request.getId();
+        BusinessAssert.notNull(id, ErrorCode.PARAMS_ERROR, "管理员删除请求中id不合法");
+        BusinessAssert.requireTrue(id > 0,
+                ErrorCode.PARAMS_ERROR, "管理员删除请求中id不合法"
         );
 
-        return sysUserService.removeById(request.getId());
+        return sysUserService.removeById(id);
     }
 
     @Override
@@ -85,7 +87,8 @@ public class AdminUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> im
 
     @Override
     public SysUser getById(Long id) {
-        BusinessAssert.requireTrue(id <= 0,
+        BusinessAssert.notNull(id, ErrorCode.PARAMS_ERROR, "管理员获取id不合法");
+        BusinessAssert.requireTrue(id > 0,
                 ErrorCode.PARAMS_ERROR, "管理员获取id不合法"
         );
         SysUser user = sysUserService.getById(id);
