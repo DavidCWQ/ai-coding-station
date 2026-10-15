@@ -39,6 +39,7 @@ build/
 /src/main/resources/application-local.yml
 /src/main/resources/application-local.properties
 /nginx/ssl/*
+/certbot/
 .env
 
 ### Others ###

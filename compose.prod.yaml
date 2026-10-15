@@ -114,13 +114,41 @@ services:
       frontend:
         condition: service_completed_successfully
     ports:
+      - "80:80"
       - "8088:80"
       - "443:443"
     volumes:
       - ./tmp/code_deploy:/usr/share/nginx/html
       - ./tmp/covers:/usr/share/nginx/static/covers
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+    # 默认镜像 CMD 是 nginx；这里加上定期 reload，避免 Certbot 续期后长时间没有发版仍拿着旧证
+    command:
+      - /bin/sh
+      - -c
+      - while :; do sleep 21600; nginx -s reload; done & exec nginx -g 'daemon off;'
+    restart: unless-stopped
+
+  # 仅负责续期；首次申请由 scripts/ssl-certbot.sh 在 deploy 里一次性执行
+  certbot:
+    image: certbot/certbot
+    container_name: certbot-renew
+    depends_on:
+      nginx:
+        condition: service_started
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        trap exit TERM
+        while :; do
+          sleep 12h & wait $$!
+          certbot renew --webroot -w /var/www/certbot --quiet || true
+        done
     restart: unless-stopped
 
   backend:
