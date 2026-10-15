@@ -136,6 +136,15 @@ docker compose -f compose.yaml up -d mysql redis nginx postgres-rag
 - Nginx 的静态目录与 `tmp/code_deploy` 等路径一致；
 - 外部访问域名或 IP 与这些配置匹配。
 
+生产 HTTPS 使用 Let’s Encrypt（`scripts/ssl-certbot.sh`，由 `deploy-prod.sh` 调用）：
+
+- 服务器安全组 / 防火墙放行 **80** 和 **443**（HTTP-01 校验必须走 80）；
+- 确认宿主机 80 端口未被其它进程占用（`compose.prod.yaml` 现已映射 `80:80`）；
+- 在服务器 `.env` 中设置 `CERTBOT_EMAIL`（到期提醒；不设则无邮箱注册）；
+- 证书写在服务器 `certbot/`（已 gitignore），不要提交仓库；
+- `www.davidcwq.online` 若未解析到本机，可设 `CERTBOT_DOMAINS=davidcwq.online`；
+- 调试申请可设 `CERTBOT_STAGING=1`，避免打满正式额度。
+
 #### 5.2 注册与用户开关
 
 常见配置：
