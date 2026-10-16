@@ -233,7 +233,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
-                            <rules>reac
+                            <rules>
                                 <rule>
                                     <element>BUNDLE</element>
                                     <limits>

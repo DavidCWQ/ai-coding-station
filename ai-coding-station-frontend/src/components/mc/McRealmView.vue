@@ -89,8 +89,8 @@ const lampClass = computed(() => {
   }
 })
 
-const biome = (name: string) => {
-  const palettes = [
+const biome = (name: string): [string, string, string] => {
+  const palettes: Array<[string, string, string]> = [
     ['#3f7a32', '#6b4a24', '#8ec5ff'],
     ['#245c3a', '#163024', '#4f7a48'],
     ['#c9b06a', '#8a6b32', '#f0dd9a'],
@@ -100,7 +100,12 @@ const biome = (name: string) => {
   ]
   let h = 0
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
-  return palettes[h % palettes.length]
+  return palettes[h % palettes.length] ?? ['#3f7a32', '#6b4a24', '#8ec5ff']
+}
+
+const artBackground = (folder: string) => {
+  const [grass, dirt, sky] = biome(folder)
+  return `linear-gradient(180deg, ${sky} 0 38%, ${grass} 38% 52%, ${dirt} 52%)`
 }
 
 const fmtSize = (n?: number) => {
@@ -298,9 +303,7 @@ onUnmounted(() => {
             <div
               class="world-card__art"
               :style="{
-                background: w.hasIcon
-                  ? undefined
-                  : `linear-gradient(180deg, ${biome(w.folder)[2]} 0 38%, ${biome(w.folder)[0]} 38% 52%, ${biome(w.folder)[1]} 52%)`,
+                background: w.hasIcon ? undefined : artBackground(w.folder),
               }"
             >
               <img v-if="w.hasIcon && w.iconUrl" :src="w.iconUrl" :alt="w.displayName" />
