@@ -185,12 +185,15 @@ services:
       # DashScope 嵌入与 RAG 库密码（RAG 固定开启）
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       POSTGRES_RAG_PASSWORD: ${POSTGRES_RAG_PASSWORD:-rag_secret}
+      MC_BEDROCK_ENABLED: ${MC_BEDROCK_ENABLED:-false}
+      MC_BEDROCK_HOME: /opt/bedrock
     ports:
       - "8142:8142"
     volumes:
       - ./tmp/code_output:/app/tmp/code_output
       - ./tmp/code_deploy:/app/tmp/code_deploy
       - ./tmp/covers:/app/tmp/covers
+      - ${MC_BEDROCK_HOST_DIR:-/root/mc-bedrock-server}:/opt/bedrock
 
   # 前端构建服务：只负责将 ai-coding-station-frontend 构建产物复制到 tmp/code_deploy
   frontend:

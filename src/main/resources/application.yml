@@ -69,6 +69,8 @@ springdoc:
       packages-to-scan: com.cwq.project_aicodingstation.chat.controller
     - group: 'agent'
       packages-to-scan: com.cwq.project_aicodingstation.agent.controller
+    - group: 'mc'
+      packages-to-scan: com.cwq.project_aicodingstation.mc.controller
 
 # --------------- API doc tools ---------------
 # Knife4j Swagger 增强 UI 配置
@@ -147,3 +149,10 @@ app:
     script-path: ${user.dir}/scripts/screenshot.js
     output-dir: ${user.dir}/tmp/covers
     base-url: http://localhost:8088/covers
+
+# 基岩服管理台：页面在本站，进程仍在独立的 mc_bedrock 目录
+mc:
+  bedrock:
+    enabled: ${MC_BEDROCK_ENABLED:true}
+    home: ${MC_BEDROCK_HOME:${user.dir}/../mc_bedrock}
+    exec-scripts: ${MC_BEDROCK_EXEC_SCRIPTS:true}

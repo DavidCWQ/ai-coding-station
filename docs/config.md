@@ -145,6 +145,13 @@ docker compose -f compose.yaml up -d mysql redis nginx postgres-rag
 - `www.davidcwq.online` 若未解析到本机，可设 `CERTBOT_DOMAINS=davidcwq.online`；
 - 调试申请可设 `CERTBOT_STAGING=1`，避免打满正式额度。
 
+网站上的基岩服台账（`/admin/mc`、`/mc`）不把 Minecraft 进程并进本仓库 Compose。生产若要启用，在服务器 `.env` 写：
+
+- `MC_BEDROCK_ENABLED=true`
+- `MC_BEDROCK_HOST_DIR=/root/mc-bedrock-server`（你服务器上的实际路径）
+
+并在该目录执行 `scripts/install-ops-worker-cron.sh`，让网站写入的 `ops/inbox` 被宿主机脚本消费。
+
 #### 5.2 注册与用户开关
 
 常见配置：

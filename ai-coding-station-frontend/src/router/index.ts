@@ -9,6 +9,7 @@ import { appRoutes } from './routes/app'
 import { aiRoutes } from './routes/ai'
 import { agentRoutes } from './routes/agent'
 import { commonRoutes } from './routes/common'
+import { mcRoutes } from './routes/mc'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -18,6 +19,7 @@ const router = createRouter({
     ...adminRoutes,
     ...appRoutes,
     ...agentRoutes,
+    ...mcRoutes,
     ...aiRoutes,
     ...commonRoutes,
   ],

@@ -190,6 +190,14 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <configuration>
+                    <!-- Windows 上 spring-boot:run / DevTools 常锁住 target，多试几次再失败 -->
+                    <retryOnError>true</retryOnError>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
@@ -225,7 +233,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
-                            <rules>reac
+                            <rules>
                                 <rule>
                                     <element>BUNDLE</element>
                                     <limits>
