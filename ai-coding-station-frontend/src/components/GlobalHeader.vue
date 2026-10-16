@@ -29,7 +29,10 @@ const visibleMenuItems = computed(() => {
     if (!leaf) return false
     if (leaf.meta.hideInMenu) return false
     const need = leaf.meta.access ?? ACCESS_ENUM.NOT_LOGIN
-    return checkAccess(loginUser, need)
+    if (!checkAccess(loginUser, need)) return false
+    // 管理员走完整台账，不必再占一个访客入口
+    if (item.key === 'mc' && loginUser?.userRole === 'admin') return false
+    return true
   })
 })
 
@@ -37,6 +40,8 @@ const selectedKeys = computed(() => {
   const path = route.value.path
   const match = visibleMenuItems.value.find((m) => {
     if (m.path === path) return true
+    if (m.path === '/admin/mc') return path.startsWith('/admin/mc')
+    if (m.path === '/mc') return path === '/mc' || path.startsWith('/mc/')
     if (m.path !== '/agents') return false
     return path.startsWith('/agents')
   })

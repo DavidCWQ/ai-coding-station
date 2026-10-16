@@ -56,6 +56,12 @@ app:
     # 路径和输出目录与 application.yml 相同，无需重复覆盖
     base-url: ${PUBLIC_COVERS_BASE:}/covers
 
+mc:
+  bedrock:
+    enabled: ${MC_BEDROCK_ENABLED:false}
+    home: ${MC_BEDROCK_HOME:/opt/bedrock}
+    exec-scripts: false
+
 knife4j:
   basic:
     username: ${KNIFE_USERNAME:}

@@ -9,6 +9,7 @@ import * as appController from "./appController";
 import * as appAdminController from "./appAdminController";
 import * as agentController from "./agentController";
 import * as staticResourceController from "./staticResourceController";
+import * as mcBedrockController from "./mcBedrockController";
 export default {
   adminUserController,
   userController,
@@ -17,4 +18,5 @@ export default {
   appAdminController,
   agentController,
   staticResourceController,
+  mcBedrockController,
 };
