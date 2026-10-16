@@ -115,7 +115,13 @@ const fmtSize = (n?: number) => {
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
 
-const fmtTime = (ms?: number) => (ms ? dayjs(ms).format('YYYY-MM-DD HH:mm') : '尚无记录')
+const fmtTime = (ms?: number) => {
+  if (ms == null || ms === 0) return '尚无记录'
+  const n = Math.abs(ms) < 1_000_000_000_000 ? ms * 1000 : ms
+  const d = dayjs(n)
+  if (!d.isValid() || d.year() < 2015 || d.year() > 2100) return '尚无记录'
+  return d.format('YYYY-MM-DD HH:mm')
+}
 
 const applyDrafts = (data: McConsoleVO) => {
   const s = data.settings
@@ -307,7 +313,11 @@ onUnmounted(() => {
               }"
             >
               <img v-if="w.hasIcon && w.iconUrl" :src="w.iconUrl" :alt="w.displayName" />
-              <span v-if="w.current" class="world-card__now">运行中</span>
+              <span
+                v-if="w.current"
+                class="world-card__now"
+                :class="{ 'is-asleep': runPhase !== 'RUNNING' }"
+              >{{ runPhase === 'RUNNING' ? '运行中' : '已沉睡' }}</span>
             </div>
             <div class="world-card__soil">
               <h3>{{ w.displayName }}</h3>
@@ -658,6 +668,9 @@ onUnmounted(() => {
   padding: 2px 8px;
   letter-spacing: 0.08em;
   font-size: 12px;
+}
+.world-card__now.is-asleep {
+  color: #c4b8a4;
 }
 
 .world-card__soil {

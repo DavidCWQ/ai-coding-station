@@ -161,4 +161,33 @@ class McBedrockServiceImplTest {
         assertTrue(service.downloadWorld("TestWorld").exists());
         assertThrows(BusinessException.class, () -> service.worldIcon("TestWorld", true));
     }
+
+    @Test
+    void normalizeEpochMsRejectsYear1793AndPromotesSeconds() {
+        assertEquals(0L, McBedrockServiceImpl.normalizeEpochMs(-5_586_000_000_000L));
+        assertEquals(1_720_000_000_000L, McBedrockServiceImpl.normalizeEpochMs(1_720_000_000L));
+        assertEquals(1_720_000_000_000L, McBedrockServiceImpl.normalizeEpochMs(1_720_000_000_000L));
+    }
+
+    @Test
+    void brokenRuntimeJsonWithRunningTrueStillShowsRunning() throws Exception {
+        Path runtime = home.resolve("ops").resolve("runtime.json");
+        Files.createDirectories(runtime.getParent());
+        Files.writeString(runtime,
+                "{\"running\":true,\"phase\":\"RUNNING\",\"joinHint\":\"\"My World v6.0\"\"}\n",
+                StandardCharsets.UTF_8);
+        McConsoleVO admin = service.adminConsole();
+        assertTrue(admin.isRunning());
+        assertEquals("RUNNING", admin.getRunPhase());
+    }
+
+    @Test
+    void backupTimePrefersFilenameStamp() throws Exception {
+        Path backups = home.resolve("backups");
+        Files.createDirectories(backups);
+        Files.writeString(backups.resolve("worlds-20261016-214800.tar.gz"), "x", StandardCharsets.UTF_8);
+        long ms = service.adminConsole().getBackups().getFirst().getCreatedEpochMs();
+        assertEquals(2026, java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.of("Asia/Shanghai")).getYear());
+        assertEquals(16, java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.of("Asia/Shanghai")).getDayOfMonth());
+    }
 }
