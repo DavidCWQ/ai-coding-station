@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -38,6 +37,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -46,17 +49,27 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class McBedrockServiceImpl implements McBedrockService {
+
+    private static final Pattern BACKUP_STAMP = Pattern.compile("(\\d{8})-(\\d{6})");
+    private static final DateTimeFormatter BACKUP_STAMP_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final ZoneId SHANGHAI = ZoneId.of("Asia/Shanghai");
 
     private final McBedrockProperties properties;
     private final ObjectMapper objectMapper;
+
+    public McBedrockServiceImpl(McBedrockProperties properties, ObjectMapper objectMapper) {
+        this.properties = properties;
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public McConsoleVO visitorConsole() {
@@ -413,7 +426,7 @@ public class McBedrockServiceImpl implements McBedrockService {
                         .displayName(display)
                         .current(isCurrent)
                         .sizeBytes(dirSize(dir))
-                        .lastModifiedEpochMs(Files.getLastModifiedTime(dir).toMillis())
+                        .lastModifiedEpochMs(worldEpochMs(dir))
                         .hasIcon(hasIcon)
                         .iconUrl(iconUrl)
                         .build());
@@ -523,7 +536,7 @@ public class McBedrockServiceImpl implements McBedrockService {
                 list.add(McBackupVO.builder()
                         .filename(f.getFileName().toString())
                         .sizeBytes(Files.size(f))
-                        .createdEpochMs(Files.getLastModifiedTime(f).toMillis())
+                        .createdEpochMs(backupEpochMs(f))
                         .build());
             }
         } catch (IOException e) {
@@ -789,6 +802,13 @@ public class McBedrockServiceImpl implements McBedrockService {
                 phase = n.path("phase").asText(running ? "RUNNING" : "SLEEPING");
             } catch (IOException e) {
                 log.warn("read runtime failed: {}", e.getMessage());
+                try {
+                    String raw = Files.readString(file, StandardCharsets.UTF_8);
+                    running = raw.contains("\"running\":true") || raw.contains("\"running\": true");
+                    phase = running ? "RUNNING" : "SLEEPING";
+                } catch (IOException ignored) {
+                    // keep defaults
+                }
             }
         }
         if (running) {
@@ -971,6 +991,52 @@ public class McBedrockServiceImpl implements McBedrockService {
 
     private static String url(String folder) {
         return java.net.URLEncoder.encode(folder, StandardCharsets.UTF_8);
+    }
+
+    private static long worldEpochMs(Path dir) {
+        long best = fileEpochMs(dir);
+        best = Math.max(best, fileEpochMs(dir.resolve("level.dat")));
+        best = Math.max(best, fileEpochMs(dir.resolve("levelname.txt")));
+        return best;
+    }
+
+    private static long backupEpochMs(Path file) {
+        Matcher m = BACKUP_STAMP.matcher(file.getFileName().toString());
+        if (m.find()) {
+            try {
+                LocalDateTime t = LocalDateTime.parse(m.group(1) + m.group(2), BACKUP_STAMP_FMT);
+                return t.atZone(SHANGHAI).toInstant().toEpochMilli();
+            } catch (DateTimeParseException ignored) {
+                // fall through to filesystem time
+            }
+        }
+        return fileEpochMs(file);
+    }
+
+    private static long fileEpochMs(Path path) {
+        try {
+            if (!Files.exists(path)) {
+                return 0L;
+            }
+            return normalizeEpochMs(Files.getLastModifiedTime(path).toMillis());
+        } catch (IOException e) {
+            return 0L;
+        }
+    }
+
+    static long normalizeEpochMs(long raw) {
+        if (raw == 0L) {
+            return 0L;
+        }
+        long ms = raw;
+        if (Math.abs(ms) < 1_000_000_000_000L) {
+            ms *= 1000L;
+        }
+        int year = Instant.ofEpochMilli(ms).atZone(SHANGHAI).getYear();
+        if (year < 2015 || year > 2100) {
+            return 0L;
+        }
+        return ms;
     }
 
     private record RuntimeStatus(boolean running, String phase, String joinHint) {}
