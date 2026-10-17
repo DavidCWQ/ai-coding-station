@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -97,6 +98,12 @@ public class McBedrockAdminController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<McOpResultVO> backup() {
         return ResultUtils.success(mcBedrockService.backupNow());
+    }
+
+    @PostMapping(value = "/world/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<McOpResultVO> upload(@RequestParam("file") MultipartFile file) {
+        return ResultUtils.success(mcBedrockService.uploadWorld(file));
     }
 
     @PostMapping("/world/delete")

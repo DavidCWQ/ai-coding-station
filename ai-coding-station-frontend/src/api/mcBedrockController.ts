@@ -8,8 +8,9 @@ export interface McWorldVO {
   folder: string
   displayName: string
   current: boolean
-  sizeBytes: number
-  lastModifiedEpochMs: number
+  sizeBytes: number | string
+  lastModifiedEpochMs: number | string
+  lastBackupEpochMs?: number | string
   hasIcon: boolean
   iconUrl?: string
 }
@@ -45,8 +46,8 @@ export interface McPlayerVO {
 
 export interface McBackupVO {
   filename: string
-  sizeBytes: number
-  createdEpochMs: number
+  sizeBytes: number | string
+  createdEpochMs: number | string
 }
 
 export interface McConsoleVO {
@@ -63,7 +64,7 @@ export interface McConsoleVO {
   gamerules: McGameruleVO[]
   players: McPlayerVO[]
   backups: McBackupVO[]
-  lastBackupEpochMs?: number
+  lastBackupEpochMs?: number | string
 }
 
 export interface McOpResultVO {
@@ -108,6 +109,12 @@ export function postMcActivate(folder: string) {
 
 export function postMcBackup() {
   return unwrap(request.post('/mc/admin/backup')) as Promise<McOpResultVO>
+}
+
+export function postMcUploadWorld(file: File) {
+  const body = new FormData()
+  body.append('file', file)
+  return unwrap(request.post('/mc/admin/world/upload', body, { timeout: 600_000 })) as Promise<McOpResultVO>
 }
 
 export function postMcDeleteWorld(folder: string) {
