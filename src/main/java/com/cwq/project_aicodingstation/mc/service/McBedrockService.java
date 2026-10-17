@@ -8,6 +8,7 @@ import com.cwq.project_aicodingstation.mc.dto.McSettingsUpdateRequest;
 import com.cwq.project_aicodingstation.mc.dto.McWorldActivateRequest;
 import com.cwq.project_aicodingstation.mc.vo.McConsoleVO;
 import org.springframework.core.io.Resource;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface McBedrockService {
 
@@ -32,6 +33,8 @@ public interface McBedrockService {
     McOpResultVO backupNow();
 
     McOpResultVO deleteWorld(String folder);
+
+    McOpResultVO uploadWorld(MultipartFile file);
 
     McOpResultVO deleteBackup(String filename);
 

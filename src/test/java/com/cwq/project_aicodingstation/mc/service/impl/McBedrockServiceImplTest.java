@@ -13,10 +13,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+import org.springframework.mock.web.MockMultipartFile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -185,9 +193,95 @@ class McBedrockServiceImplTest {
     void backupTimePrefersFilenameStamp() throws Exception {
         Path backups = home.resolve("backups");
         Files.createDirectories(backups);
-        Files.writeString(backups.resolve("worlds-20261016-214800.tar.gz"), "x", StandardCharsets.UTF_8);
-        long ms = service.adminConsole().getBackups().getFirst().getCreatedEpochMs();
-        assertEquals(2026, java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.of("Asia/Shanghai")).getYear());
-        assertEquals(16, java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.of("Asia/Shanghai")).getDayOfMonth());
+        Files.writeString(backups.resolve("worlds-20261016-044801.tar.gz"), "x", StandardCharsets.UTF_8);
+        Files.writeString(backups.resolve("worlds-20261016-233101.tar.gz"), "x", StandardCharsets.UTF_8);
+        McConsoleVO admin = service.adminConsole();
+        long ms = admin.getBackups().getFirst().getCreatedEpochMs();
+        assertEquals(ms, admin.getLastBackupEpochMs());
+        var t = java.time.Instant.ofEpochMilli(ms).atZone(ZoneId.of("Asia/Shanghai"));
+        assertEquals(2026, t.getYear());
+        assertEquals(16, t.getDayOfMonth());
+        assertEquals(23, t.getHour());
+        assertEquals(31, t.getMinute());
+    }
+
+    @Test
+    void runningCurrentWorldUsesNowForLastModified() throws Exception {
+        Path runtime = home.resolve("ops").resolve("runtime.json");
+        Files.createDirectories(runtime.getParent());
+        Files.writeString(runtime, "{\"running\":true,\"phase\":\"RUNNING\",\"joinHint\":\"x\"}\n",
+                StandardCharsets.UTF_8);
+        long before = System.currentTimeMillis() - 2000;
+        long ms = service.adminConsole().getCurrentWorld().getLastModifiedEpochMs();
+        assertTrue(ms >= before);
+        assertTrue(ms <= System.currentTimeMillis() + 2000);
+    }
+
+    @Test
+    void cloneCardUsesFolderStampForBackupAndModified() {
+        service.backupNow();
+        var clone = service.adminConsole().getWorlds().stream()
+                .filter(w -> !w.isCurrent())
+                .findFirst()
+                .orElseThrow();
+        assertTrue(clone.getLastBackupEpochMs() > 0);
+        assertEquals(clone.getLastBackupEpochMs(), clone.getLastModifiedEpochMs());
+    }
+
+    @Test
+    void uploadZipBecomesWorldCard() throws Exception {
+        Path zip = home.resolve("in.mcworld");
+        try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zip))) {
+            zos.putNextEntry(new ZipEntry("level.dat"));
+            zos.write("stub".getBytes(StandardCharsets.UTF_8));
+            zos.closeEntry();
+            zos.putNextEntry(new ZipEntry("levelname.txt"));
+            zos.write("Imported".getBytes(StandardCharsets.UTF_8));
+            zos.closeEntry();
+        }
+        var file = new MockMultipartFile("file", "Imported.mcworld", "application/zip", Files.readAllBytes(zip));
+        assertEquals("DONE", service.uploadWorld(file).getStatus());
+        assertTrue(service.adminConsole().getWorlds().stream()
+                .anyMatch(w -> "Imported".equals(w.getDisplayName())));
+    }
+
+    @Test
+    void uploadRejectsZipWithoutLevelDat() throws Exception {
+        Path zip = home.resolve("bad.zip");
+        try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zip))) {
+            zos.putNextEntry(new ZipEntry("readme.txt"));
+            zos.write("no".getBytes(StandardCharsets.UTF_8));
+            zos.closeEntry();
+        }
+        var file = new MockMultipartFile("file", "bad.zip", "application/zip", Files.readAllBytes(zip));
+        assertThrows(BusinessException.class, () -> service.uploadWorld(file));
+    }
+
+    @Test
+    void worldTimePrefersLastPlayedFromLevelDat() throws Exception {
+        long playedSeconds = 1_720_000_000L;
+        Files.write(home.resolve("data").resolve("worlds").resolve("TestWorld").resolve("level.dat"),
+                bedrockLevelDat(playedSeconds));
+        assertEquals(playedSeconds * 1000, McBedrockServiceImpl.readLastPlayedMs(
+                home.resolve("data").resolve("worlds").resolve("TestWorld").resolve("level.dat")));
+        assertEquals(playedSeconds * 1000, service.adminConsole().getCurrentWorld().getLastModifiedEpochMs());
+    }
+
+    private static byte[] bedrockLevelDat(long lastPlayed) {
+        byte[] name = "LastPlayed".getBytes(StandardCharsets.US_ASCII);
+        ByteBuffer nbt = ByteBuffer.allocate(64).order(ByteOrder.LITTLE_ENDIAN);
+        nbt.put((byte) 10);
+        nbt.putShort((short) 0);
+        nbt.put((byte) 4);
+        nbt.putShort((short) name.length);
+        nbt.put(name);
+        nbt.putLong(lastPlayed);
+        nbt.put((byte) 0);
+        byte[] body = Arrays.copyOf(nbt.array(), nbt.position());
+        ByteBuffer file = ByteBuffer.allocate(8 + body.length).order(ByteOrder.LITTLE_ENDIAN);
+        file.putInt(8);
+        file.putInt(body.length);
+        file.put(body);
+        return file.array();
     }
 }

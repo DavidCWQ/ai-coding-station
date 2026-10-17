@@ -27,10 +27,13 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -53,6 +56,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 @Slf4j
@@ -62,6 +66,9 @@ public class McBedrockServiceImpl implements McBedrockService {
     private static final Pattern BACKUP_STAMP = Pattern.compile("(\\d{8})-(\\d{6})");
     private static final DateTimeFormatter BACKUP_STAMP_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final ZoneId SHANGHAI = ZoneId.of("Asia/Shanghai");
+    private static final byte[] LAST_PLAYED = "LastPlayed".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] LAST_PLAYED_CAMEL = "lastPlayed".getBytes(StandardCharsets.US_ASCII);
+    private static final long MAX_UPLOAD_BYTES = 512L * 1024 * 1024;
 
     private final McBedrockProperties properties;
     private final ObjectMapper objectMapper;
@@ -279,8 +286,8 @@ public class McBedrockServiceImpl implements McBedrockService {
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成备份失败");
         }
-        writeRuntimePhase("BACKING_UP", readRuntime().running(), "正在冷备");
-        enqueue("BACKUP", Map.of("alsoCold", true));
+        boolean running = readRuntime().running();
+        writeRuntimePhase(running ? "RUNNING" : "SLEEPING", running, "");
         return McOpResultVO.builder()
                 .opId("inline")
                 .action("BACKUP")
@@ -306,6 +313,42 @@ public class McBedrockServiceImpl implements McBedrockService {
                 .status("DONE")
                 .message("已删除存档")
                 .build();
+    }
+
+    @Override
+    public McOpResultVO uploadWorld(MultipartFile file) {
+        requireConfigured();
+        BusinessAssert.requireTrue(file != null && !file.isEmpty(), ErrorCode.PARAMS_MISSING, "请选择存档压缩包");
+        String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+        String lower = original.toLowerCase(Locale.ROOT);
+        BusinessAssert.requireTrue(lower.endsWith(".zip") || lower.endsWith(".mcworld"),
+                ErrorCode.PARAMS_INVALID, "只接受 .zip 或 .mcworld");
+        BusinessAssert.requireTrue(file.getSize() <= MAX_UPLOAD_BYTES,
+                ErrorCode.PARAMS_INVALID, "压缩包不能超过 512MB");
+        Path tmp = null;
+        try {
+            tmp = Files.createTempFile("mc-upload-", ".zip");
+            file.transferTo(tmp);
+            String folder = unpackWorldArchive(tmp, suggestedUploadFolder(original));
+            return McOpResultVO.builder()
+                    .opId("inline")
+                    .action("UPLOAD_WORLD")
+                    .status("DONE")
+                    .message("已上传为存档卡片「" + folder + "」")
+                    .build();
+        } catch (BusinessException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "解压存档失败");
+        } finally {
+            if (tmp != null) {
+                try {
+                    Files.deleteIfExists(tmp);
+                } catch (IOException ignored) {
+                    // temp cleanup
+                }
+            }
+        }
     }
 
     @Override
@@ -372,14 +415,20 @@ public class McBedrockServiceImpl implements McBedrockService {
                     .build();
         }
         String current = currentLevelName();
-        List<McWorldVO> worlds = listWorlds(current, admin);
+        List<McBackupVO> backups = listBackups();
+        long latestBackup = backups.stream()
+                .map(McBackupVO::getCreatedEpochMs)
+                .filter(ms -> ms > 0)
+                .max(Long::compareTo)
+                .orElse(0L);
+        RuntimeStatus runtime = readRuntime();
+        boolean running = runtime.running() || "RUNNING".equals(runtime.phase());
+        List<McWorldVO> worlds = listWorlds(current, admin, running, latestBackup);
         McWorldVO currentWorld = worlds.stream()
                 .filter(McWorldVO::isCurrent)
                 .findFirst()
                 .orElse(worlds.stream().findFirst().orElse(null));
-        List<McBackupVO> backups = admin ? listBackups() : List.of();
-        Long lastBackup = backups.stream().map(McBackupVO::getCreatedEpochMs).max(Long::compareTo).orElse(null);
-        RuntimeStatus runtime = readRuntime();
+        Long lastBackup = latestBackup > 0 ? latestBackup : null;
         return McConsoleVO.builder()
                 .configured(true)
                 .viewerRole(admin ? "ADMIN" : "VISITOR")
@@ -393,12 +442,12 @@ public class McBedrockServiceImpl implements McBedrockService {
                 .settings(readSettings())
                 .gamerules(readGamerules())
                 .players(readPlayers())
-                .backups(backups)
+                .backups(admin ? backups : List.of())
                 .lastBackupEpochMs(lastBackup)
                 .build();
     }
 
-    private List<McWorldVO> listWorlds(String current, boolean admin) {
+    private List<McWorldVO> listWorlds(String current, boolean admin, boolean running, long latestBackupMs) {
         Path worlds = dataDir().resolve("worlds");
         if (!Files.isDirectory(worlds)) {
             return List.of();
@@ -412,6 +461,7 @@ public class McBedrockServiceImpl implements McBedrockService {
                 String folder = dir.getFileName().toString();
                 String display = readDisplayName(dir, folder);
                 boolean isCurrent = folder.equals(current);
+                WorldTimes times = resolveWorldTimes(dir, folder, isCurrent, running, latestBackupMs);
                 Path icon = Files.isRegularFile(dir.resolve("world_icon.jpeg"))
                         ? dir.resolve("world_icon.jpeg")
                         : dir.resolve("world_icon.jpg");
@@ -426,7 +476,8 @@ public class McBedrockServiceImpl implements McBedrockService {
                         .displayName(display)
                         .current(isCurrent)
                         .sizeBytes(dirSize(dir))
-                        .lastModifiedEpochMs(worldEpochMs(dir))
+                        .lastModifiedEpochMs(times.modified())
+                        .lastBackupEpochMs(times.backup())
                         .hasIcon(hasIcon)
                         .iconUrl(iconUrl)
                         .build());
@@ -528,9 +579,9 @@ public class McBedrockServiceImpl implements McBedrockService {
             return List.of();
         }
         List<McBackupVO> list = new ArrayList<>();
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, "worlds-*")) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
             for (Path f : stream) {
-                if (!Files.isRegularFile(f)) {
+                if (!Files.isRegularFile(f) || !isBackupArchive(f.getFileName().toString())) {
                     continue;
                 }
                 list.add(McBackupVO.builder()
@@ -623,7 +674,7 @@ public class McBedrockServiceImpl implements McBedrockService {
     private Path resolveBackupFile(String filename) {
         BusinessAssert.notBlank(filename, ErrorCode.PARAMS_MISSING, "备份名为空");
         BusinessAssert.requireTrue(
-                filename.startsWith("worlds-")
+                isBackupArchive(filename)
                         && !filename.contains("..")
                         && !filename.contains("/")
                         && !filename.contains("\\"),
@@ -813,6 +864,8 @@ public class McBedrockServiceImpl implements McBedrockService {
         }
         if (running) {
             phase = "RUNNING";
+        } else if (isTransientPhase(phase) && staleRuntime(file)) {
+            phase = "SLEEPING";
         }
         String pending = pendingInboxAction();
         if (!running && ("START".equals(pending) || "ACTIVATE".equals(pending) || "RESTART".equals(pending))) {
@@ -825,6 +878,24 @@ public class McBedrockServiceImpl implements McBedrockService {
         return new RuntimeStatus(running, phase, joinHint);
     }
 
+    private static boolean isTransientPhase(String phase) {
+        return "STARTING".equals(phase) || "STOPPING".equals(phase) || "BACKING_UP".equals(phase);
+    }
+
+    private boolean staleRuntime(Path file) {
+        try {
+            JsonNode n = objectMapper.readTree(file.toFile());
+            String raw = n.path("updatedAt").asText("");
+            if (!StringUtils.hasText(raw)) {
+                return true;
+            }
+            Instant at = Instant.parse(raw);
+            return Instant.now().minusSeconds(180).isAfter(at);
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
     private String pendingInboxAction() {
         Path inbox = opsDir().resolve("inbox");
         if (!Files.isDirectory(inbox)) {
@@ -833,7 +904,11 @@ public class McBedrockServiceImpl implements McBedrockService {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(inbox, "*.json")) {
             for (Path f : stream) {
                 try {
-                    String action = objectMapper.readTree(f.toFile()).path("action").asText("");
+                    JsonNode n = objectMapper.readTree(f.toFile());
+                    if (staleInboxTicket(n)) {
+                        continue;
+                    }
+                    String action = n.path("action").asText("");
                     if ("START".equals(action) || "STOP".equals(action) || "ACTIVATE".equals(action)
                             || "RESTART".equals(action) || "BACKUP".equals(action)) {
                         return action;
@@ -846,6 +921,18 @@ public class McBedrockServiceImpl implements McBedrockService {
             log.warn("scan inbox failed: {}", e.getMessage());
         }
         return "";
+    }
+
+    private static boolean staleInboxTicket(JsonNode n) {
+        String raw = n.path("createdAt").asText("");
+        if (!StringUtils.hasText(raw)) {
+            return true;
+        }
+        try {
+            return Instant.now().minusSeconds(180).isAfter(Instant.parse(raw));
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     private void writeRuntimePhase(String phase, boolean running, String joinHint) {
@@ -939,6 +1026,96 @@ public class McBedrockServiceImpl implements McBedrockService {
         }
     }
 
+    private String unpackWorldArchive(Path zip, String suggested) throws IOException {
+        String prefix = detectWorldPrefix(zip);
+        String folder = uniqueWorldFolder(suggested);
+        Path dest = dataDir().resolve("worlds").resolve(folder);
+        Files.createDirectories(dest);
+        long written = 0;
+        try (ZipInputStream zin = new ZipInputStream(Files.newInputStream(zip))) {
+            ZipEntry entry;
+            while ((entry = zin.getNextEntry()) != null) {
+                String name = entry.getName().replace('\\', '/');
+                if (name.contains("..")) {
+                    continue;
+                }
+                String rel = prefix.isEmpty() ? name : (name.startsWith(prefix) ? name.substring(prefix.length()) : null);
+                if (rel == null || rel.isBlank()) {
+                    continue;
+                }
+                if (rel.startsWith("/")) {
+                    rel = rel.substring(1);
+                }
+                Path out = dest.resolve(rel).normalize();
+                if (!out.startsWith(dest)) {
+                    continue;
+                }
+                if (entry.isDirectory()) {
+                    Files.createDirectories(out);
+                    continue;
+                }
+                Files.createDirectories(out.getParent());
+                try (OutputStream os = Files.newOutputStream(out)) {
+                    written += zin.transferTo(os);
+                }
+                if (written > MAX_UPLOAD_BYTES) {
+                    deleteTree(dest);
+                    throw new BusinessException(ErrorCode.PARAMS_INVALID, "解压后超过 512MB");
+                }
+            }
+        }
+        if (!Files.isRegularFile(dest.resolve("level.dat"))) {
+            deleteTree(dest);
+            throw new BusinessException(ErrorCode.PARAMS_INVALID, "压缩包里没有 level.dat，不是基岩版存档");
+        }
+        return folder;
+    }
+
+    private String detectWorldPrefix(Path zip) throws IOException {
+        List<String> dats = new ArrayList<>();
+        try (ZipInputStream zin = new ZipInputStream(Files.newInputStream(zip))) {
+            ZipEntry entry;
+            while ((entry = zin.getNextEntry()) != null) {
+                String name = entry.getName().replace('\\', '/');
+                if (name.contains("..")) {
+                    continue;
+                }
+                if (name.endsWith("/level.dat") || name.equals("level.dat")) {
+                    dats.add(name);
+                }
+            }
+        }
+        BusinessAssert.requireTrue(!dats.isEmpty(), ErrorCode.PARAMS_INVALID, "压缩包里没有 level.dat");
+        String best = dats.stream()
+                .filter(n -> !n.contains("/db/"))
+                .min(Comparator.comparingInt(String::length))
+                .orElse(dats.getFirst());
+        int slash = best.lastIndexOf('/');
+        return slash < 0 ? "" : best.substring(0, slash + 1);
+    }
+
+    private String suggestedUploadFolder(String filename) {
+        String base = filename;
+        int slash = Math.max(base.lastIndexOf('/'), base.lastIndexOf('\\'));
+        if (slash >= 0) {
+            base = base.substring(slash + 1);
+        }
+        base = base.replaceAll("(?i)\\.(zip|mcworld)$", "");
+        base = base.replaceAll("[\\\\/:*?\"<>|]", "-").trim();
+        return base.isBlank() ? "UploadedWorld" : base;
+    }
+
+    private String uniqueWorldFolder(String suggested) {
+        String safe = suggested.contains("..") || suggested.contains("/") || suggested.contains("\\")
+                ? "UploadedWorld" : suggested;
+        Path dest = dataDir().resolve("worlds").resolve(safe);
+        if (!Files.exists(dest)) {
+            return safe;
+        }
+        String stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(SHANGHAI).format(Instant.now());
+        return uniqueCloneDir(safe, stamp).getFileName().toString();
+    }
+
     private void zipWorld(Path world, Path zip) throws IOException {
         try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zip));
              Stream<Path> walk = Files.walk(world)) {
@@ -993,24 +1170,118 @@ public class McBedrockServiceImpl implements McBedrockService {
         return java.net.URLEncoder.encode(folder, StandardCharsets.UTF_8);
     }
 
-    private static long worldEpochMs(Path dir) {
-        long best = fileEpochMs(dir);
-        best = Math.max(best, fileEpochMs(dir.resolve("level.dat")));
-        best = Math.max(best, fileEpochMs(dir.resolve("levelname.txt")));
-        return best;
+    private static WorldTimes resolveWorldTimes(Path dir, String folder, boolean isCurrent,
+                                               boolean running, long latestBackupMs) {
+        long folderStamp = parseStampMs(folder);
+        long backup = isCurrent ? latestBackupMs : folderStamp;
+        if (backup <= 0) {
+            backup = folderStamp;
+        }
+        if (isCurrent && running) {
+            return new WorldTimes(Instant.now().toEpochMilli(), backup);
+        }
+        long played = readLastPlayedMs(dir.resolve("level.dat"));
+        if (isCurrent) {
+            long modified = played > 0 ? played : newestFileEpochMs(dir);
+            if (modified <= 0) {
+                modified = backup;
+            }
+            return new WorldTimes(modified, backup);
+        }
+        if (folderStamp > 0) {
+            if (played > folderStamp + 60_000L) {
+                return new WorldTimes(played, folderStamp);
+            }
+            return new WorldTimes(folderStamp, folderStamp);
+        }
+        long modified = played > 0 ? played : newestFileEpochMs(dir);
+        return new WorldTimes(modified, backup);
+    }
+
+    private static long newestFileEpochMs(Path dir) {
+        try (Stream<Path> walk = Files.walk(dir, 4)) {
+            return walk.filter(Files::isRegularFile)
+                    .filter(p -> {
+                        String name = p.getFileName().toString();
+                        return !"LOCK".equalsIgnoreCase(name) && !name.endsWith(".lock");
+                    })
+                    .mapToLong(McBedrockServiceImpl::fileEpochMs)
+                    .max()
+                    .orElse(0L);
+        } catch (IOException e) {
+            return 0L;
+        }
+    }
+
+    static long readLastPlayedMs(Path levelDat) {
+        try {
+            if (!Files.isRegularFile(levelDat) || Files.size(levelDat) < 16) {
+                return 0L;
+            }
+            byte[] data = Files.readAllBytes(levelDat);
+            long raw = findLeLongTag(data, LAST_PLAYED);
+            if (raw == Long.MIN_VALUE) {
+                raw = findLeLongTag(data, LAST_PLAYED_CAMEL);
+            }
+            if (raw == Long.MIN_VALUE || raw == 0L) {
+                return 0L;
+            }
+            return normalizeEpochMs(raw);
+        } catch (IOException e) {
+            return 0L;
+        }
+    }
+
+    private static long findLeLongTag(byte[] data, byte[] name) {
+        int need = 3 + name.length + 8;
+        byte len0 = (byte) (name.length & 0xFF);
+        byte len1 = (byte) ((name.length >> 8) & 0xFF);
+        for (int i = 0; i + need <= data.length; i++) {
+            if (data[i] != 4 || data[i + 1] != len0 || data[i + 2] != len1) {
+                continue;
+            }
+            boolean match = true;
+            for (int j = 0; j < name.length; j++) {
+                if (data[i + 3 + j] != name[j]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (!match) {
+                continue;
+            }
+            return ByteBuffer.wrap(data, i + 3 + name.length, 8).order(ByteOrder.LITTLE_ENDIAN).getLong();
+        }
+        return Long.MIN_VALUE;
+    }
+
+    private static boolean isBackupArchive(String filename) {
+        if (!StringUtils.hasText(filename) || filename.startsWith(".")) {
+            return false;
+        }
+        String lower = filename.toLowerCase(Locale.ROOT);
+        if (!(lower.endsWith(".tar.gz") || lower.endsWith(".zip") || lower.endsWith(".mcworld"))) {
+            return false;
+        }
+        return filename.startsWith("worlds-") || parseStampMs(filename) > 0;
+    }
+
+    static long parseStampMs(String name) {
+        Matcher m = BACKUP_STAMP.matcher(name);
+        if (!m.find()) {
+            return 0L;
+        }
+        try {
+            LocalDateTime t = LocalDateTime.parse(m.group(1) + m.group(2), BACKUP_STAMP_FMT);
+            return t.atZone(SHANGHAI).toInstant().toEpochMilli();
+        } catch (DateTimeParseException e) {
+            return 0L;
+        }
     }
 
     private static long backupEpochMs(Path file) {
-        Matcher m = BACKUP_STAMP.matcher(file.getFileName().toString());
-        if (m.find()) {
-            try {
-                LocalDateTime t = LocalDateTime.parse(m.group(1) + m.group(2), BACKUP_STAMP_FMT);
-                return t.atZone(SHANGHAI).toInstant().toEpochMilli();
-            } catch (DateTimeParseException ignored) {
-                // fall through to filesystem time
-            }
-        }
-        return fileEpochMs(file);
+        long fromName = parseStampMs(file.getFileName().toString());
+        return fromName > 0 ? fromName : fileEpochMs(file);
     }
 
     private static long fileEpochMs(Path path) {
@@ -1040,4 +1311,6 @@ public class McBedrockServiceImpl implements McBedrockService {
     }
 
     private record RuntimeStatus(boolean running, String phase, String joinHint) {}
+
+    private record WorldTimes(long modified, long backup) {}
 }

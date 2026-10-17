@@ -17,6 +17,7 @@ import {
   postMcSettings,
   postMcStart,
   postMcStop,
+  postMcUploadWorld,
   type McConsoleVO,
   type McGameruleVO,
   type McBackupVO,
@@ -31,6 +32,7 @@ const loading = ref(false)
 const busy = ref(false)
 const consoleVo = ref<McConsoleVO | null>(null)
 const selected = ref<string>('')
+const uploadRef = ref<HTMLInputElement | null>(null)
 const settingsDraft = reactive({
   serverName: '',
   gamemode: 'survival',
@@ -108,16 +110,24 @@ const artBackground = (folder: string) => {
   return `linear-gradient(180deg, ${sky} 0 38%, ${grass} 38% 52%, ${dirt} 52%)`
 }
 
-const fmtSize = (n?: number) => {
+const asFinite = (v?: number | string | null) => {
+  if (v == null || v === '') return NaN
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isFinite(n) ? n : NaN
+}
+
+const fmtSize = (v?: number | string) => {
+  const n = asFinite(v)
   if (!n) return '—'
   if (n < 1024) return `${n} B`
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
 
-const fmtTime = (ms?: number) => {
-  if (ms == null || ms === 0) return '尚无记录'
-  const n = Math.abs(ms) < 1_000_000_000_000 ? ms * 1000 : ms
+const fmtTime = (v?: number | string) => {
+  const raw = asFinite(v)
+  if (!raw) return '尚无记录'
+  const n = Math.abs(raw) < 1_000_000_000_000 ? raw * 1000 : raw
   const d = dayjs(n)
   if (!d.isValid() || d.year() < 2015 || d.year() > 2100) return '尚无记录'
   return d.format('YYYY-MM-DD HH:mm')
@@ -217,6 +227,14 @@ const onDeleteBackup = (b: McBackupVO) =>
     runOp('删除备份', () => postMcDeleteBackup(b.filename)),
   )
 
+const onUpload = (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  void runOp('上传存档', () => postMcUploadWorld(file))
+}
+
 const onDownload = async (w: McWorldVO) => {
   try {
     await downloadMcWorld(w.folder)
@@ -298,6 +316,18 @@ onUnmounted(() => {
         <p class="realm__hint">
           {{ isAdmin ? '点一张卡片进入存档，金边是正在运行的世界。冷备会在这里多出一张卡片。' : '你是访客：只能查看管理员选中的当前世界。' }}
         </p>
+        <div v-if="isAdmin" class="realm__shelf-ops">
+          <button type="button" class="realm__chip" :disabled="busy" @click="uploadRef?.click()">
+            上传存档
+          </button>
+          <input
+            ref="uploadRef"
+            type="file"
+            accept=".zip,.mcworld,application/zip"
+            hidden
+            @change="onUpload"
+          />
+        </div>
         <div class="realm__cards">
           <article
             v-for="w in worlds"
@@ -349,7 +379,7 @@ onUnmounted(() => {
           </div>
           <div v-if="isAdmin">
             <dt>上次冷备</dt>
-            <dd>{{ fmtTime(consoleVo?.lastBackupEpochMs) }}</dd>
+            <dd>{{ fmtTime(current.lastBackupEpochMs || consoleVo?.lastBackupEpochMs) }}</dd>
           </div>
         </dl>
 
@@ -427,7 +457,7 @@ onUnmounted(() => {
           </ul>
 
           <h3>备份</h3>
-          <p class="realm__hint">夜里 4 点会自动备份一份。点「冷备此刻」会在存档里加一张可切换的卡片，这里再留一份压缩包。</p>
+          <p class="realm__hint">每天 04:48 UTC(+8) 会自动备份一份。点「冷备此刻」会在存档里加一张可切换的卡片，这里再留一份压缩包。</p>
           <div class="realm__backup-cards">
             <article v-for="b in consoleVo.backups" :key="b.filename" class="backup-card">
               <div class="backup-card__art" />
@@ -631,6 +661,9 @@ onUnmounted(() => {
 
 .world-card {
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   background: #3a2616;
   overflow: hidden;
   border: 2px solid #2a180e;
@@ -674,6 +707,9 @@ onUnmounted(() => {
 }
 
 .world-card__soil {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 12px 12px 14px;
   background:
     repeating-linear-gradient(90deg, #6b4a28 0 8px, #5a3b22 8px 16px),
@@ -681,7 +717,13 @@ onUnmounted(() => {
 }
 .world-card__soil h3 {
   margin: 0 0 4px;
+  min-height: 2.5em;
+  line-height: 1.25;
   font-size: 18px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .world-card__soil p {
   margin: 0;
@@ -692,7 +734,11 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+.realm__shelf-ops {
+  margin: -8px 0 16px;
 }
 .is-danger {
   border-color: #c45b3a !important;

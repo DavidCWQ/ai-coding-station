@@ -11,6 +11,7 @@ public class McWorldVO {
     private boolean current;
     private long sizeBytes;
     private long lastModifiedEpochMs;
+    private long lastBackupEpochMs;
     private boolean hasIcon;
     private String iconUrl;
 }
