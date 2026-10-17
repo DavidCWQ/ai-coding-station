@@ -22,6 +22,8 @@ public class McConsoleVO {
     private McSettingsVO settings;
     private List<McGameruleVO> gamerules;
     private List<McPlayerVO> players;
+    /** 当前在线人数；世界未运行时为 0 */
+    private int onlineCount;
     private List<McBackupVO> backups;
     private Long lastBackupEpochMs;
     private String pendingOpId;

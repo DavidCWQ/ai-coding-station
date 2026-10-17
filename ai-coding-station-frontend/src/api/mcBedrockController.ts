@@ -42,6 +42,7 @@ export interface McPlayerVO {
   xuid: string
   permission: string
   allowlisted: boolean
+  online?: boolean
 }
 
 export interface McBackupVO {
@@ -63,6 +64,7 @@ export interface McConsoleVO {
   settings?: McSettingsVO
   gamerules: McGameruleVO[]
   players: McPlayerVO[]
+  onlineCount?: number | string
   backups: McBackupVO[]
   lastBackupEpochMs?: number | string
 }
