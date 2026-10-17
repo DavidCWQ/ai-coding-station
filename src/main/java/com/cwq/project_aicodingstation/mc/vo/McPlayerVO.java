@@ -11,4 +11,5 @@ public class McPlayerVO {
     /** visitor / member / operator */
     private String permission;
     private boolean allowlisted;
+    private boolean online;
 }

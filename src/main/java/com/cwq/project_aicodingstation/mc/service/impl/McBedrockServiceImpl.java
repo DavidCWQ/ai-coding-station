@@ -429,6 +429,8 @@ public class McBedrockServiceImpl implements McBedrockService {
                 .findFirst()
                 .orElse(worlds.stream().findFirst().orElse(null));
         Long lastBackup = latestBackup > 0 ? latestBackup : null;
+        List<McPlayerVO> players = readPlayers();
+        int online = running ? (int) players.stream().filter(McPlayerVO::isOnline).count() : 0;
         return McConsoleVO.builder()
                 .configured(true)
                 .viewerRole(admin ? "ADMIN" : "VISITOR")
@@ -441,7 +443,8 @@ public class McBedrockServiceImpl implements McBedrockService {
                 .worlds(admin ? worlds : (currentWorld == null ? List.of() : List.of(currentWorld)))
                 .settings(readSettings())
                 .gamerules(readGamerules())
-                .players(readPlayers())
+                .players(players)
+                .onlineCount(online)
                 .backups(admin ? backups : List.of())
                 .lastBackupEpochMs(lastBackup)
                 .build();
@@ -543,6 +546,7 @@ public class McBedrockServiceImpl implements McBedrockService {
                         .allowlisted(false)
                         .build());
             }
+            mergeSeenPlayers(byXuid);
             ArrayNode allow = readJsonArray(dataDir().resolve("allowlist.json"));
             for (JsonNode n : allow) {
                 if (!n.isObject()) {
@@ -571,6 +575,42 @@ public class McBedrockServiceImpl implements McBedrockService {
             log.warn("read players failed: {}", e.getMessage());
         }
         return new ArrayList<>(byXuid.values());
+    }
+
+    private void mergeSeenPlayers(Map<String, McPlayerVO> byXuid) {
+        Path seen = opsDir().resolve("seen-players.json");
+        if (!Files.isRegularFile(seen)) {
+            return;
+        }
+        try {
+            for (JsonNode n : readJsonArray(seen)) {
+                if (!n.isObject()) {
+                    continue;
+                }
+                String xuid = n.path("xuid").asText("");
+                if (xuid.isBlank()) {
+                    continue;
+                }
+                McPlayerVO existing = byXuid.get(xuid);
+                boolean online = n.path("online").asBoolean(false);
+                if (existing == null) {
+                    byXuid.put(xuid, McPlayerVO.builder()
+                            .xuid(xuid)
+                            .name(n.path("name").asText(""))
+                            .permission("member")
+                            .allowlisted(false)
+                            .online(online)
+                            .build());
+                } else {
+                    existing.setOnline(online);
+                    if (!StringUtils.hasText(existing.getName()) && StringUtils.hasText(n.path("name").asText())) {
+                        existing.setName(n.path("name").asText());
+                    }
+                }
+            }
+        } catch (IOException e) {
+            log.warn("read seen players failed: {}", e.getMessage());
+        }
     }
 
     private List<McBackupVO> listBackups() {

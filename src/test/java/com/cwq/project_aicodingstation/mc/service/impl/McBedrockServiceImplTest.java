@@ -258,6 +258,23 @@ class McBedrockServiceImplTest {
     }
 
     @Test
+    void seenPlayersFromLogsFileShowInConsole() throws Exception {
+        Path seen = home.resolve("ops").resolve("seen-players.json");
+        Files.createDirectories(seen.getParent());
+        Files.writeString(seen, """
+                [{"xuid":"2535453759799999","name":"AlexOnServer","online":true}]
+                """, StandardCharsets.UTF_8);
+        assertTrue(service.adminConsole().getPlayers().stream()
+                .anyMatch(p -> "AlexOnServer".equals(p.getName()) && "2535453759799999".equals(p.getXuid())));
+        assertEquals(0, service.adminConsole().getOnlineCount());
+
+        Files.writeString(home.resolve("ops").resolve("runtime.json"), """
+                {"running":true,"phase":"RUNNING","joinHint":"My World v6.0"}
+                """, StandardCharsets.UTF_8);
+        assertEquals(1, service.adminConsole().getOnlineCount());
+    }
+
+    @Test
     void worldTimePrefersLastPlayedFromLevelDat() throws Exception {
         long playedSeconds = 1_720_000_000L;
         Files.write(home.resolve("data").resolve("worlds").resolve("TestWorld").resolve("level.dat"),

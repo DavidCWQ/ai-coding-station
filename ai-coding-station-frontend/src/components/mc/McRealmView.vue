@@ -44,6 +44,11 @@ const settingsDraft = reactive({
   allowList: false,
 })
 const ruleDraft = ref<Record<string, boolean>>({})
+const playerDraft = reactive({
+  name: '',
+  xuid: '',
+  permission: 'member',
+})
 
 let timer: number | undefined
 let pollMs = 20_000
@@ -58,6 +63,14 @@ const armPoll = () => {
 
 const worlds = computed(() => consoleVo.value?.worlds ?? [])
 const current = computed(() => worlds.value.find((w) => w.folder === selected.value) ?? worlds.value[0])
+const maxPlayers = computed(() => {
+  const n = Number(consoleVo.value?.settings?.maxPlayers)
+  return Number.isFinite(n) && n > 0 ? n : 2
+})
+const onlineCount = computed(() => {
+  const n = Number(consoleVo.value?.onlineCount)
+  return Number.isFinite(n) && n > 0 ? n : 0
+})
 const isAdmin = computed(() => props.admin && consoleVo.value?.viewerRole === 'ADMIN')
 const runPhase = computed(() => {
   if (consoleVo.value?.runPhase) return consoleVo.value.runPhase
@@ -267,6 +280,16 @@ const onPerm = (xuid: string, name: string, permission: string) =>
 const onAllow = (xuid: string, name: string, allowlisted: boolean) =>
   runOp('白名单', () => postMcAllowlist({ xuid, name, allowlisted }))
 
+const onAddPlayer = () => {
+  const xuid = playerDraft.xuid.trim()
+  const name = playerDraft.name.trim()
+  if (!xuid) {
+    message.info('先填 Xbox XUID（进服日志里会打印）')
+    return
+  }
+  runOp('添加玩家', () => postMcPermission({ xuid, name, permission: playerDraft.permission }))
+}
+
 const ruleValue = (r: McGameruleVO) => ruleDraft.value[r.id] ?? r.value ?? false
 
 onMounted(() => {
@@ -343,11 +366,13 @@ onUnmounted(() => {
               }"
             >
               <img v-if="w.hasIcon && w.iconUrl" :src="w.iconUrl" :alt="w.displayName" />
-              <span
-                v-if="w.current"
-                class="world-card__now"
-                :class="{ 'is-asleep': runPhase !== 'RUNNING' }"
-              >{{ runPhase === 'RUNNING' ? '运行中' : '已沉睡' }}</span>
+              <div v-if="w.current" class="world-card__badges">
+                <span
+                  class="world-card__now"
+                  :class="{ 'is-asleep': runPhase !== 'RUNNING' }"
+                >{{ runPhase === 'RUNNING' ? '运行中' : '已沉睡' }}</span>
+                <span class="world-card__now world-card__online">在线人数：{{ onlineCount }} / {{ maxPlayers }}</span>
+              </div>
             </div>
             <div class="world-card__soil">
               <h3>{{ w.displayName }}</h3>
@@ -437,7 +462,20 @@ onUnmounted(() => {
           <button class="realm__cta realm__cta--ghost" :disabled="busy" @click="onSaveRules">保存规则</button>
 
           <h3>玩家权限</h3>
-          <p class="realm__hint">会写入 permissions.json。开着服时由 ops-worker 执行 permission reload，下一次进服或重登后生效。</p>
+          <p class="realm__hint">
+            进过服的人由宿主机扫容器日志写入，大约一分钟内出现。改档位会写入 permissions.json，开着服时
+            <code>permission reload</code>，重进后生效。
+          </p>
+          <div class="realm__add-player">
+            <input v-model="playerDraft.name" placeholder="玩家名（可选）" />
+            <input v-model="playerDraft.xuid" placeholder="XUID（进服日志）" />
+            <select v-model="playerDraft.permission">
+              <option value="visitor">访客</option>
+              <option value="member">成员</option>
+              <option value="operator">管理员</option>
+            </select>
+            <button type="button" :disabled="busy" @click="onAddPlayer">添加</button>
+          </div>
           <ul class="realm__people">
             <li v-for="p in consoleVo.players" :key="p.xuid">
               <div>
@@ -453,7 +491,9 @@ onUnmounted(() => {
                 {{ p.allowlisted ? '移出白名单' : '加入白名单' }}
               </button>
             </li>
-            <li v-if="!consoleVo.players.length" class="is-empty">还没有写入权限或白名单的玩家。</li>
+            <li v-if="!consoleVo.players.length" class="is-empty">
+              还没有记录。等人进一次服，或用上面的 XUID 手动添加。
+            </li>
           </ul>
 
           <h3>备份</h3>
@@ -692,10 +732,16 @@ onUnmounted(() => {
   height: 100%;
   object-fit: cover;
 }
-.world-card__now {
+.world-card__badges {
   position: absolute;
   left: 10px;
   bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: calc(100% - 20px);
+}
+.world-card__now {
   background: rgba(18, 14, 11, 0.82);
   color: var(--gold);
   padding: 2px 8px;
@@ -814,6 +860,16 @@ onUnmounted(() => {
   list-style: none;
   padding: 0;
   margin: 0;
+}
+.realm__add-player {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.realm__add-player select,
+.realm__add-player button {
+  min-height: 32px;
 }
 .realm__backup-cards {
   display: grid;

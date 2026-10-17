@@ -17,6 +17,8 @@
 6. [常见问题（FAQ）](#常见问题faq)
 7. [开发规范与约定](#开发规范与约定)
 8. [贡献建议](#贡献建议)
+9. [基岩服管理台复盘](./mc-bedrock-retrospective.md)（独立进程、NetherNet/RakNet、状态机、时间戳、本机 Lombok）
+10. [RakNet 协议（Bedrock Wiki）](https://wiki.bedrock.dev/servers/raknet)（加服列表 Unconnected Ping / Pong）
 
 ---
 
@@ -51,6 +53,10 @@
   - Vue 3 + TS + Vite + Ant Design Vue；
   - 提供首页、应用工坊、应用内聊天、智能体对话、关于页及后台入口；
   - 使用 Visual Editor 辅助编辑与预览，OpenAPI → TS（`npm run openapi2ts`）统一接口调用。
+
+- **基岩服管理台（MC Module，进程不在本仓库 Compose 里）**
+  - 页面和 Java API 在本站；BDS 在独立目录 `mc_bedrock`。
+  - 开发 / 运维踩坑与结论见 [基岩服管理台复盘](./mc-bedrock-retrospective.md)；列表延迟协议见 [RakNet](https://wiki.bedrock.dev/servers/raknet)。
 
 ---
 
