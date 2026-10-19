@@ -4,7 +4,7 @@ import { message } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form/interface'
 import { storeToRefs } from 'pinia'
 
-import { updateMyProfile } from '@/api/userController'
+import { bindEmail, updateMyProfile } from '@/api/userController'
 import { useLoginUserStore } from '@/stores/loginUser'
 
 type ProfileFormModel = {
@@ -22,6 +22,11 @@ const loginUserStore = useLoginUserStore()
 const { loginUser } = storeToRefs(loginUserStore)
 
 const loading = ref(false)
+const emailLoading = ref(false)
+const emailForm = reactive({
+  userEmail: '',
+  password: '',
+})
 
 const form = reactive<ProfileFormModel>({
   userName: '',
@@ -45,6 +50,7 @@ const syncFormFromStore = () => {
   form.userAccount = u.userAccount ?? ''
   form.userRole = u.userRole ?? ''
   form.createTime = u.createTime ?? ''
+  emailForm.userEmail = u.userEmail ?? ''
 }
 
 onMounted(() => {
@@ -67,6 +73,28 @@ const getErrorMessage = (err: unknown): string => {
     if (typeof msg === 'string') return msg
   }
   return '保存失败'
+}
+
+const onBindEmail = async () => {
+  if (!emailForm.password) {
+    message.error('请输入当前密码')
+    return
+  }
+  try {
+    emailLoading.value = true
+    await bindEmail({
+      userEmail: emailForm.userEmail.trim(),
+      password: emailForm.password,
+    })
+    const bound = emailForm.userEmail.trim().length > 0
+    emailForm.password = ''
+    await loginUserStore.fetchLoginUser({ force: true })
+    message.success(bound ? '邮箱已保存' : '已解除邮箱绑定')
+  } catch {
+    // 拦截器已提示接口返回的错误
+  } finally {
+    emailLoading.value = false
+  }
 }
 
 const onSave = async () => {
@@ -130,6 +158,36 @@ const onSave = async () => {
 
         <a-form-item>
           <a-button type="primary" html-type="submit" :loading="loading">保存</a-button>
+        </a-form-item>
+      </a-form>
+
+      <a-divider />
+
+      <div class="profile-card__header">
+        <div class="profile-card__title">找回密码邮箱</div>
+        <div class="profile-card__desc">绑定后才能通过邮件重置密码。留空并确认可解除绑定。</div>
+      </div>
+
+      <a-form :model="emailForm" layout="vertical" @finish="onBindEmail">
+        <a-form-item name="userEmail" label="邮箱">
+          <a-input
+            v-model:value="emailForm.userEmail"
+            allow-clear
+            placeholder="name@example.com"
+            autocomplete="email"
+          />
+        </a-form-item>
+        <a-form-item
+          name="password"
+          label="当前密码"
+          :rules="[{ required: true, message: '请输入当前密码' }]"
+        >
+          <a-input-password v-model:value="emailForm.password" autocomplete="current-password" />
+        </a-form-item>
+        <a-form-item>
+          <a-button type="primary" html-type="button" :loading="emailLoading" @click="onBindEmail">
+            保存邮箱
+          </a-button>
         </a-form-item>
       </a-form>
     </a-card>

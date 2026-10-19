@@ -178,6 +178,13 @@ services:
       REDIS_USERNAME: default
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
       APP_USER_REGISTRATION_ENABLED: ${APP_USER_REGISTRATION_ENABLED:-false}
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-https://davidcwq.online}
       PUBLIC_DEPLOY_HOST: ${PUBLIC_DEPLOY_HOST:-http://your-domain.com:port}
       PUBLIC_COVERS_BASE: ${PUBLIC_COVERS_BASE:-http://your-domain.com:port}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}

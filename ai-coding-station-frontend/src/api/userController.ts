@@ -77,3 +77,48 @@ export async function changePassword(
     ...(options || {}),
   });
 }
+
+/** 按账号申请重置邮件 POST /user/password/forgot */
+export async function forgotPassword(
+  body: API.UserForgotPasswordRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseString>("/user/password/forgot", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 使用邮件令牌设置新密码 POST /user/password/reset */
+export async function resetPassword(
+  body: API.UserResetPasswordRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean>("/user/password/reset", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 绑定或解除邮箱 POST /user/email/bind */
+export async function bindEmail(
+  body: API.UserBindEmailRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean>("/user/email/bind", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}

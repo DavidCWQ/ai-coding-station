@@ -41,6 +41,10 @@ public class SysUser implements Serializable {
     private Long id;
 
     private String userAccount;
+
+    /// 邮箱，可空。只用于找回密码，不作为登录名。
+    private String userEmail;
+
     private String userPassword;
     private String userName;
     private String userAvatar;

@@ -16,6 +16,42 @@ export const userRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/user/forgot-password',
+    name: 'user-forgot-password',
+    component: () => import('@/views/user/forgotPassword.vue'),
+    meta: {
+      title: '忘记密码',
+      auth: false,
+      layout: 'blank',
+      showHeader: true,
+      access: ACCESS_ENUM.NOT_LOGIN,
+    },
+  },
+  {
+    path: '/user/reset-password',
+    name: 'user-reset-password',
+    component: () => import('@/views/user/resetPassword.vue'),
+    meta: {
+      title: '重置密码',
+      auth: false,
+      layout: 'blank',
+      showHeader: true,
+      access: ACCESS_ENUM.NOT_LOGIN,
+    },
+  },
+  {
+    path: '/user/notice',
+    name: 'user-notice',
+    component: () => import('@/views/user/notice.vue'),
+    meta: {
+      title: '用户须知',
+      auth: false,
+      layout: 'blank',
+      showHeader: true,
+      access: ACCESS_ENUM.NOT_LOGIN,
+    },
+  },
+  {
     path: '/user/register',
     name: 'user-register',
     component: () => import('@/views/user/register.vue'),

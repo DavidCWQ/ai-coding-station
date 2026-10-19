@@ -149,6 +149,17 @@ app:
     script-path: ${user.dir}/scripts/screenshot.js
     output-dir: ${user.dir}/tmp/covers
     base-url: http://localhost:8088/covers
+  # 忘记密码发信。默认关闭；填好 SMTP 后把 MAIL_ENABLED 设为 true。
+  # 163：smtp.163.com 端口 465，密码填客户端授权码。QQ：smtp.qq.com 端口 587。不要填登录密码。
+  mail:
+    enabled: ${MAIL_ENABLED:false}
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    from: ${MAIL_FROM:}
+    reset-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:5173}
+    token-ttl-minutes: 30
 
 # 基岩服管理台：页面在本站，进程仍在独立的 mc_bedrock 目录
 mc:

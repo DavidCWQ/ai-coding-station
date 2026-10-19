@@ -17,8 +17,9 @@
 6. [常见问题（FAQ）](#常见问题faq)
 7. [开发规范与约定](#开发规范与约定)
 8. [贡献建议](#贡献建议)
-9. [基岩服管理台复盘](./mc-bedrock-retrospective.md)（独立进程、NetherNet/RakNet、状态机、时间戳、本机 Lombok）
-10. [RakNet 协议（Bedrock Wiki）](https://wiki.bedrock.dev/servers/raknet)（加服列表 Unconnected Ping / Pong）
+9. [开发笔记](./dev-notes.md)（登录限流、邮箱重置、部署、缓存、测试与本地环境踩坑）
+10. [基岩服管理台复盘](./mc-bedrock-retrospective.md)（独立进程、NetherNet/RakNet、状态机、时间戳、本机 Lombok）
+11. [RakNet 协议（Bedrock Wiki）](https://wiki.bedrock.dev/servers/raknet)（加服列表 Unconnected Ping / Pong）
 
 ---
 

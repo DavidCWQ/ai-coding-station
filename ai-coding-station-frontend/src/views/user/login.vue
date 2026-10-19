@@ -15,6 +15,7 @@ const vm = getCurrentInstance()
 const router = vm?.proxy?.$router as any
 const loginUserStore = useLoginUserStore()
 const loading = ref(false)
+const agreed = ref(false)
 
 const form = reactive<LoginFormModel>({
   userAccount: '',
@@ -39,6 +40,10 @@ const getErrorMessage = (err: unknown): string => {
 }
 
 const onFinish = async () => {
+  if (!agreed.value) {
+    message.warning('请先阅读并勾选用户须知')
+    return
+  }
   try {
     loading.value = true
 
@@ -83,6 +88,13 @@ const onFinish = async () => {
           />
         </a-form-item>
 
+        <a-form-item class="login-card__agree">
+          <a-checkbox v-model:checked="agreed">
+            我已阅读并同意
+            <router-link to="/user/notice" target="_blank" @click.stop>《用户须知》</router-link>
+          </a-checkbox>
+        </a-form-item>
+
         <a-form-item>
           <a-button block type="primary" html-type="submit" :loading="loading">
             登录
@@ -91,8 +103,11 @@ const onFinish = async () => {
       </a-form>
 
       <div class="login-card__footer">
-        <span>没有账号？</span>
-        <router-link class="login-card__link" to="/user/register">去注册</router-link>
+        <router-link to="/user/forgot-password">忘记密码</router-link>
+        <span>
+          没有账号？
+          <router-link class="login-card__link" to="/user/register">去注册</router-link>
+        </span>
       </div>
     </a-card>
   </div>
@@ -126,9 +141,16 @@ const onFinish = async () => {
   color: rgba(0, 0, 0, 0.65);
 }
 
+.login-card__agree {
+  margin-bottom: 8px;
+}
+
 .login-card__footer {
   margin-top: 16px;
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   color: rgba(0, 0, 0, 0.65);
 }
 
