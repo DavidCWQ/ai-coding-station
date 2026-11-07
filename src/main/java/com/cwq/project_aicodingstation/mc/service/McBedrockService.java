@@ -5,6 +5,7 @@ import com.cwq.project_aicodingstation.mc.dto.McGameruleUpdateRequest;
 import com.cwq.project_aicodingstation.mc.dto.McOpResultVO;
 import com.cwq.project_aicodingstation.mc.dto.McPermissionUpdateRequest;
 import com.cwq.project_aicodingstation.mc.dto.McSettingsUpdateRequest;
+import com.cwq.project_aicodingstation.mc.dto.McPackToggleRequest;
 import com.cwq.project_aicodingstation.mc.dto.McWorldActivateRequest;
 import com.cwq.project_aicodingstation.mc.vo.McConsoleVO;
 import org.springframework.core.io.Resource;
@@ -35,6 +36,14 @@ public interface McBedrockService {
     McOpResultVO deleteWorld(String folder);
 
     McOpResultVO uploadWorld(MultipartFile file);
+
+    McOpResultVO uploadPack(MultipartFile file);
+
+    McOpResultVO setPackEnabled(McPackToggleRequest req);
+
+    McOpResultVO deletePack(String id);
+
+    Resource packIcon(String id, boolean admin);
 
     McOpResultVO deleteBackup(String filename);
 

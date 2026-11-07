@@ -10,11 +10,14 @@ import com.cwq.project_aicodingstation.mc.dto.McGameruleUpdateRequest;
 import com.cwq.project_aicodingstation.mc.dto.McOpResultVO;
 import com.cwq.project_aicodingstation.mc.dto.McPermissionUpdateRequest;
 import com.cwq.project_aicodingstation.mc.dto.McSettingsUpdateRequest;
+import com.cwq.project_aicodingstation.mc.dto.McPackToggleRequest;
 import com.cwq.project_aicodingstation.mc.dto.McWorldActivateRequest;
+import com.cwq.project_aicodingstation.mc.pack.McPackLibrary;
 import com.cwq.project_aicodingstation.mc.service.McBedrockService;
 import com.cwq.project_aicodingstation.mc.vo.McBackupVO;
 import com.cwq.project_aicodingstation.mc.vo.McConsoleVO;
 import com.cwq.project_aicodingstation.mc.vo.McGameruleVO;
+import com.cwq.project_aicodingstation.mc.vo.McPackVO;
 import com.cwq.project_aicodingstation.mc.vo.McPlayerVO;
 import com.cwq.project_aicodingstation.mc.vo.McSettingsVO;
 import com.cwq.project_aicodingstation.mc.vo.McWorldVO;
@@ -72,10 +75,12 @@ public class McBedrockServiceImpl implements McBedrockService {
 
     private final McBedrockProperties properties;
     private final ObjectMapper objectMapper;
+    private final McPackLibrary packs;
 
     public McBedrockServiceImpl(McBedrockProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.packs = new McPackLibrary(properties, objectMapper);
     }
 
     @Override
@@ -267,6 +272,7 @@ public class McBedrockServiceImpl implements McBedrockService {
         Properties props = loadServerProperties();
         props.setProperty("level-name", req.getFolder());
         storeServerProperties(props);
+        syncTexturePackRequired(req.getFolder());
         writeRuntimePhase("STARTING", false, "正在切换存档并启动");
         return enqueue("ACTIVATE", Map.of("folder", req.getFolder()));
     }
@@ -352,6 +358,60 @@ public class McBedrockServiceImpl implements McBedrockService {
     }
 
     @Override
+    public McOpResultVO uploadPack(MultipartFile file) {
+        requireConfigured();
+        String current = currentLevelName();
+        McPackLibrary.PackChange change = packs.install(file, current);
+        syncTexturePackRequired(current);
+        if (change.changed() && serverRunning()) {
+            return restart("已更新正在使用的附加包「" + change.name() + "」，正在重启");
+        }
+        return done("UPLOAD_PACK", "已上传附加包「" + change.name() + "」。在卡片上启用后才会加载。");
+    }
+
+    @Override
+    public McOpResultVO setPackEnabled(McPackToggleRequest req) {
+        requireConfigured();
+        BusinessAssert.notNull(req, ErrorCode.PARAMS_MISSING, "缺少参数");
+        resolveWorldDir(req.getWorld());
+        String current = currentLevelName();
+        McPackLibrary.PackChange change = packs.setEnabled(req.getId(), req.getWorld(), req.isEnabled());
+        if (req.getWorld().equals(current)) {
+            syncTexturePackRequired(current);
+        }
+        boolean onCurrent = req.getWorld().equals(current);
+        if (change.changed() && onCurrent && serverRunning()) {
+            String verb = req.isEnabled() ? "已启用" : "已卸下";
+            return restart(verb + "「" + change.name() + "」，正在重启");
+        }
+        if (!onCurrent) {
+            String verb = req.isEnabled() ? "已为这个存档启用「" : "已从这个存档卸下「";
+            return done(req.isEnabled() ? "ENABLE_PACK" : "DISABLE_PACK",
+                    verb + change.name() + "」。进入该世界时生效。");
+        }
+        String verb = req.isEnabled() ? "已启用「" : "已卸下「";
+        return done(req.isEnabled() ? "ENABLE_PACK" : "DISABLE_PACK", verb + change.name() + "」。下次启动生效。");
+    }
+
+    @Override
+    public McOpResultVO deletePack(String id) {
+        requireConfigured();
+        String current = currentLevelName();
+        McPackLibrary.PackChange change = packs.delete(id, current);
+        syncTexturePackRequired(current);
+        if (change.changed() && serverRunning()) {
+            return restart("已删除正在使用的附加包「" + change.name() + "」，正在重启");
+        }
+        return done("DELETE_PACK", "已删除附加包「" + change.name() + "」");
+    }
+
+    @Override
+    public Resource packIcon(String id, boolean admin) {
+        requireConfigured();
+        return new FileSystemResource(packs.icon(id, admin, currentLevelName()));
+    }
+
+    @Override
     public McOpResultVO deleteBackup(String filename) {
         requireConfigured();
         Path file = resolveBackupFile(filename);
@@ -412,6 +472,7 @@ public class McBedrockServiceImpl implements McBedrockService {
                     .gamerules(List.of())
                     .players(List.of())
                     .backups(List.of())
+                    .packs(List.of())
                     .build();
         }
         String current = currentLevelName();
@@ -431,10 +492,17 @@ public class McBedrockServiceImpl implements McBedrockService {
         Long lastBackup = latestBackup > 0 ? latestBackup : null;
         List<McPlayerVO> players = readPlayers();
         int online = running ? (int) players.stream().filter(McPlayerVO::isOnline).count() : 0;
+        List<McPackVO> packList = packs.list(admin);
+        if (!admin) {
+            String level = current;
+            packList = packList.stream()
+                    .filter(pack -> pack.getEnabledWorlds() != null && pack.getEnabledWorlds().contains(level))
+                    .toList();
+        }
         return McConsoleVO.builder()
                 .configured(true)
                 .viewerRole(admin ? "ADMIN" : "VISITOR")
-                .message(admin ? "可以切换存档、改设置、立即备份。" : "你当前是访客，只能查看正在运行的世界。")
+                .message(admin ? "可以切换存档、改设置、管理附加包、立即备份。" : "你当前是访客，只能查看正在运行的世界。")
                 .running(runtime.running())
                 .runPhase(runtime.phase())
                 .serverName(loadServerProperties().getProperty("server-name", "My World v6.0"))
@@ -446,6 +514,7 @@ public class McBedrockServiceImpl implements McBedrockService {
                 .players(players)
                 .onlineCount(online)
                 .backups(admin ? backups : List.of())
+                .packs(packList)
                 .lastBackupEpochMs(lastBackup)
                 .build();
     }
@@ -815,6 +884,44 @@ public class McBedrockServiceImpl implements McBedrockService {
         }
     }
 
+    private void syncTexturePackRequired(String worldFolder) {
+        boolean on = packs.resourcePackActive(worldFolder);
+        String next = Boolean.toString(on);
+        Properties props = loadServerProperties();
+        boolean fileOn = Boolean.parseBoolean(props.getProperty("texturepack-required", "false"));
+        if (fileOn != on) {
+            props.setProperty("texturepack-required", next);
+            storeServerProperties(props);
+        }
+        if (Boolean.parseBoolean(readEnv("TEXTUREPACK_REQUIRED", "false")) != on) {
+            syncEnv(Map.of("TEXTUREPACK_REQUIRED", next));
+        }
+    }
+
+    private boolean serverRunning() {
+        return readRuntime().running();
+    }
+
+    private McOpResultVO done(String action, String message) {
+        return McOpResultVO.builder()
+                .opId("inline")
+                .action(action)
+                .status("DONE")
+                .message(message)
+                .build();
+    }
+
+    private McOpResultVO restart(String message) {
+        writeRuntimePhase("STARTING", false, "正在重启以加载附加包");
+        McOpResultVO queued = enqueue("RESTART", Map.of("reason", "pack"));
+        return McOpResultVO.builder()
+                .opId(queued.getOpId())
+                .action("RESTART")
+                .status("QUEUED")
+                .message(message)
+                .build();
+    }
+
     private void syncEnv(Map<String, String> updates) {
         Path env = home().resolve(".env");
         List<String> lines = new ArrayList<>();
@@ -1047,12 +1154,25 @@ public class McBedrockServiceImpl implements McBedrockService {
                     walk.filter(Files::isRegularFile).forEach(p -> putZip(zos, data, p));
                 }
             }
-            for (String name : List.of("server.properties", "allowlist.json", "permissions.json")) {
+            for (String folder : List.of("resource_packs", "behavior_packs")) {
+                addDirToZip(zos, data, folder);
+            }
+            for (String name : List.of("server.properties", "allowlist.json", "permissions.json", "pack-library.json")) {
                 Path f = data.resolve(name);
                 if (Files.isRegularFile(f)) {
                     putZip(zos, data, f);
                 }
             }
+        }
+    }
+
+    private void addDirToZip(ZipOutputStream zos, Path data, String folder) throws IOException {
+        Path dir = data.resolve(folder);
+        if (!Files.isDirectory(dir)) {
+            return;
+        }
+        try (Stream<Path> walk = Files.walk(dir)) {
+            walk.filter(Files::isRegularFile).forEach(path -> putZip(zos, data, path));
         }
     }
 
