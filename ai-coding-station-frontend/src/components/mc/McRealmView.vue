@@ -13,14 +13,18 @@ import {
   postMcDeleteBackup,
   postMcDeleteWorld,
   postMcGamerules,
+  postMcDeletePack,
+  postMcPackToggle,
   postMcPermission,
   postMcSettings,
   postMcStart,
   postMcStop,
+  postMcUploadPack,
   postMcUploadWorld,
   type McConsoleVO,
   type McGameruleVO,
   type McBackupVO,
+  type McPackVO,
   type McSettingsVO,
   type McWorldVO,
 } from '@/api/mcBedrockController'
@@ -33,6 +37,7 @@ const busy = ref(false)
 const consoleVo = ref<McConsoleVO | null>(null)
 const selected = ref<string>('')
 const uploadRef = ref<HTMLInputElement | null>(null)
+const packUploadRef = ref<HTMLInputElement | null>(null)
 const settingsDraft = reactive({
   serverName: '',
   gamemode: 'survival',
@@ -62,7 +67,9 @@ const armPoll = () => {
 }
 
 const worlds = computed(() => consoleVo.value?.worlds ?? [])
+const packs = computed(() => consoleVo.value?.packs ?? [])
 const current = computed(() => worlds.value.find((w) => w.folder === selected.value) ?? worlds.value[0])
+const packWorld = computed(() => selected.value || current.value?.folder || '')
 const maxPlayers = computed(() => {
   const n = Number(consoleVo.value?.settings?.maxPlayers)
   return Number.isFinite(n) && n > 0 ? n : 2
@@ -123,6 +130,14 @@ const artBackground = (folder: string) => {
   return `linear-gradient(180deg, ${sky} 0 38%, ${grass} 38% 52%, ${dirt} 52%)`
 }
 
+const packKindLabel = (kind?: string) => {
+  if (kind === 'addon') return '附加包'
+  if (kind === 'behavior') return '行为包'
+  return '资源包'
+}
+
+const packOn = (pack: McPackVO) => (pack.enabledWorlds ?? []).includes(packWorld.value)
+
 const asFinite = (v?: number | string | null) => {
   if (v == null || v === '') return NaN
   const n = typeof v === 'number' ? v : Number(v)
@@ -135,6 +150,12 @@ const fmtSize = (v?: number | string) => {
   if (n < 1024) return `${n} B`
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
   return `${(n / 1024 / 1024).toFixed(1)} MB`
+}
+
+const packMeta = (pack: McPackVO) => {
+  const bits = [pack.version, fmtSize(pack.sizeBytes)]
+  if (pack.authors) bits.push(pack.authors)
+  return bits.filter(Boolean).join(' · ')
 }
 
 const fmtTime = (v?: number | string) => {
@@ -246,6 +267,55 @@ const onUpload = (e: Event) => {
   input.value = ''
   if (!file) return
   void runOp('上传存档', () => postMcUploadWorld(file))
+}
+
+const onUploadPack = (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  void runOp('上传附加包', () => postMcUploadPack(file))
+}
+
+const onTogglePack = (pack: McPackVO) => {
+  const world = packWorld.value
+  if (!world) {
+    message.info('先选一张存档')
+    return
+  }
+  const enabling = !packOn(pack)
+  if (enabling && pack.missingDependency) {
+    message.warning(pack.dependencyNote || '还缺依赖包')
+    return
+  }
+  const worldName = current.value?.displayName || world
+  const runningHere = runPhase.value === 'RUNNING' && consoleVo.value?.currentWorld?.folder === world
+  const lines = [
+    pack.hasScript && enabling ? '这个包含脚本，能改世界里的方块和规则。' : '',
+    runningHere ? '服务器正在运行，会重启并踢出玩家，大约 10–30 秒。' : '',
+    `写入存档「${worldName}」。`,
+  ].filter(Boolean)
+  const go = () =>
+    runOp(enabling ? '启用附加包' : '卸下附加包', () =>
+      postMcPackToggle({ id: pack.id, world, enabled: enabling }),
+    )
+  if (runningHere || (enabling && pack.hasScript)) {
+    confirm(`${enabling ? '启用' : '卸下'}「${pack.name}」`, lines.join(''), go)
+  } else {
+    go()
+  }
+}
+
+const onDeletePack = (pack: McPackVO) => {
+  const world = consoleVo.value?.currentWorld?.folder
+  const runningHere = runPhase.value === 'RUNNING' && !!world && (pack.enabledWorlds ?? []).includes(world)
+  confirm(
+    `删除「${pack.name}」`,
+    runningHere
+      ? '会从库里删掉，并从所有存档卸下。当前世界正在用它，会重启服务器。'
+      : '会从库里删掉，并从所有存档卸下。',
+    () => runOp('删除附加包', () => postMcDeletePack(pack.id)),
+  )
 }
 
 const onDownload = async (w: McWorldVO) => {
@@ -385,6 +455,74 @@ onUnmounted(() => {
             </div>
           </article>
         </div>
+
+        <div class="realm__packs">
+          <h2>附加包</h2>
+          <p class="realm__hint">
+            {{
+              isAdmin
+                ? `按存档「${current?.displayName || '未选择'}」启用。接受 .mcpack、.mcaddon 或 .zip，单个不超过 24MB。开着服时，启用、卸下或替换正在使用的包会重启。资源包要玩家重新进入才会下载。`
+                : '当前世界启用的附加包。资源包会在进入游戏时下载。'
+            }}
+          </p>
+          <div v-if="isAdmin" class="realm__shelf-ops">
+            <button type="button" class="realm__chip" :disabled="busy" @click="packUploadRef?.click()">
+              上传附加包
+            </button>
+            <input
+              ref="packUploadRef"
+              type="file"
+              accept=".mcpack,.mcaddon,.zip,application/zip"
+              hidden
+              @change="onUploadPack"
+            />
+          </div>
+          <div class="realm__cards">
+            <article
+              v-for="pack in packs"
+              :key="pack.id"
+              class="world-card pack-card"
+              :class="{ 'is-current': packOn(pack) }"
+            >
+              <div
+                class="world-card__art"
+                :style="{ background: pack.hasIcon ? undefined : artBackground(pack.id) }"
+              >
+                <img v-if="pack.hasIcon && pack.iconUrl" :src="pack.iconUrl" :alt="pack.name" />
+                <div class="world-card__badges">
+                  <span class="world-card__now">{{ packKindLabel(pack.kind) }}</span>
+                  <span v-if="packOn(pack)" class="world-card__now">已启用</span>
+                  <span v-if="pack.hasScript" class="world-card__now is-warn">含脚本</span>
+                  <span v-if="pack.largeForMobile" class="world-card__now is-warn">手机加入可能较慢</span>
+                </div>
+              </div>
+              <div class="world-card__soil">
+                <h3>{{ pack.name }}</h3>
+                <p v-if="pack.description" class="pack-card__desc">{{ pack.description }}</p>
+                <p>{{ packMeta(pack) }}</p>
+                <p v-if="pack.minEngine" class="pack-card__quiet">需要 {{ pack.minEngine }}</p>
+                <p v-if="pack.dependencyNote" class="pack-card__note">{{ pack.dependencyNote }}</p>
+                <p v-if="pack.experimentHint" class="pack-card__quiet">
+                  脚本接口可能需要实验性玩法，这一版不会自动打开。
+                </p>
+                <div v-if="isAdmin" class="world-card__ops">
+                  <button
+                    type="button"
+                    :disabled="busy || (!packOn(pack) && pack.missingDependency)"
+                    :title="!packOn(pack) && pack.missingDependency ? pack.dependencyNote || '还缺依赖包' : ''"
+                    @click="onTogglePack(pack)"
+                  >
+                    {{ packOn(pack) ? '卸下' : '启用' }}
+                  </button>
+                  <button type="button" class="is-danger" :disabled="busy" @click="onDeletePack(pack)">删除</button>
+                </div>
+              </div>
+            </article>
+          </div>
+          <p v-if="!packs.length" class="is-empty">
+            {{ isAdmin ? '还没有附加包。上传 .mcpack 或 .mcaddon 后会出现在这里。' : '当前世界没有启用附加包。' }}
+          </p>
+        </div>
       </div>
 
       <aside class="realm__lectern" v-if="current">
@@ -469,12 +607,14 @@ onUnmounted(() => {
           <div class="realm__add-player">
             <input v-model="playerDraft.name" placeholder="玩家名（可选）" />
             <input v-model="playerDraft.xuid" placeholder="XUID（进服日志）" />
-            <select v-model="playerDraft.permission">
-              <option value="visitor">访客</option>
-              <option value="member">成员</option>
-              <option value="operator">管理员</option>
-            </select>
-            <button type="button" :disabled="busy" @click="onAddPlayer">添加</button>
+            <div class="realm__add-controls">
+              <select v-model="playerDraft.permission">
+                <option value="visitor">访客</option>
+                <option value="member">成员</option>
+                <option value="operator">管理员</option>
+              </select>
+              <button type="button" class="realm__chip" :disabled="busy" @click="onAddPlayer">添加</button>
+            </div>
           </div>
           <ul class="realm__people">
             <li v-for="p in consoleVo.players" :key="p.xuid">
@@ -751,6 +891,40 @@ onUnmounted(() => {
 .world-card__now.is-asleep {
   color: #c4b8a4;
 }
+.world-card__now.is-warn {
+  color: #f0a890;
+}
+.realm__packs {
+  margin-top: 28px;
+}
+.pack-card {
+  cursor: default;
+}
+.pack-card:hover {
+  transform: none;
+}
+.pack-card .pack-card__desc {
+  margin: 6px 0 0;
+  color: #ecd7a8;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pack-card .pack-card__note,
+.pack-card .pack-card__quiet {
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+.pack-card__note {
+  color: #f0a890;
+}
+.pack-card__quiet {
+  color: #ecd7a8;
+}
 
 .world-card__soil {
   flex: 1;
@@ -867,9 +1041,40 @@ onUnmounted(() => {
   gap: 8px;
   margin: 0 0 12px;
 }
-.realm__add-player select,
-.realm__add-player button {
-  min-height: 32px;
+.realm__add-controls {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.realm__lectern .realm__add-controls select,
+.realm__lectern .realm__people select {
+  height: 36px;
+  margin: 0;
+  box-sizing: border-box;
+}
+.realm__add-controls select {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+.realm__add-controls button {
+  height: 36px;
+  margin: 0;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+.realm__people li button {
+  height: 36px;
+  margin: 0;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .realm__backup-cards {
   display: grid;

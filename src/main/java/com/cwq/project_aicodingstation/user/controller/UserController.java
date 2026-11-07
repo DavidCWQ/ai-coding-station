@@ -2,8 +2,11 @@ package com.cwq.project_aicodingstation.user.controller;
 
 import com.cwq.project_aicodingstation.common.response.BaseResponse;
 import com.cwq.project_aicodingstation.common.utils.ResultUtils;
+import com.cwq.project_aicodingstation.user.dto.UserBindEmailRequest;
+import com.cwq.project_aicodingstation.user.dto.UserForgotPasswordRequest;
 import com.cwq.project_aicodingstation.user.dto.UserLoginRequest;
 import com.cwq.project_aicodingstation.user.dto.UserRegisterRequest;
+import com.cwq.project_aicodingstation.user.dto.UserResetPasswordRequest;
 import com.cwq.project_aicodingstation.user.dto.UserChangePasswordRequest;
 import com.cwq.project_aicodingstation.user.dto.UserUpdateRequest;
 import com.cwq.project_aicodingstation.user.service.UserService;
@@ -93,5 +96,32 @@ public class UserController {
     public BaseResponse<Boolean> changePassword(@RequestBody UserChangePasswordRequest request,
                                                 HttpServletRequest httpRequest) {
         return ResultUtils.success(userService.changePassword(request, httpRequest));
+    }
+
+    /**
+     * 按账号申请重置邮件。账号不存在或未绑定邮箱时，返回与成功相同的提示。
+     */
+    @PostMapping("/password/forgot")
+    public BaseResponse<String> forgotPassword(@RequestBody UserForgotPasswordRequest request,
+                                               HttpServletRequest httpRequest) {
+        return ResultUtils.success(userService.requestPasswordReset(request, httpRequest));
+    }
+
+    /**
+     * 使用邮件中的令牌设置新密码。旧登录态会在下一次请求时失效。
+     */
+    @PostMapping("/password/reset")
+    public BaseResponse<Boolean> resetPassword(@RequestBody UserResetPasswordRequest request,
+                                               HttpServletRequest httpRequest) {
+        return ResultUtils.success(userService.resetPassword(request, httpRequest));
+    }
+
+    /**
+     * 当前用户绑定或更换邮箱。邮箱留空则解除绑定。
+     */
+    @PostMapping("/email/bind")
+    public BaseResponse<Boolean> bindEmail(@RequestBody UserBindEmailRequest request,
+                                           HttpServletRequest httpRequest) {
+        return ResultUtils.success(userService.bindEmail(request, httpRequest));
     }
 }

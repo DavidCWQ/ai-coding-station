@@ -1,7 +1,10 @@
 package com.cwq.project_aicodingstation.user.service;
 
+import com.cwq.project_aicodingstation.user.dto.UserBindEmailRequest;
+import com.cwq.project_aicodingstation.user.dto.UserForgotPasswordRequest;
 import com.cwq.project_aicodingstation.user.dto.UserLoginRequest;
 import com.cwq.project_aicodingstation.user.dto.UserRegisterRequest;
+import com.cwq.project_aicodingstation.user.dto.UserResetPasswordRequest;
 import com.cwq.project_aicodingstation.user.dto.UserChangePasswordRequest;
 import com.cwq.project_aicodingstation.user.dto.UserUpdateRequest;
 import com.cwq.project_aicodingstation.user.entity.SysUser;
@@ -26,6 +29,15 @@ public interface UserService extends IService<SysUser> {
     boolean updateMyProfile(UserUpdateRequest request, HttpServletRequest httpRequest);
 
     boolean changePassword(UserChangePasswordRequest request, HttpServletRequest httpRequest);
+
+    /**
+     * 申请重置密码。无论账号是否存在、是否绑定邮箱，成功时都返回同一句提示。
+     */
+    String requestPasswordReset(UserForgotPasswordRequest request, HttpServletRequest httpRequest);
+
+    boolean resetPassword(UserResetPasswordRequest request, HttpServletRequest httpRequest);
+
+    boolean bindEmail(UserBindEmailRequest request, HttpServletRequest httpRequest);
 
     UserVO getVOById(Long id);
 

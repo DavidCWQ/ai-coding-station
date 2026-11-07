@@ -358,6 +358,21 @@ declare namespace API {
     checkNewPassword?: string;
   };
 
+  type UserForgotPasswordRequest = {
+    userAccount?: string;
+  };
+
+  type UserResetPasswordRequest = {
+    token?: string;
+    newPassword?: string;
+    checkNewPassword?: string;
+  };
+
+  type UserBindEmailRequest = {
+    userEmail?: string;
+    password?: string;
+  };
+
   type UserLoginRequest = {
     userAccount?: string;
     userPassword?: string;
@@ -366,6 +381,7 @@ declare namespace API {
   type UserLoginVO = {
     id?: number;
     userAccount?: string;
+    userEmail?: string;
     userName?: string;
     userAvatar?: string;
     userProfile?: string;

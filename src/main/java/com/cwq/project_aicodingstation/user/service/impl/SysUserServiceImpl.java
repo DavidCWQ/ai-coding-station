@@ -8,10 +8,13 @@ import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
 import com.cwq.project_aicodingstation.user.constant.UserConstant;
 import com.cwq.project_aicodingstation.user.dto.UserQueryRequest;
 import com.cwq.project_aicodingstation.user.enums.UserRoleEnum;
+import com.cwq.project_aicodingstation.user.security.AuthThrottle;
+import com.cwq.project_aicodingstation.user.security.ClientIpResolver;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import com.cwq.project_aicodingstation.user.vo.UserVO;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,6 +37,14 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     private static final BCryptPasswordEncoder PASSWORD_ENCODER =
             new BCryptPasswordEncoder();
+
+    /** 账号不存在时仍做一次比对，避免响应时间暴露账号是否存在。 */
+    private static final String DUMMY_PASSWORD_HASH = PASSWORD_ENCODER.encode("login-timing-placeholder");
+
+    private static final String LOGIN_FAILED_MESSAGE = "账号或密码错误";
+
+    @Resource
+    private AuthThrottle authThrottle;
 
     @Override
     public Long userRegister(String userAccount, String userPassword, String checkPassword) {
@@ -92,6 +103,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         BusinessAssert.failIf(StrUtil.hasBlank(userAccount, userPassword),
                 ErrorCode.PARAMS_MISSING, "登陆参数为空"
         );
+        userAccount = userAccount.trim();
         BusinessAssert.failIf(userAccount.length() < 4,
                 ErrorCode.PARAMS_INVALID, "用户账号过短"
         );
@@ -99,19 +111,33 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                 ErrorCode.PARAMS_INVALID, "用户密码过短"
         );
 
-        // 2. 查询用户是否存在（仅按账号查询）
+        String accountKey = AuthThrottle.accountKey(userAccount);
+        String clientIp = ClientIpResolver.resolve(request);
+        authThrottle.assertLoginAllowed(accountKey, clientIp);
+
+        // 2. 查询用户是否存在（仅按账号查询）。不存在和密码错误返回同一句话。
         QueryWrapper queryWrapper = new QueryWrapper();
         queryWrapper.eq("user_account", userAccount);
         SysUser user = this.mapper.selectOneByQuery(queryWrapper);
-        BusinessAssert.notNull(user, ErrorCode.PARAMS_ERROR, "用户不存在");
+        boolean passwordOk = false;
+        if (user == null) {
+            PASSWORD_ENCODER.matches(userPassword, DUMMY_PASSWORD_HASH);
+        } else {
+            try {
+                passwordOk = PASSWORD_ENCODER.matches(userPassword, user.getUserPassword());
+            } catch (IllegalArgumentException ex) {
+                passwordOk = false;
+            }
+        }
+        if (!passwordOk) {
+            if (authThrottle.recordLoginFailure(accountKey, clientIp)) {
+                authThrottle.throwLoginLocked(accountKey, clientIp);
+            }
+            BusinessAssert.failIf(true, ErrorCode.PARAMS_ERROR, LOGIN_FAILED_MESSAGE);
+        }
+        authThrottle.clearLoginFailures(accountKey, clientIp);
 
-        // 3. 使用BCrypt验证密码
-        BusinessAssert.requireTrue(
-                PASSWORD_ENCODER.matches(userPassword, user.getUserPassword()),
-                ErrorCode.PARAMS_ERROR, "密码错误"
-        );
-
-        // 4. 记录用户的登录态
+        // 3. 记录用户的登录态（含密码哈希，用于发现密码被重置后作废旧会话）
         request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, user);
 
         // 5. 获得脱敏后的用户信息
@@ -124,7 +150,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             return null;
         }
         UserLoginVO userLoginVO = new UserLoginVO();
-        BeanUtil.copyProperties(user, userLoginVO);
+        BeanUtil.copyProperties(user, userLoginVO, "userPassword");
         return userLoginVO;
     }
 
@@ -144,8 +170,15 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         BusinessAssert.notNull(currentUser.getId(), ErrorCode.NOT_LOGIN, "用户id不存在");
 
         // 2. 从数据库查询（追求性能的话可以注释，直接返回上述结果）
+        String sessionPassword = currentUser.getUserPassword();
         currentUser = this.getById(currentUser.getId());
         BusinessAssert.notNull(currentUser, ErrorCode.NOT_LOGIN, "当前用户未登录");
+
+        // 密码重置或修改后，库中的哈希与会话里保存的不一致，旧登录态立即失效
+        if (sessionPassword != null && !sessionPassword.equals(currentUser.getUserPassword())) {
+            request.getSession().invalidate();
+            BusinessAssert.failIf(true, ErrorCode.NOT_LOGIN, "登录已失效，请重新登录");
+        }
 
         return currentUser;
     }

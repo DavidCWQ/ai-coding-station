@@ -6,6 +6,7 @@ import com.cwq.project_aicodingstation.common.utils.ResultUtils;
 import com.cwq.project_aicodingstation.mc.dto.McAllowlistUpdateRequest;
 import com.cwq.project_aicodingstation.mc.dto.McGameruleUpdateRequest;
 import com.cwq.project_aicodingstation.mc.dto.McOpResultVO;
+import com.cwq.project_aicodingstation.mc.dto.McPackToggleRequest;
 import com.cwq.project_aicodingstation.mc.dto.McPermissionUpdateRequest;
 import com.cwq.project_aicodingstation.mc.dto.McSettingsUpdateRequest;
 import com.cwq.project_aicodingstation.mc.dto.McWorldActivateRequest;
@@ -28,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/mc/admin")
@@ -106,6 +108,34 @@ public class McBedrockAdminController {
         return ResultUtils.success(mcBedrockService.uploadWorld(file));
     }
 
+    @PostMapping(value = "/pack/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<McOpResultVO> uploadPack(@RequestParam("file") MultipartFile file) {
+        return ResultUtils.success(mcBedrockService.uploadPack(file));
+    }
+
+    @PostMapping("/pack/toggle")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<McOpResultVO> togglePack(@RequestBody McPackToggleRequest req) {
+        return ResultUtils.success(mcBedrockService.setPackEnabled(req));
+    }
+
+    @PostMapping("/pack/delete")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<McOpResultVO> deletePack(@RequestParam String id) {
+        return ResultUtils.success(mcBedrockService.deletePack(id));
+    }
+
+    @GetMapping("/pack/icon")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public ResponseEntity<Resource> packIcon(@RequestParam String id) {
+        Resource resource = mcBedrockService.packIcon(id, true);
+        return ResponseEntity.ok()
+                .contentType(imageType(resource))
+                .header(HttpHeaders.CACHE_CONTROL, "private, max-age=60")
+                .body(resource);
+    }
+
     @PostMapping("/world/delete")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<McOpResultVO> deleteWorld(@RequestParam String folder) {
@@ -134,5 +164,13 @@ public class McBedrockAdminController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<McOpResultVO> opStatus(@PathVariable String opId) {
         return ResultUtils.success(mcBedrockService.opStatus(opId));
+    }
+
+    private static MediaType imageType(Resource resource) {
+        String name = resource.getFilename() == null ? "" : resource.getFilename().toLowerCase(Locale.ROOT);
+        if (name.endsWith(".png")) {
+            return MediaType.IMAGE_PNG;
+        }
+        return MediaType.IMAGE_JPEG;
     }
 }

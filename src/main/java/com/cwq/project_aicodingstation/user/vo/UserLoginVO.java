@@ -23,6 +23,9 @@ public class UserLoginVO implements Serializable {
     /// 账号
     private String userAccount;
 
+    /// 绑定邮箱。只出现在当前登录用户的信息里，公开资料不返回。
+    private String userEmail;
+
     /// 用户名
     private String userName;
 

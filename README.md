@@ -15,7 +15,7 @@
 [![Node](https://img.shields.io/badge/Node.js-20%2B-informational.svg)](#安装与启动)
 [![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D.svg)](#架构与技术栈)
 
-**文档入口**：[详细文档](./docs/README.md) · [配置说明](./docs/config.md) · [基岩服管理台复盘](./docs/mc-bedrock-retrospective.md) · [RakNet 协议](https://wiki.bedrock.dev/servers/raknet)
+**文档入口**：[详细文档](./docs/README.md) · [配置说明](./docs/config.md) · [开发笔记](./docs/dev-notes.md) · [基岩服管理台复盘](./docs/mc-bedrock-retrospective.md) · [RakNet 协议](https://wiki.bedrock.dev/servers/raknet)
 
 </div>
 

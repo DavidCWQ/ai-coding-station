@@ -8,4 +8,7 @@ ai-coding-station-frontend/node_modules
 ai-coding-station-frontend/dist
 tmp/
 certbot/
+.env
+src/main/resources/application-local.yml
+src/main/resources/application-local.properties
 **/.DS_Store

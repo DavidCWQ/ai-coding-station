@@ -25,6 +25,7 @@ public class McConsoleVO {
     /** 当前在线人数；世界未运行时为 0 */
     private int onlineCount;
     private List<McBackupVO> backups;
+    private List<McPackVO> packs;
     private Long lastBackupEpochMs;
     private String pendingOpId;
     private String pendingOpAction;

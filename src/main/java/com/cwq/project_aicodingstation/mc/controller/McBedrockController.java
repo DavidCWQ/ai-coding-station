@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Locale;
+
 /**
  * 登录用户：只能看当前世界（访客视角）。
  */
@@ -37,6 +39,18 @@ public class McBedrockController {
         Resource resource = mcBedrockService.worldIcon(folder, false);
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_JPEG)
+                .header(HttpHeaders.CACHE_CONTROL, "private, max-age=120")
+                .body(resource);
+    }
+
+    @GetMapping("/pack/icon")
+    @AuthCheck
+    public ResponseEntity<Resource> packIcon(@RequestParam String id) {
+        Resource resource = mcBedrockService.packIcon(id, false);
+        String name = resource.getFilename() == null ? "" : resource.getFilename().toLowerCase(Locale.ROOT);
+        MediaType type = name.endsWith(".png") ? MediaType.IMAGE_PNG : MediaType.IMAGE_JPEG;
+        return ResponseEntity.ok()
+                .contentType(type)
                 .header(HttpHeaders.CACHE_CONTROL, "private, max-age=120")
                 .body(resource);
     }

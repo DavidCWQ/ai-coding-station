@@ -51,6 +51,25 @@ export interface McBackupVO {
   createdEpochMs: number | string
 }
 
+export interface McPackVO {
+  id: string
+  name: string
+  description?: string
+  version?: string
+  kind: 'resources' | 'behavior' | 'addon' | string
+  hasScript: boolean
+  experimentHint: boolean
+  missingDependency: boolean
+  dependencyNote?: string
+  hasIcon: boolean
+  iconUrl?: string
+  sizeBytes: number | string
+  largeForMobile: boolean
+  authors?: string
+  minEngine?: string
+  enabledWorlds: string[]
+}
+
 export interface McConsoleVO {
   configured: boolean
   message?: string
@@ -66,6 +85,7 @@ export interface McConsoleVO {
   players: McPlayerVO[]
   onlineCount?: number | string
   backups: McBackupVO[]
+  packs?: McPackVO[]
   lastBackupEpochMs?: number | string
 }
 
@@ -117,6 +137,20 @@ export function postMcUploadWorld(file: File) {
   const body = new FormData()
   body.append('file', file)
   return unwrap(request.post('/mc/admin/world/upload', body, { timeout: 600_000 })) as Promise<McOpResultVO>
+}
+
+export function postMcUploadPack(file: File) {
+  const body = new FormData()
+  body.append('file', file)
+  return unwrap(request.post('/mc/admin/pack/upload', body, { timeout: 120_000 })) as Promise<McOpResultVO>
+}
+
+export function postMcPackToggle(body: { id: string; world: string; enabled: boolean }) {
+  return unwrap(request.post('/mc/admin/pack/toggle', body)) as Promise<McOpResultVO>
+}
+
+export function postMcDeletePack(id: string) {
+  return unwrap(request.post('/mc/admin/pack/delete', null, { params: { id } })) as Promise<McOpResultVO>
 }
 
 export function postMcDeleteWorld(folder: string) {
