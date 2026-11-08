@@ -117,6 +117,7 @@ declare namespace API {
     createTime?: string;
     updateTime?: string;
     user?: UserVO;
+    viewCount?: number;
   };
 
   type BaseResponseAppVO = {

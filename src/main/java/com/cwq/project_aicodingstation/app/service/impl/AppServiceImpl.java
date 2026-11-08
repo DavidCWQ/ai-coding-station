@@ -21,6 +21,7 @@ import com.cwq.project_aicodingstation.common.exception.BusinessException;
 import com.cwq.project_aicodingstation.common.request.DeleteRequest;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
 import com.cwq.project_aicodingstation.core.screenshot.ScreenshotService;
+import com.cwq.project_aicodingstation.stats.service.StatsService;
 import com.cwq.project_aicodingstation.user.constant.UserConstant;
 import com.cwq.project_aicodingstation.user.service.UserService;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
@@ -62,6 +63,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private ScreenshotService screenshotService;
+
+    @Resource
+    private StatsService statsService;
 
     /**
      * 删除应用时关联删除对话历史（兜底清理；即使外键 CASCADE 生效也不影响）。
@@ -193,6 +197,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         Long userId = app.getUserId();
         BusinessAssert.notNull(userId, ErrorCode.PARAMS_MISSING, "应用 id 为空");
         appVO.setUser(userService.getVOById(userId));
+        appVO.setViewCount(statsService.appPageViews(List.of(app.getId())).getOrDefault(app.getId(), 0L));
 
         return appVO;
     }
@@ -323,9 +328,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        // 2. 批量查询用户
+        // 2. 批量查询用户和累计浏览量
         Map<Long, UserVO> userVOMap = userService.ListUserVOByIds(userIds).stream()
                 .collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
+        Map<Long, Long> viewCounts = statsService.appPageViews(appList.stream().map(App::getId).toList());
 
         // 3. 组装 AppVO
         return appList.stream().map(app -> {
@@ -333,6 +339,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             UserVO userVO = userVOMap.get(app.getUserId());
             BeanUtil.copyProperties(app, appVO);
             appVO.setUser(userVO);
+            appVO.setViewCount(viewCounts.getOrDefault(app.getId(), 0L));
             return appVO;
         }).collect(Collectors.toList());
     }

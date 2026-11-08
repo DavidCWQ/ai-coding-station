@@ -640,7 +640,14 @@ const onVisualInjectFailed = () => {
   visualEditMode.value = false
 }
 
+const resetPageScroll = () => {
+  window.scrollTo(0, 0)
+  document.documentElement.scrollTop = 0
+  document.body.scrollTop = 0
+}
+
 watch(appId, async () => {
+  resetPageScroll()
   didInitial = false
   messages.value = []
   previewUrl.value = ''
@@ -659,6 +666,7 @@ watch(appId, async () => {
 })
 
 onMounted(async () => {
+  resetPageScroll()
   await loadApp()
   await loadHistory('initial')
   await maybeRunInitial()
@@ -800,7 +808,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .app-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
   height: 100vh;
+  height: 100dvh;
   background: #f5f5f5;
   display: flex;
   flex-direction: column;
@@ -810,17 +822,19 @@ onBeforeUnmount(() => {
 .app-detail :deep(.ant-spin-nested-loading),
 .app-detail :deep(.ant-spin-container) {
   height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-detail__header {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   gap: 12px;
   padding: 12px 16px;
   background: #fff;
   border-bottom: 1px solid rgba(5, 5, 5, 0.06);
-  position: sticky;
-  top: 0;
   z-index: 10;
 }
 
@@ -835,17 +849,17 @@ onBeforeUnmount(() => {
 
 .app-detail__main {
   flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
   gap: 0;
-  height: calc(100vh - 57px);
   overflow: hidden;
 }
 
 @media (max-width: 960px) {
   .app-detail__main {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(320px, 45vh) minmax(400px, 55vh);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
