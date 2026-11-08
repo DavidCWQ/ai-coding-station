@@ -30,6 +30,11 @@ public interface AgentChatMessageService extends IService<AgentChatMessage> {
     Long addMessage(Long sessionId, String agentCode, Long userId, String text, String messageType);
 
     /**
+     * 写入一条消息，并把思考过程放进 metadata。思考不进入下一轮上下文。
+     */
+    Long addMessage(Long sessionId, String agentCode, Long userId, String text, String messageType, String reasoning);
+
+    /**
      * 游标分页拉取历史（时间正序）
      *
      * @param agentCode 智能体编码（与会话一致）

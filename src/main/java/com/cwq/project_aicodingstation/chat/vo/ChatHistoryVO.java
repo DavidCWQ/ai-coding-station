@@ -28,6 +28,11 @@ public class ChatHistoryVO implements Serializable {
     private String message;
 
     /**
+     * 思考过程。不进入下一轮上下文。
+     */
+    private String reasoning;
+
+    /**
      * 消息类型：user / ai / system
      */
     private String messageType;

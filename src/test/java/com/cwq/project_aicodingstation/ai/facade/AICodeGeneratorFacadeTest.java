@@ -1,6 +1,7 @@
 package com.cwq.project_aicodingstation.ai.facade;
 
 import com.cwq.project_aicodingstation.ai.enums.CodeGenTypeEnum;
+import com.cwq.project_aicodingstation.ai.model.StreamChunk;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -26,12 +27,15 @@ class AICodeGeneratorFacadeTest {
 
     @Test
     void generateAndSaveCodeStream() {
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(
+        Flux<StreamChunk> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(
                 "任务记录网站", CodeGenTypeEnum.MULTI_FILE, 1L, 1L
         );
-        List<String> result = codeStream.collectList().block();
+        List<StreamChunk> result = codeStream.collectList().block();
         Assertions.assertNotNull(result);
-        String completeContent = String.join("", result);
+        String completeContent = result.stream()
+                .filter(chunk -> !chunk.reasoning())
+                .map(StreamChunk::text)
+                .reduce("", String::concat);
         Assertions.assertNotNull(completeContent);
     }
 }

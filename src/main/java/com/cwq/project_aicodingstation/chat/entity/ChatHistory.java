@@ -41,6 +41,11 @@ public class ChatHistory implements Serializable {
     private String message;
 
     /**
+     * 思考过程。不进入下一轮上下文。
+     */
+    private String reasoning;
+
+    /**
      * 消息类型：user / ai / system（见 {@link com.cwq.project_aicodingstation.chat.enums.MessageTypeEnum}）
      */
     private String messageType;

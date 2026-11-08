@@ -37,6 +37,11 @@ public class ChatHistoryAddRequest implements Serializable {
     private String message;
 
     /**
+     * 思考过程，可空。只随 AI 消息保存，不进入下一轮上下文。
+     */
+    private String reasoning;
+
+    /**
      * 消息类型：user / ai / system
      */
     @NotBlank(message = "消息类型不能为空")

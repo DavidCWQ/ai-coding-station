@@ -5,7 +5,10 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import com.cwq.project_aicodingstation.ai.model.StreamChunk;
+import com.cwq.project_aicodingstation.ai.AppTitleService;
 import com.cwq.project_aicodingstation.ai.enums.CodeGenTypeEnum;
+import com.cwq.project_aicodingstation.ai.result.AppTitleResult;
 import com.cwq.project_aicodingstation.ai.facade.AICodeGeneratorFacade;
 import com.cwq.project_aicodingstation.app.config.AppDeployConfig;
 import com.cwq.project_aicodingstation.app.constant.AppConstant;
@@ -33,6 +36,8 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
@@ -66,6 +71,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private StatsService statsService;
+
+    @Resource
+    private AppTitleService appTitleService;
 
     /**
      * 删除应用时关联删除对话历史（兜底清理；即使外键 CASCADE 生效也不影响）。
@@ -120,7 +128,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         BeanUtil.copyProperties(req, app);
 
         app.setUserId(userVO.getId());
-        if (StrUtil.isBlank(req.getAppName())) {
+        boolean namedByPrompt = StrUtil.isBlank(req.getAppName());
+        if (namedByPrompt) {
             app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 20)));
         }
         app.setCodeGenType(CodeGenTypeEnum.HTML.getValue());
@@ -130,7 +139,66 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
 
         BusinessAssert.requireTrue(this.save(app), ErrorCode.SYSTEM_ERROR, "创建应用失败");
+        if (namedByPrompt) {
+            scheduleAppTitle(app.getId(), initPrompt, app.getAppName());
+        }
         return app.getId();
+    }
+
+    /**
+     * 创建事务提交后再起标题，避免标题任务读到还没提交的应用。
+     */
+    private void scheduleAppTitle(Long appId, String initPrompt, String placeholder) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    suggestAppNameAsync(appId, initPrompt, placeholder);
+                }
+            });
+            return;
+        }
+        suggestAppNameAsync(appId, initPrompt, placeholder);
+    }
+
+    private void suggestAppNameAsync(Long appId, String initPrompt, String placeholder) {
+        Thread.startVirtualThread(() -> {
+            try {
+                AppTitleResult result = appTitleService.suggest(initPrompt);
+                String title = cleanAppTitle(result == null ? null : result.getTitle());
+                if (StrUtil.isBlank(title) || title.equals(placeholder)) {
+                    return;
+                }
+                App current = this.getById(appId);
+                if (current == null || !placeholder.equals(current.getAppName())) {
+                    return;
+                }
+                App update = new App();
+                update.setId(appId);
+                update.setAppName(title);
+                update.setEditTime(LocalDateTime.now());
+                this.updateById(update);
+            } catch (Exception e) {
+                log.warn("应用标题生成失败, appId={}: {}", appId, e.getMessage());
+            }
+        });
+    }
+
+    private static String cleanAppTitle(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String title = raw.trim();
+        int lineBreak = title.indexOf('\n');
+        if (lineBreak >= 0) {
+            title = title.substring(0, lineBreak).trim();
+        }
+        title = title.replaceAll("^[\"'「」『』]+|[\"'「」『』。！？!?，,]+$", "");
+        title = title.replaceAll("\\s+", "");
+        if (title.length() > 12) {
+            title = title.substring(0, 12);
+        }
+        return title;
     }
 
     @Override
@@ -427,7 +495,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     // ======================= 应用侧 ========================
 
     @Override
-    public Flux<String> chatToGenCode(Long appId, Long sessionId, String message, UserLoginVO userVO) {
+    public Flux<StreamChunk> chatToGenCode(Long appId, Long sessionId, String message, UserLoginVO userVO) {
 
         BusinessAssert.notNull(appId, ErrorCode.PARAMS_MISSING, "应用ID不能为空");
         BusinessAssert.notBlank(message, ErrorCode.PARAMS_MISSING, "消息不能为空");

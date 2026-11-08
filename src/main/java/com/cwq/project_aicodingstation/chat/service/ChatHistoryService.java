@@ -29,6 +29,11 @@ public interface ChatHistoryService extends IService<ChatHistory> {
     Long addMessage(Long appId, Long sessionId, String message, String messageType, Long userId);
 
     /**
+     * 持久化一条消息，并单独保存思考过程。
+     */
+    Long addMessage(Long appId, Long sessionId, String message, String messageType, Long userId, String reasoning);
+
+    /**
      * 根据 appId 关联删除对话历史（用于删除应用时兜底清理）。
      *
      * @param appId 应用 id

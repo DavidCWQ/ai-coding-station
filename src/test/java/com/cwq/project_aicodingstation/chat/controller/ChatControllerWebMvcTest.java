@@ -58,7 +58,7 @@ class ChatControllerWebMvcTest {
         UserLoginVO user = new UserLoginVO();
         user.setId(9L);
         when(userService.getUserLoginVO(any())).thenReturn(user);
-        when(chatHistoryService.addMessage(1L, 2L, "hello", "user", 9L)).thenReturn(99L);
+        when(chatHistoryService.addMessage(1L, 2L, "hello", "user", 9L, null)).thenReturn(99L);
 
         mockMvc.perform(post("/chat/history/add")
                         .contentType(MediaType.APPLICATION_JSON)

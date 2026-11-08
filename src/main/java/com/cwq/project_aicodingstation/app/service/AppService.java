@@ -15,6 +15,7 @@ package com.cwq.project_aicodingstation.app.service;
  * -【管理员】根据 id 查看应用详情
  * */
 
+import com.cwq.project_aicodingstation.ai.model.StreamChunk;
 import com.cwq.project_aicodingstation.app.dto.*;
 import com.cwq.project_aicodingstation.app.entity.App;
 import com.cwq.project_aicodingstation.app.vo.AppVO;
@@ -164,7 +165,7 @@ public interface AppService extends IService<App> {
      * @param userVO    当前登录用户 VO
      * @return 流式代码生成结果 (SSE)
      */
-    Flux<String> chatToGenCode(Long appId, Long sessionId, String message, UserLoginVO userVO);
+    Flux<StreamChunk> chatToGenCode(Long appId, Long sessionId, String message, UserLoginVO userVO);
 
     /**
      * 部署应用

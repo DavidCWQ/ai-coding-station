@@ -43,6 +43,7 @@ export function useAgentHistory(options: {
         id: String(x.id),
         role: x.messageType === 'ai' ? 'assistant' : 'user',
         content: x.message ?? '',
+        reasoning: x.reasoning || undefined,
         createTime: x.createTime,
         streaming: false,
       }))

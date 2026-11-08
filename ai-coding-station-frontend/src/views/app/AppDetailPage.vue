@@ -33,6 +33,7 @@ import {
   triggerBlobDownload,
 } from '@/utils/fileDownload'
 import { buildAugmentedChatMessage } from '@/features/app-editor/utils/elementExtractor'
+import { useStickToBottom } from '@/features/chat/chatScroll'
 import type { VisualEditorSelectedElement } from '@/features/app-editor/utils/visualEditor'
 
 type ChatRow = {
@@ -40,6 +41,7 @@ type ChatRow = {
   id?: string
   role: 'user' | 'assistant'
   content: string
+  reasoning?: string
   streaming?: boolean
   createTime?: string
 }
@@ -113,11 +115,7 @@ const formattedCreateTime = computed(() => {
   return d.isValid() ? d.format('YYYY-MM-DD HH:mm:ss') : t.replace('T', ' ')
 })
 
-const scrollEnd = async () => {
-  await nextTick()
-  const el = listEl.value
-  if (el) el.scrollTop = el.scrollHeight
-}
+const { onListScroll, scrollIfPinned, pinAndScroll } = useStickToBottom(listEl)
 
 const withCacheBust = (url: string): string => {
   if (!url) return url
@@ -179,6 +177,7 @@ const mergeHistoryToMessages = (incoming: API.ChatHistoryVO[], mode: 'prepend' |
       id: String(x.id),
       role: x.messageType === 'ai' ? 'assistant' : 'user',
       content: x.message ?? '',
+      reasoning: x.reasoning || undefined,
       createTime: x.createTime,
       streaming: false,
     }))
@@ -275,6 +274,8 @@ const loadHistory = async (mode: 'initial' | 'more') => {
       await nextTick()
       const afterHeight = el.scrollHeight
       el.scrollTop = beforeTop + Math.max(0, afterHeight - beforeHeight)
+    } else if (mode === 'initial') {
+      await pinAndScroll()
     }
   }
 }
@@ -310,7 +311,7 @@ const runStream = async (text: string) => {
   chatLoading.value = true
   const assistantKey = `local-ai-${Date.now()}-${Math.random().toString(16).slice(2)}`
   appendAssistantStreaming(assistantKey)
-  await scrollEnd()
+  await pinAndScroll()
   const idx = messages.value.length - 1
   try {
     if (!sessionId.value) {
@@ -320,11 +321,13 @@ const runStream = async (text: string) => {
       appId.value,
       sessionId.value,
       text,
-      (chunk) => {
+      (delta) => {
         const row = messages.value[idx]
         if (row && row.role === 'assistant') {
-          row.content += chunk
+          if (delta.kind === 'reasoning') row.reasoning = (row.reasoning || '') + delta.text
+          else row.content += delta.text
         }
+        void scrollIfPinned()
       },
       { signal: abortCtl.signal },
     )
@@ -337,6 +340,7 @@ const runStream = async (text: string) => {
           appId: apiLongId(appId.value),
           sessionId: apiLongId(sessionId.value),
           message: messages.value[idx].content,
+          reasoning: messages.value[idx].reasoning || undefined,
           messageType: 'ai',
         })
         const hid = saved.data?.data
@@ -376,7 +380,7 @@ const runStream = async (text: string) => {
   } finally {
     chatLoading.value = false
     abortCtl = null
-    await scrollEnd()
+    await scrollIfPinned()
   }
 }
 
@@ -398,7 +402,7 @@ const sendUser = async (text: string) => {
   const userKey = `local-user-${Date.now()}-${Math.random().toString(16).slice(2)}`
   messages.value.push({ key: userKey, role: 'user', content: t })
   inputText.value = ''
-  await scrollEnd()
+  await pinAndScroll()
 
   // 持久化用户消息（失败不阻断对话）— 仅保存用户输入原文，与气泡展示一致
   try {
@@ -435,16 +439,53 @@ const cancelStream = () => {
   abortCtl.abort()
 }
 
+let nameWatchTimer: ReturnType<typeof setInterval> | undefined
+
+const stopNameWatch = () => {
+  if (nameWatchTimer != null) {
+    clearInterval(nameWatchTimer)
+    nameWatchTimer = undefined
+  }
+}
+
+const refreshAppName = async () => {
+  if (!appVo.value) return
+  try {
+    const res = await getApp({ id: apiLongId(appId.value) })
+    const name = res.data?.data?.appName?.trim()
+    if (name && name !== appVo.value.appName) {
+      appVo.value = { ...appVo.value, appName: name }
+      stopNameWatch()
+    }
+  } catch {
+    // 标题还没写好时不打断对话
+  }
+}
+
+const watchGeneratedName = () => {
+  stopNameWatch()
+  let tries = 0
+  nameWatchTimer = setInterval(() => {
+    tries += 1
+    if (tries > 12) {
+      stopNameWatch()
+      return
+    }
+    void refreshAppName()
+  }, 3000)
+}
+
 const maybeRunInitial = async () => {
   if (didInitial || !appVo.value || !canChat.value) return
   if (messages.value.length > 0) return
   const init = appVo.value.initPrompt?.trim()
   if (!init) return
   didInitial = true
+  watchGeneratedName()
   await ensureSession()
   const userKey = `local-user-${Date.now()}-${Math.random().toString(16).slice(2)}`
   messages.value.push({ key: userKey, role: 'user', content: init })
-  await scrollEnd()
+  await pinAndScroll()
 
   try {
     if (sessionId.value) {
@@ -647,6 +688,7 @@ const resetPageScroll = () => {
 }
 
 watch(appId, async () => {
+  stopNameWatch()
   resetPageScroll()
   didInitial = false
   messages.value = []
@@ -674,6 +716,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  stopNameWatch()
   abortCtl?.abort()
 })
 </script>
@@ -701,7 +744,7 @@ onBeforeUnmount(() => {
 
         <div class="app-detail__main">
           <div class="app-detail__chat">
-            <div ref="listEl" class="app-detail__messages">
+            <div ref="listEl" class="app-detail__messages" @scroll="onListScroll">
               <div class="app-detail__more">
                 <a-button
                   v-if="hasMoreHistory"
@@ -718,6 +761,7 @@ onBeforeUnmount(() => {
                 :key="m.key"
                 :role="m.role"
                 :content="m.content"
+                :reasoning="m.reasoning"
                 :streaming="m.streaming"
               />
               <a-empty
@@ -868,12 +912,14 @@ onBeforeUnmount(() => {
   flex-direction: column;
   background: #fff;
   border-right: 1px solid rgba(5, 5, 5, 0.06);
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
 
 .app-detail__messages {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow: auto;
   padding: 16px;

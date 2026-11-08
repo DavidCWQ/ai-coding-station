@@ -35,6 +35,7 @@ const {
   historyLoading,
   loadHistory,
   chatLoading,
+  onListScroll,
   sendUser,
   onAttachmentClick,
   createNewConversation,
@@ -80,7 +81,7 @@ const {
         </aside>
 
         <section class="agent-main">
-          <div ref="listEl" class="agent-main__messages">
+          <div ref="listEl" class="agent-main__messages" @scroll="onListScroll">
             <div class="agent-main__messages-inner">
               <div class="agent-main__more">
                 <a-button
@@ -97,6 +98,7 @@ const {
                 :key="m.key"
                 :role="m.role"
                 :content="m.content"
+                :reasoning="m.reasoning"
                 :streaming="m.streaming"
               />
               <a-empty
@@ -247,10 +249,10 @@ const {
 .agent-main__messages-inner {
   width: 100%;
   max-width: 760px;
+  min-width: 0;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 
 .agent-main__more {

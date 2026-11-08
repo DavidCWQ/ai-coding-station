@@ -66,7 +66,7 @@ const onComposerEnter = (e: Event) => {
 }
 
 const onCreate = async () => {
-  const t = promptText.value.trim() + "\n保持代码部分简洁，无需代码注释"
+  const t = promptText.value.trim()
   if (!t) {
     message.warning('请先描述你想创建的应用')
     return

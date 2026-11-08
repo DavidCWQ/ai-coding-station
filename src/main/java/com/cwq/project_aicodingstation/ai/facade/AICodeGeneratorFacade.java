@@ -9,6 +9,8 @@ package com.cwq.project_aicodingstation.ai.facade;
 import com.cwq.project_aicodingstation.ai.AICodeGeneratorService;
 import com.cwq.project_aicodingstation.ai.AICodeGeneratorServiceFactory;
 import com.cwq.project_aicodingstation.ai.enums.CodeGenTypeEnum;
+import com.cwq.project_aicodingstation.ai.model.StreamChunk;
+import com.cwq.project_aicodingstation.ai.utils.TokenStreamSupport;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
 import com.cwq.project_aicodingstation.core.parser.CodeParserExecutor;
@@ -61,10 +63,14 @@ public class AICodeGeneratorFacade {
      * @param codeGenType 代码生成类型
      * @return 流式响应
      */
-    private Flux<String> processCodeStream(Flux<String> codeStream, CodeGenTypeEnum codeGenType, Long appId) {
+    private Flux<StreamChunk> processCodeStream(Flux<StreamChunk> codeStream, CodeGenTypeEnum codeGenType, Long appId) {
         StringBuilder builder = new StringBuilder();
         return codeStream
-                .doOnNext(builder::append) // 实时收集代码片段
+                .doOnNext(chunk -> {
+                    if (!chunk.reasoning()) {
+                        builder.append(chunk.text());
+                    }
+                })
                 .doOnComplete(() -> { // 流式返回完成后保存代码
                     try {
                         String full = builder.toString();
@@ -87,13 +93,13 @@ public class AICodeGeneratorFacade {
      * @param codeGenType   生成类型
      * @return 生成的代码（流式）
      */
-    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenType,
-                                                  Long appId, Long sessionId) {
+    public Flux<StreamChunk> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenType,
+                                                       Long appId, Long sessionId) {
         BusinessAssert.notNull(codeGenType, ErrorCode.SYSTEM_ERROR, "生成类型为空");
         AICodeGeneratorService aiCodeGeneratorService =
                 aiCodeGeneratorServiceFactory.getAICodeGeneratorService(sessionId);
         return processCodeStream(
-                aiCodeGeneratorService.generateCodeStream(userMessage, codeGenType),
+                TokenStreamSupport.flux(aiCodeGeneratorService.generateCodeStream(userMessage, codeGenType)),
                 codeGenType, appId
         );
     }
