@@ -1,6 +1,7 @@
 package com.cwq.project_aicodingstation.agent.service;
 
 import com.cwq.project_aicodingstation.agent.dto.AgentChatStreamRequest;
+import com.cwq.project_aicodingstation.ai.model.StreamChunk;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import reactor.core.publisher.Flux;
 
@@ -19,7 +20,7 @@ public interface AgentChatAssistService {
      *
      * @param req    请求
      * @param userVO 当前用户
-     * @return 助手文本片段流
+     * @return 助手片段流（思考与正文分开）
      */
-    Flux<String> chatStream(AgentChatStreamRequest req, UserLoginVO userVO);
+    Flux<StreamChunk> chatStream(AgentChatStreamRequest req, UserLoginVO userVO);
 }

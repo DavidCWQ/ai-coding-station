@@ -2,6 +2,8 @@ package com.cwq.project_aicodingstation.ai.facade;
 
 import com.cwq.project_aicodingstation.ai.AgentChatService;
 import com.cwq.project_aicodingstation.ai.AgentChatServiceFactory;
+import com.cwq.project_aicodingstation.ai.model.StreamChunk;
+import com.cwq.project_aicodingstation.ai.utils.TokenStreamSupport;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -29,10 +31,10 @@ public class AgentChatFacade {
      * @param agentCode     智能体编码（用于选择 tools 与 RAG corpus）
      * @param systemPrompt  系统提示词
      * @param userMessage   本轮用户消息
-     * @return 助手输出片段流
+     * @return 助手输出片段流（思考与正文分开）
      */
-    public Flux<String> chatStream(Long sessionId, String agentCode, String systemPrompt, String userMessage) {
+    public Flux<StreamChunk> chatStream(Long sessionId, String agentCode, String systemPrompt, String userMessage) {
         AgentChatService service = agentChatServiceFactory.getAgentChatService(sessionId, agentCode);
-        return service.chatStream(systemPrompt, userMessage);
+        return TokenStreamSupport.flux(service.chatStream(systemPrompt, userMessage));
     }
 }

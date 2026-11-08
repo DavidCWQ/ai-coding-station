@@ -8,6 +8,7 @@ import com.cwq.project_aicodingstation.agent.service.AgentChatAssistService;
 import com.cwq.project_aicodingstation.agent.service.AgentChatMessageService;
 import com.cwq.project_aicodingstation.agent.service.AgentChatSessionService;
 import com.cwq.project_aicodingstation.ai.facade.AgentChatFacade;
+import com.cwq.project_aicodingstation.ai.model.StreamChunk;
 import com.cwq.project_aicodingstation.chat.enums.MessageTypeEnum;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
@@ -43,7 +44,7 @@ public class AgentChatAssistServiceImpl implements AgentChatAssistService {
     private TransactionTemplate transactionTemplate;
 
     @Override
-    public Flux<String> chatStream(AgentChatStreamRequest req, UserLoginVO userVO) {
+    public Flux<StreamChunk> chatStream(AgentChatStreamRequest req, UserLoginVO userVO) {
         BusinessAssert.notNull(req, ErrorCode.PARAMS_MISSING, "请求为空");
         BusinessAssert.notNull(userVO, ErrorCode.NOT_LOGIN, "用户未登录");
 
@@ -68,19 +69,27 @@ public class AgentChatAssistServiceImpl implements AgentChatAssistService {
 
         String systemPrompt = agentSystemPromptResolver.resolve(agent);
 
-        StringBuilder accumulator = new StringBuilder();
+        StringBuilder content = new StringBuilder();
+        StringBuilder reasoning = new StringBuilder();
         return agentChatFacade.chatStream(sessionId, agent.getCode(), systemPrompt, userText)
-                .doOnNext(accumulator::append)
+                .doOnNext(chunk -> {
+                    if (chunk.reasoning()) {
+                        reasoning.append(chunk.text());
+                    } else {
+                        content.append(chunk.text());
+                    }
+                })
                 .doOnComplete(() -> {
-                    String full = accumulator.toString();
+                    String full = content.toString();
                     if (full.isEmpty()) {
                         full = "（模型未返回有效内容，请稍后重试。）";
                     }
+                    String thought = reasoning.toString();
                     String finalFull = full;
                     transactionTemplate.executeWithoutResult(st ->
                             agentChatMessageService.addMessage(
                                     sessionId, agent.getCode(), ownerUserId, finalFull,
-                                    MessageTypeEnum.AI.getValue())
+                                    MessageTypeEnum.AI.getValue(), thought)
                     );
                 });
     }

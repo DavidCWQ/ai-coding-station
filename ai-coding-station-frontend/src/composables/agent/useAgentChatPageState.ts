@@ -116,6 +116,7 @@ export function useAgentChatPageState() {
     history.resetPaging()
     await session.syncRouteSession(sid)
     await history.loadHistory('initial')
+    await stream.pinAndScroll()
   }
 
   const initPage = async () => {
@@ -138,6 +139,7 @@ export function useAgentChatPageState() {
       await session.loadSessions()
       if (session.activeSessionId.value) {
         await history.loadHistory('initial')
+        await stream.pinAndScroll()
       }
     } finally {
       pageLoading.value = false
@@ -162,6 +164,7 @@ export function useAgentChatPageState() {
       if (session.activeSessionId.value === s) return
       session.activeSessionId.value = s
       await history.loadHistory('initial')
+      await stream.pinAndScroll()
     },
   )
 
@@ -201,6 +204,7 @@ export function useAgentChatPageState() {
     historyLoading: history.historyLoading,
     loadHistory: history.loadHistory,
     chatLoading: stream.chatLoading,
+    onListScroll: stream.onListScroll,
     sendUser,
     onAttachmentClick: stream.onAttachmentClick,
     createNewConversation,

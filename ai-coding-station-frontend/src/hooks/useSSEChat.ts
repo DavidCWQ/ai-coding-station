@@ -1,19 +1,37 @@
 import { apiLongId, assertValidId } from '@/utils/id'
 import { getApiUrl } from '@/config/env'
 
+export type ChatStreamDelta = { kind: 'content' | 'reasoning'; text: string }
+
+function emitSseData(raw: string, onDelta: (delta: ChatStreamDelta) => void) {
+  if (!raw || raw === '[DONE]') return
+  try {
+    const j = JSON.parse(raw) as { d?: string; r?: string }
+    if (typeof j.r === 'string' && j.r.length > 0) {
+      onDelta({ kind: 'reasoning', text: j.r })
+      return
+    }
+    if (typeof j.d === 'string' && j.d.length > 0) {
+      onDelta({ kind: 'content', text: j.d })
+    }
+  } catch {
+    onDelta({ kind: 'content', text: raw })
+  }
+}
+
 function buildChatGenCodeUrl(): string {
   return getApiUrl('/app/chat/genCode')
 }
 
 /**
- * 调用 POST /app/chat/genCode (SSE)，解析 Spring 下发的 data: {"d":"..."}
+ * 调用 POST /app/chat/genCode (SSE)，解析 Spring 下发的 data: {"d":"..."} 或 {"r":"..."}
  */
 export async function streamChatGenCode(
   appId: string,
   sessionId: string,
   message: string,
-  onDelta: (chunk: string) => void,   // 每次收到数据块的回调
-  options?: { signal?: AbortSignal }, // 用于取消请求
+  onDelta: (delta: ChatStreamDelta) => void,
+  options?: { signal?: AbortSignal },
 ): Promise<void> {
   assertValidId(appId)
   assertValidId(sessionId)
@@ -51,16 +69,7 @@ export async function streamChatGenCode(
     const lines = block.split(/\r?\n/)
     for (const line of lines) {
       if (!line.startsWith('data:')) continue
-      const raw = line.slice(5).trim()
-      if (!raw || raw === '[DONE]') continue
-      try {
-        const j = JSON.parse(raw) as { d?: string }
-        if (typeof j.d === 'string' && j.d.length > 0) {
-          onDelta(j.d)
-        }
-      } catch {
-        onDelta(raw)
-      }
+      emitSseData(line.slice(5).trim(), onDelta)
     }
   }
 
@@ -84,13 +93,13 @@ function buildAgentChatStreamUrl(): string {
 }
 
 /**
- * 调用 POST /agent/chat/stream (SSE)，解析 Spring 下发的 data: {"d":"..."}，直至流结束（含 event: done）
+ * 调用 POST /agent/chat/stream (SSE)，解析 Spring 下发的 data: {"d":"..."} 或 {"r":"..."}，直至流结束（含 event: done）
  */
 export async function streamAgentChat(
   agentCode: string,
   sessionId: string,
   message: string,
-  onDelta: (chunk: string) => void,
+  onDelta: (delta: ChatStreamDelta) => void,
   options?: { signal?: AbortSignal },
 ): Promise<void> {
   assertValidId(sessionId)
@@ -132,16 +141,7 @@ export async function streamAgentChat(
     const lines = block.split(/\r?\n/)
     for (const line of lines) {
       if (!line.startsWith('data:')) continue
-      const raw = line.slice(5).trim()
-      if (!raw || raw === '[DONE]') continue
-      try {
-        const j = JSON.parse(raw) as { d?: string }
-        if (typeof j.d === 'string' && j.d.length > 0) {
-          onDelta(j.d)
-        }
-      } catch {
-        onDelta(raw)
-      }
+      emitSseData(line.slice(5).trim(), onDelta)
     }
   }
 

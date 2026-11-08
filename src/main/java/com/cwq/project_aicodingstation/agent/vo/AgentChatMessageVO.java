@@ -43,6 +43,11 @@ public class AgentChatMessageVO implements Serializable {
     private String message;
 
     /**
+     * 思考过程。不进入下一轮上下文。
+     */
+    private String reasoning;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

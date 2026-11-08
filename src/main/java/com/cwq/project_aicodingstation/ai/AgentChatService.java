@@ -1,9 +1,9 @@
 package com.cwq.project_aicodingstation.ai;
 
 import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
-import reactor.core.publisher.Flux;
 
 /**
  * 智能体多轮对话 AI 接口
@@ -26,8 +26,8 @@ public interface AgentChatService {
      *
      * @param systemPrompt 系统提示词（按会话所属智能体解析后的全文）
      * @param userMessage  本轮用户消息
-     * @return 助手输出文本片段流
+     * @return 助手输出流（含思考增量）
      */
     @SystemMessage("{{sys}}")
-    Flux<String> chatStream(@V("sys") String systemPrompt, @UserMessage String userMessage);
+    TokenStream chatStream(@V("sys") String systemPrompt, @UserMessage String userMessage);
 }

@@ -5,6 +5,7 @@ declare namespace API {
     sessionId?: number;
     messageType?: string;
     message?: string;
+    reasoning?: string;
     createTime?: string;
   };
 
@@ -117,6 +118,7 @@ declare namespace API {
     createTime?: string;
     updateTime?: string;
     user?: UserVO;
+    viewCount?: number;
   };
 
   type BaseResponseAppVO = {
@@ -201,6 +203,7 @@ declare namespace API {
     appId: number;
     sessionId: number;
     message: string;
+    reasoning?: string;
     messageType: string;
   };
 
@@ -215,6 +218,7 @@ declare namespace API {
   type ChatHistoryVO = {
     id?: number;
     message?: string;
+    reasoning?: string;
     messageType?: string;
     fileList?: string;
     appId?: number;

@@ -71,6 +71,8 @@ springdoc:
       packages-to-scan: com.cwq.project_aicodingstation.agent.controller
     - group: 'mc'
       packages-to-scan: com.cwq.project_aicodingstation.mc.controller
+    - group: 'stats'
+      packages-to-scan: com.cwq.project_aicodingstation.stats.controller
 
 # --------------- API doc tools ---------------
 # Knife4j Swagger 增强 UI 配置
@@ -97,6 +99,8 @@ langchain4j:
       # api-key: <Your API Key>
       model-name: deepseek-v4-flash
       max-tokens: 32768
+      # DeepSeek 默认会思考；不打开这项时 LangChain4j 会丢掉 reasoning_content
+      return-thinking: true
       log-requests: true
       log-responses: true
 

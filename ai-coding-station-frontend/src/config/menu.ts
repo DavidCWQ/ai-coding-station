@@ -13,5 +13,6 @@ export const appMenu: AppMenuItem[] = [
   { key: 'mc', label: '基岩世界', path: '/mc' },
   { key: 'admin-mc', label: '基岩服', path: '/admin/mc' },
   { key: 'admin-user', label: '用户管理', path: '/admin/userManage' },
+  { key: 'admin-stats', label: '访问统计', path: '/admin/stats' },
 ]
 

@@ -49,5 +49,8 @@ public class AppVO implements Serializable {
     /// 创建用户信息
     private UserVO user;
 
+    /// 累计浏览量
+    private Long viewCount;
+
 }
 

@@ -1,7 +1,8 @@
-import { nextTick, ref, type ComputedRef, type Ref } from 'vue'
+import { ref, type ComputedRef, type Ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { streamAgentChat } from '@/hooks/useSSEChat'
 import type { AgentChatRow } from '@/types/agent'
+import { useStickToBottom } from '@/features/chat/chatScroll'
 import { getErrorMessage } from '@/utils/error'
 
 export function useAgentStream(options: {
@@ -29,12 +30,7 @@ export function useAgentStream(options: {
 
   const chatLoading = ref(false)
   let abortCtl: AbortController | null = null
-
-  const scrollEnd = async () => {
-    await nextTick()
-    const el = listEl.value
-    if (el) el.scrollTop = el.scrollHeight
-  }
+  const { pinned, onListScroll, scrollIfPinned, pinAndScroll } = useStickToBottom(listEl)
 
   const appendAssistantStreaming = (key: string) => {
     messages.value.push({ key, role: 'assistant', content: '', streaming: true })
@@ -51,22 +47,27 @@ export function useAgentStream(options: {
     chatLoading.value = true
     const assistantKey = `local-ai-${Date.now()}-${Math.random().toString(16).slice(2)}`
     appendAssistantStreaming(assistantKey)
-    await scrollEnd()
+    await pinAndScroll()
     const idx = messages.value.length - 1
+    let reloadHistory = false
     try {
       await streamAgentChat(
         agentCode.value,
         sessionId,
         text,
-        (chunk) => {
+        (delta) => {
           const row = messages.value[idx]
-          if (row && row.role === 'assistant') row.content += chunk
+          if (row && row.role === 'assistant') {
+            if (delta.kind === 'reasoning') row.reasoning = (row.reasoning || '') + delta.text
+            else row.content += delta.text
+          }
+          void scrollIfPinned()
         },
         { signal: abortCtl.signal },
       )
       finishAssistant()
       await loadSessions()
-      await loadHistory('initial')
+      reloadHistory = true
     } catch (e) {
       if ((e as Error).name === 'AbortError') {
         finishAssistant()
@@ -79,9 +80,12 @@ export function useAgentStream(options: {
       message.error(getErrorMessage(e))
       finishAssistant()
     } finally {
+      const follow = pinned.value
       chatLoading.value = false
       abortCtl = null
-      await scrollEnd()
+      if (reloadHistory) await loadHistory('initial')
+      if (follow) await pinAndScroll()
+      else await scrollIfPinned()
     }
   }
 
@@ -93,7 +97,7 @@ export function useAgentStream(options: {
     const userKey = `local-user-${Date.now()}-${Math.random().toString(16).slice(2)}`
     messages.value.push({ key: userKey, role: 'user', content: t })
     inputText.value = ''
-    await scrollEnd()
+    await pinAndScroll()
     try {
       const sid = await ensureSessionForSend()
       await runStream(t, sid)
@@ -112,7 +116,8 @@ export function useAgentStream(options: {
 
   return {
     chatLoading,
-    scrollEnd,
+    onListScroll,
+    pinAndScroll,
     runStream,
     sendUser,
     onAttachmentClick,

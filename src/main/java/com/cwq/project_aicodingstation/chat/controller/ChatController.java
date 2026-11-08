@@ -67,7 +67,8 @@ public class ChatController {
                                          HttpServletRequest request) {
         UserLoginVO userVO = userService.getUserLoginVO(request);
         return ResultUtils.success(chatHistoryService.addMessage(
-                req.getAppId(), req.getSessionId(), req.getMessage(), req.getMessageType(), userVO.getId()
+                req.getAppId(), req.getSessionId(), req.getMessage(), req.getMessageType(), userVO.getId(),
+                req.getReasoning()
         ));
     }
 

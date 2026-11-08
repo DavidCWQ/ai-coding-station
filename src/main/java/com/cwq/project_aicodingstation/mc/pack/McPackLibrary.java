@@ -41,6 +41,7 @@ import java.util.zip.ZipInputStream;
 /**
  * 基岩附加包库。文件放在 data/resource_packs 与 data/behavior_packs，
  * 每个世界用自己的 world_*_packs.json 决定启用哪些。
+ * 专用服自带的 vanilla、chemistry、experimental、editor、server_* 目录不是附加包，不进列表，也不能删。
  */
 @Slf4j
 public class McPackLibrary {
@@ -673,7 +674,7 @@ public class McPackLibrary {
             dirs.sort(Comparator.comparing(path -> path.getFileName().toString()));
             for (Path dir : dirs) {
                 String folderName = dir.getFileName().toString();
-                if (folderName.startsWith(".") || folderName.endsWith(".incoming")) {
+                if (folderName.startsWith(".") || folderName.endsWith(".incoming") || enginePackFolder(folderName)) {
                     continue;
                 }
                 ParsedPack parsed = tryParse(dir);
@@ -1159,7 +1160,7 @@ public class McPackLibrary {
                     continue;
                 }
                 String name = dir.getFileName().toString();
-                if (name.startsWith(".") || name.endsWith(".incoming")) {
+                if (name.startsWith(".") || name.endsWith(".incoming") || enginePackFolder(name)) {
                     continue;
                 }
                 if (uuids.contains(name.toLowerCase(Locale.ROOT))) {
@@ -1193,6 +1194,22 @@ public class McPackLibrary {
         } catch (IOException e) {
             log.warn("cleanup {} failed: {}", root, e.getMessage());
         }
+    }
+
+    /**
+     * 专用服解压出来的官方包。界面上常显示成 pack.name，也没有写进世界的启用列表，
+     * 但下次冷启动仍然要读，删掉会在打开世界时崩溃。
+     */
+    static boolean enginePackFolder(String folderName) {
+        String name = folderName.toLowerCase(Locale.ROOT);
+        return name.equals("vanilla")
+                || name.startsWith("vanilla_")
+                || name.equals("chemistry")
+                || name.startsWith("chemistry_")
+                || name.startsWith("experimental_")
+                || name.equals("editor")
+                || name.startsWith("editor_")
+                || name.startsWith("server_");
     }
 
     private static long dirSize(Path dir) {

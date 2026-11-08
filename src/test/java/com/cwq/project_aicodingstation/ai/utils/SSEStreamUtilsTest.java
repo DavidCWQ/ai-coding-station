@@ -1,5 +1,6 @@
 package com.cwq.project_aicodingstation.ai.utils;
 
+import com.cwq.project_aicodingstation.ai.model.StreamChunk;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.codec.ServerSentEvent;
 import reactor.core.publisher.Flux;
@@ -9,9 +10,17 @@ class SSEStreamUtilsTest {
 
     @Test
     void toJsonDataSSE_wrapsChunksAndAddsDoneEvent() {
-        Flux<ServerSentEvent<String>> stream = SSEStreamUtils.toJsonDataSSE(Flux.just("hi", "there"));
+        Flux<ServerSentEvent<String>> stream = SSEStreamUtils.toJsonDataSSE(Flux.just(
+                StreamChunk.reasoning("先想"),
+                StreamChunk.content("hi"),
+                StreamChunk.content("there")
+        ));
 
         StepVerifier.create(stream)
+                .assertNext(event -> {
+                    org.junit.jupiter.api.Assertions.assertNull(event.event());
+                    org.junit.jupiter.api.Assertions.assertEquals("{\"r\":\"先想\"}", event.data());
+                })
                 .assertNext(event -> {
                     org.junit.jupiter.api.Assertions.assertNull(event.event());
                     org.junit.jupiter.api.Assertions.assertEquals("{\"d\":\"hi\"}", event.data());

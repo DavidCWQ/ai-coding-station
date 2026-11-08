@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { EyeOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
@@ -95,6 +96,8 @@ const onViewChat = () => {
   if (id) emit('viewChat', id)
 }
 
+const viewCountText = computed(() => Number(props.app.viewCount ?? 0).toLocaleString('zh-CN'))
+
 const onViewWork = () => {
   const key = props.app.deployKey?.trim()
   if (key) emit('viewWork', key)
@@ -121,7 +124,13 @@ const onViewWork = () => {
       </div>
     </div>
     <div class="app-card__body">
-      <div class="app-card__title">{{ app.appName || '未命名应用' }}</div>
+      <div class="app-card__title-row">
+        <div class="app-card__title">{{ app.appName || '未命名应用' }}</div>
+        <span class="app-card__views" title="浏览量">
+          <EyeOutlined />
+          {{ viewCountText }}
+        </span>
+      </div>
       <div v-if="mode === 'mine'" class="app-card__meta">修改于 {{ relativeUpdate() }}</div>
       <div v-else class="app-card__footer">
         <div class="app-card__author">
@@ -187,7 +196,15 @@ const onViewWork = () => {
   padding: 12px 14px 14px;
 }
 
+.app-card__title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .app-card__title {
+  flex: 1;
+  min-width: 0;
   font-weight: 600;
   font-size: 15px;
   line-height: 1.35;
@@ -196,6 +213,17 @@ const onViewWork = () => {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+.app-card__views {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 1px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .app-card__meta {

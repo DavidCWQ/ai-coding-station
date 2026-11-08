@@ -9,5 +9,11 @@ export const adminRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/userManage.vue'),
     meta: { layout: 'basic', title: '用户管理', access: ACCESS_ENUM.ADMIN },
   },
+  {
+    path: '/admin/stats',
+    name: 'admin-stats',
+    component: () => import('@/views/admin/visitStats.vue'),
+    meta: { layout: 'basic', title: '访问统计', access: ACCESS_ENUM.ADMIN },
+  },
 ]
 

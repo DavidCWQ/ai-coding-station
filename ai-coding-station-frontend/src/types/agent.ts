@@ -14,6 +14,7 @@ export type AgentChatRow = {
   id?: string
   role: 'user' | 'assistant'
   content: string
+  reasoning?: string
   streaming?: boolean
   createTime?: string
 }

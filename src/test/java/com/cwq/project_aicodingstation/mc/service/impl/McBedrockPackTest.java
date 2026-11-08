@@ -230,6 +230,37 @@ class McBedrockPackTest {
     }
 
     @Test
+    void enginePacksStayOffTheShelfAndCannotBeDeleted() throws Exception {
+        String vanilla = "0575c61f-a5da-4b7f-9961-ffda2908861e";
+        Path behavior = home.resolve("data/behavior_packs/vanilla");
+        Path chemistry = home.resolve("data/behavior_packs/chemistry");
+        Path versioned = home.resolve("data/resource_packs/vanilla_1.26.60");
+        Path editor = home.resolve("data/resource_packs/editor");
+        Path experimental = home.resolve("data/behavior_packs/experimental_villager_trade");
+        Path serverLibrary = home.resolve("data/behavior_packs/server_library");
+        for (Path dir : new Path[]{behavior, chemistry, versioned, editor, experimental, serverLibrary}) {
+            Files.createDirectories(dir);
+            Files.writeString(dir.resolve("manifest.json"), resourceManifest(vanilla, "[0, 0, 1]"), StandardCharsets.UTF_8);
+        }
+        service.uploadPack(file("a.mcpack", Map.of(
+                "manifest.json", resourceManifest(RES, "[1, 0, 0]").getBytes(StandardCharsets.UTF_8)
+        )));
+
+        assertEquals(1, service.adminConsole().getPacks().size());
+        assertTrue(service.adminConsole().getPacks().stream().noneMatch(pack -> pack.getId().contains(vanilla)));
+        assertThrows(BusinessException.class, () -> service.deletePack("u-" + vanilla));
+        assertTrue(Files.isRegularFile(behavior.resolve("manifest.json")));
+
+        assertEquals("DONE", service.deletePack(onlyPack().getId()).getStatus());
+        assertTrue(Files.isRegularFile(behavior.resolve("manifest.json")));
+        assertTrue(Files.isRegularFile(chemistry.resolve("manifest.json")));
+        assertTrue(Files.isRegularFile(versioned.resolve("manifest.json")));
+        assertTrue(Files.isRegularFile(editor.resolve("manifest.json")));
+        assertTrue(Files.isRegularFile(experimental.resolve("manifest.json")));
+        assertTrue(Files.isRegularFile(serverLibrary.resolve("manifest.json")));
+    }
+
+    @Test
     void looseFolderWithoutLibraryStillShowsACard() throws Exception {
         Path root = home.resolve("data/resource_packs").resolve("hand-placed");
         Files.createDirectories(root);

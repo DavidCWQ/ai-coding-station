@@ -1,6 +1,9 @@
 package com.cwq.project_aicodingstation.agent.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.cwq.project_aicodingstation.agent.dto.AgentHistoryQueryRequest;
 import com.cwq.project_aicodingstation.agent.entity.AgentChatMessage;
 import com.cwq.project_aicodingstation.agent.entity.AgentChatSession;
@@ -49,6 +52,12 @@ public class AgentChatMessageServiceImpl extends ServiceImpl<AgentChatMessageMap
 
     @Override
     public Long addMessage(Long sessionId, String agentCode, Long userId, String text, String messageType) {
+        return addMessage(sessionId, agentCode, userId, text, messageType, null);
+    }
+
+    @Override
+    public Long addMessage(Long sessionId, String agentCode, Long userId, String text, String messageType,
+                           String reasoning) {
         BusinessAssert.notNull(sessionId, ErrorCode.PARAMS_MISSING, "会话 id 不能为空");
         BusinessAssert.notBlank(agentCode, ErrorCode.PARAMS_MISSING, "智能体编码不能为空");
         BusinessAssert.notNull(userId, ErrorCode.PARAMS_MISSING, "用户 id 不能为空");
@@ -64,7 +73,7 @@ public class AgentChatMessageServiceImpl extends ServiceImpl<AgentChatMessageMap
                 .agentCode(agentCode.trim())
                 .message(text)
                 .messageType(messageType)
-                .metadata(null)
+                .metadata(reasoningMetadata(reasoning))
                 .createTime(now)
                 .updateTime(now)
                 .isDeleted(0)
@@ -175,6 +184,26 @@ public class AgentChatMessageServiceImpl extends ServiceImpl<AgentChatMessageMap
     private AgentChatMessageVO toVO(AgentChatMessage m) {
         AgentChatMessageVO vo = new AgentChatMessageVO();
         BeanUtil.copyProperties(m, vo);
+        vo.setReasoning(readReasoning(m.getMetadata()));
         return vo;
+    }
+
+    private static String reasoningMetadata(String reasoning) {
+        if (StrUtil.isBlank(reasoning)) {
+            return null;
+        }
+        return JSONUtil.createObj().set("reasoning", reasoning).toString();
+    }
+
+    private static String readReasoning(String metadata) {
+        if (StrUtil.isBlank(metadata)) {
+            return null;
+        }
+        try {
+            JSONObject obj = JSONUtil.parseObj(metadata);
+            return obj.getStr("reasoning");
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 }

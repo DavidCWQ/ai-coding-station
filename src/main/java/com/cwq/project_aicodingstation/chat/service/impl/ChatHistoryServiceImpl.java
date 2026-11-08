@@ -1,6 +1,7 @@
 package com.cwq.project_aicodingstation.chat.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
 import com.cwq.project_aicodingstation.app.constant.AppConstant;
 import com.cwq.project_aicodingstation.app.entity.App;
 import com.cwq.project_aicodingstation.app.mapper.AppMapper;
@@ -68,6 +69,12 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
     @Override
     public Long addMessage(Long appId, Long sessionId, String message, String messageType, Long userId) {
+        return addMessage(appId, sessionId, message, messageType, userId, null);
+    }
+
+    @Override
+    public Long addMessage(Long appId, Long sessionId, String message, String messageType, Long userId,
+                           String reasoning) {
         BusinessAssert.notNull(appId, ErrorCode.PARAMS_MISSING, "应用 id 不能为空");
         BusinessAssert.notNull(sessionId, ErrorCode.PARAMS_MISSING, "会话 id 不能为空");
         BusinessAssert.notBlank(message, ErrorCode.PARAMS_MISSING, "消息内容不能为空");
@@ -94,6 +101,7 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
                 .sessionId(sessionId)
                 .userId(userId)
                 .message(message)
+                .reasoning(StrUtil.isBlank(reasoning) ? null : reasoning)
                 .messageType(messageType)
                 .createTime(now)
                 .updateTime(now)
