@@ -34,6 +34,14 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleTooManyRequests_setsHttp429() throws Exception {
+        mockMvc.perform(get("/test/rate").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value(ErrorCode.TOO_MANY_REQUESTS.getCode()))
+                .andExpect(jsonPath("$.message").value("操作太频繁，请稍后再试"));
+    }
+
+    @Test
     void handleException_returnsSystemErrorCode() throws Exception {
         mockMvc.perform(get("/test/system").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -47,6 +55,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test/business")
         public void business() {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "invalid input");
+        }
+
+        @GetMapping("/test/rate")
+        public void rate() {
+            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, "操作太频繁，请稍后再试");
         }
 
         @GetMapping("/test/system")

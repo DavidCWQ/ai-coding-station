@@ -21,6 +21,7 @@ public enum ErrorCode {
     // ===== 业务错误 3xxxx =====
     BUSINESS_ERROR(30000, "业务处理失败", ErrorType.BUSINESS),
     DATA_CONFLICT(30001, "数据冲突", ErrorType.BUSINESS),
+    TOO_MANY_REQUESTS(42900, "操作太频繁，请稍后再试", ErrorType.BUSINESS),
 
     // ===== 资源错误 4xxxx =====
     NOT_FOUND(40000, "资源不存在", ErrorType.CLIENT),

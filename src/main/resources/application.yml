@@ -164,6 +164,12 @@ app:
     from: ${MAIL_FROM:}
     reset-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:5173}
     token-ttl-minutes: 30
+  # 模型调用限流。登录和重置密码另有独立计数。改完重启生效。
+  rate-limit:
+    enabled: true
+    window-seconds: 60
+    user-per-window: 20
+    ip-per-window: 60
 
 # 基岩服管理台：页面在本站，进程仍在独立的 mc_bedrock 目录
 mc:

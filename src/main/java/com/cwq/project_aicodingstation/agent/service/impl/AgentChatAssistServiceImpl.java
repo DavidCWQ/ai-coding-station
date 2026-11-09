@@ -9,6 +9,7 @@ import com.cwq.project_aicodingstation.agent.service.AgentChatMessageService;
 import com.cwq.project_aicodingstation.agent.service.AgentChatSessionService;
 import com.cwq.project_aicodingstation.ai.facade.AgentChatFacade;
 import com.cwq.project_aicodingstation.ai.model.StreamChunk;
+import com.cwq.project_aicodingstation.ai.ratelimit.AiCallRateLimiter;
 import com.cwq.project_aicodingstation.chat.enums.MessageTypeEnum;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
@@ -43,6 +44,9 @@ public class AgentChatAssistServiceImpl implements AgentChatAssistService {
     @Resource
     private TransactionTemplate transactionTemplate;
 
+    @Resource
+    private AiCallRateLimiter aiCallRateLimiter;
+
     @Override
     public Flux<StreamChunk> chatStream(AgentChatStreamRequest req, UserLoginVO userVO) {
         BusinessAssert.notNull(req, ErrorCode.PARAMS_MISSING, "请求为空");
@@ -57,6 +61,7 @@ public class AgentChatAssistServiceImpl implements AgentChatAssistService {
                 sessionId, agent.getCode(), userVO);
         Long ownerUserId = session.getUserId();
         BusinessAssert.notNull(ownerUserId, ErrorCode.SYSTEM_ERROR, "会话用户异常");
+        aiCallRateLimiter.acquire(userVO.getId());
 
         log.info("智能体流式对话开始 userId={}, agentCode={}, sessionId={}, messageLen={}",
                 userVO.getId(), agent.getCode(), sessionId, userText.length());
