@@ -12,6 +12,7 @@ public enum ErrorCode {
     PARAMS_ERROR(10000, "请求参数错误", ErrorType.CLIENT),
     PARAMS_MISSING(10001, "缺少必要参数", ErrorType.CLIENT),
     PARAMS_INVALID(10002, "参数格式非法", ErrorType.CLIENT),
+    PROMPT_BLOCKED(10003, "这条内容无法发送", ErrorType.CLIENT),
 
     // ===== 用户 & 权限 2xxxx =====
     NOT_LOGIN(20000, "未登录", ErrorType.AUTH),

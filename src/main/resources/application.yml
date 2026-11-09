@@ -109,7 +109,7 @@ langchain4j:
 ai:
   code:
     output-dir: ${user.dir}/tmp/code_output
-  # 输入护轨：默认开启；可在列表中追加敏感词（小写存储，匹配时忽略大小写）
+  # 输入护轨：默认开启。注入说法是内置规则；这里只追加额外敏感词（英文按整词，中文按整句）。
   guardrail:
     enabled: true
     sensitive-keywords: []

@@ -6,6 +6,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.cwq.project_aicodingstation.ai.model.StreamChunk;
+import com.cwq.project_aicodingstation.ai.guardrail.PromptGuard;
 import com.cwq.project_aicodingstation.ai.ratelimit.AiCallRateLimiter;
 import com.cwq.project_aicodingstation.ai.AppTitleService;
 import com.cwq.project_aicodingstation.ai.enums.CodeGenTypeEnum;
@@ -79,6 +80,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private AiCallRateLimiter aiCallRateLimiter;
 
+    @Resource
+    private PromptGuard promptGuard;
+
     /**
      * 删除应用时关联删除对话历史（兜底清理；即使外键 CASCADE 生效也不影响）。
      * <p>
@@ -126,7 +130,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         BusinessAssert.notNull(req, ErrorCode.PARAMS_MISSING, "创建应用请求为空");
         String initPrompt = req.getInitPrompt();
         BusinessAssert.notBlank(initPrompt, ErrorCode.PARAMS_MISSING, "初始化 prompt 不能为空");
-        aiCallRateLimiter.acquire(userVO == null ? null : userVO.getId());
+        Long userId = userVO == null ? null : userVO.getId();
+        promptGuard.check(initPrompt, userId, "create");
+        aiCallRateLimiter.acquire(userId);
 
         // 2. 构造对象并持久化 (应用名称默认 = prompt 前20位)
         App app = new App();
@@ -513,6 +519,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(app.getCodeGenType());
         BusinessAssert.notNull(codeGenTypeEnum, ErrorCode.SYSTEM_ERROR, "不支持的生成类型");
+        promptGuard.check(message, userVO.getId(), "generate");
         aiCallRateLimiter.acquire(userVO.getId());
 
         return aiCodeGeneratorFacade.generateAndSaveCodeStream(

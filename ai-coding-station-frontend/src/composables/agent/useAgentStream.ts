@@ -42,6 +42,13 @@ export function useAgentStream(options: {
     if (last?.role === 'assistant') last.streaming = false
   }
 
+  const dropEmptyAssistant = (index: number) => {
+    const row = messages.value[index]
+    if (row?.role === 'assistant' && !row.content.trim() && !row.reasoning?.trim()) {
+      messages.value.splice(index, 1)
+    }
+  }
+
   const runStream = async (text: string, sessionId: string) => {
     abortCtl?.abort()
     abortCtl = new AbortController()
@@ -78,6 +85,7 @@ export function useAgentStream(options: {
         await jumpToLogin()
         return
       }
+      dropEmptyAssistant(idx)
       message.error(getErrorMessage(e))
       finishAssistant()
     } finally {

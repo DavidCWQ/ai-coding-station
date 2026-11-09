@@ -32,6 +32,8 @@ public class GlobalExceptionHandler {
     public BaseResponse<?> handleBaseException(BaseException e, HttpServletResponse response) {
         if (e.getCode() == ErrorCode.TOO_MANY_REQUESTS.getCode()) {
             response.setStatus(429);
+        } else if (e.getCode() == ErrorCode.PROMPT_BLOCKED.getCode()) {
+            response.setStatus(400);
         }
         ErrorType type = e.getType();
         switch (type) { // logging strategy

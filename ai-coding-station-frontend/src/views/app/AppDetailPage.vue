@@ -305,6 +305,13 @@ const finishAssistant = () => {
   }
 }
 
+const dropEmptyAssistant = (index: number) => {
+  const row = messages.value[index]
+  if (row?.role === 'assistant' && !row.content.trim() && !row.reasoning?.trim()) {
+    messages.value.splice(index, 1)
+  }
+}
+
 const runStream = async (text: string) => {
   abortCtl?.abort()
   abortCtl = new AbortController()
@@ -377,6 +384,7 @@ const runStream = async (text: string) => {
       }
       return
     }
+    dropEmptyAssistant(idx)
     message.error(getErrorMessage(e))
     finishAssistant()
   } finally {

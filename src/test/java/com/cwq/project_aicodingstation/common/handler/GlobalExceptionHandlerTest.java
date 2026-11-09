@@ -42,6 +42,14 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handlePromptBlocked_setsHttp400() throws Exception {
+        mockMvc.perform(get("/test/prompt").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ErrorCode.PROMPT_BLOCKED.getCode()))
+                .andExpect(jsonPath("$.message").value("这条内容无法发送"));
+    }
+
+    @Test
     void handleException_returnsSystemErrorCode() throws Exception {
         mockMvc.perform(get("/test/system").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -60,6 +68,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test/rate")
         public void rate() {
             throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, "操作太频繁，请稍后再试");
+        }
+
+        @GetMapping("/test/prompt")
+        public void prompt() {
+            throw new BusinessException(ErrorCode.PROMPT_BLOCKED, "这条内容无法发送");
         }
 
         @GetMapping("/test/system")
