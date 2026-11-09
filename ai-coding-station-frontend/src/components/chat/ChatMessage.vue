@@ -181,7 +181,17 @@ watch(
     if (props.role !== 'assistant' || !props.streaming) return
     await nextTick()
     rootEl.value?.querySelectorAll<HTMLElement>('.msg__code').forEach((pre) => {
+      const scroller = pre.closest('[data-chat-scroll]') as HTMLElement | null
+      const kept = scroller?.scrollTop ?? 0
       pre.scrollTop = pre.scrollHeight
+      // 代码块自己跟着新行走，不要把外层对话一起拽到底。
+      if (scroller) {
+        scroller.dataset.chatScrollHold = '1'
+        scroller.scrollTop = kept
+        requestAnimationFrame(() => {
+          delete scroller.dataset.chatScrollHold
+        })
+      }
     })
   },
 )

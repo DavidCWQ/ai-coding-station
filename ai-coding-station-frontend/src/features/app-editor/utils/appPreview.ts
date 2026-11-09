@@ -20,6 +20,13 @@ function sleep(ms: number): Promise<void> {
  * 流式生成结束后磁盘写入可能略晚于 SSE 结束；若直接给 iframe 赋值，易加载到错误 JSON。
  * 轮询 GET 直至拿到 HTML 或非 JSON 成功响应，避免把接口错误页嵌进 iframe。
  */
+/** 只有回复里真有新页面或代码块时才刷新预览。 */
+export function replyUpdatesPreview(content: string): boolean {
+  const text = content || ''
+  if (/```(?:html|css|js|javascript)\b/i.test(text)) return true
+  return /^\s*<!doctype/i.test(text) || /^\s*<html\b/i.test(text)
+}
+
 export async function waitForStaticPreviewReady(
   codeGenType: string,
   appId: string,

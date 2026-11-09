@@ -30,7 +30,8 @@ export function useAgentStream(options: {
 
   const chatLoading = ref(false)
   let abortCtl: AbortController | null = null
-  const { pinned, onListScroll, scrollIfPinned, pinAndScroll } = useStickToBottom(listEl)
+  const { pinned, showJump, onListScroll, onUserWheel, onTouchStart, onTouchMove, scrollIfPinned, pinAndScroll } =
+    useStickToBottom(listEl)
 
   const appendAssistantStreaming = (key: string) => {
     messages.value.push({ key, role: 'assistant', content: '', streaming: true })
@@ -116,7 +117,11 @@ export function useAgentStream(options: {
 
   return {
     chatLoading,
+    showJump,
     onListScroll,
+    onUserWheel,
+    onTouchStart,
+    onTouchMove,
     pinAndScroll,
     runStream,
     sendUser,

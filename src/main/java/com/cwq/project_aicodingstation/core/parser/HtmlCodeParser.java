@@ -22,11 +22,22 @@ public class HtmlCodeParser implements CodeParser<HtmlFileCodeResult> {
         String htmlCode = extractHtmlCode(codeContent);
         if (htmlCode != null && !htmlCode.trim().isEmpty()) {
             result.setHtmlCode(htmlCode.trim());
-        } else {
-            // 如果没有找到代码块，将整个内容作为 HTML
+        } else if (isRawHtmlDocument(codeContent)) {
+            // 模型有时直接输出整页 HTML，而不是代码块。
             result.setHtmlCode(codeContent.trim());
         }
         return result;
+    }
+
+    /**
+     * 整段回复本身就是页面。普通说明文字不能当成新页面，否则会覆盖上一次的代码。
+     */
+    private static boolean isRawHtmlDocument(String content) {
+        if (content == null) {
+            return false;
+        }
+        String trimmed = content.stripLeading().toLowerCase();
+        return trimmed.startsWith("<!doctype") || trimmed.startsWith("<html");
     }
 
     /**

@@ -6,6 +6,7 @@ import {
 } from '@ant-design/icons-vue'
 
 import UserAvatar from '@/components/UserAvatar.vue'
+import ChatJump from '@/components/chat/ChatJump.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
 import AgentSessionList from '@/components/agent/AgentSessionList.vue'
 import DeleteSessionModal from '@/components/agent/DeleteSessionModal.vue'
@@ -35,7 +36,12 @@ const {
   historyLoading,
   loadHistory,
   chatLoading,
+  showJump,
   onListScroll,
+  onUserWheel,
+  onTouchStart,
+  onTouchMove,
+  pinAndScroll,
   sendUser,
   onAttachmentClick,
   createNewConversation,
@@ -81,7 +87,16 @@ const {
         </aside>
 
         <section class="agent-main">
-          <div ref="listEl" class="agent-main__messages" @scroll="onListScroll">
+          <div class="agent-main__thread">
+          <div
+            ref="listEl"
+            class="agent-main__messages"
+            data-chat-scroll
+            @scroll="onListScroll"
+            @wheel="onUserWheel"
+            @touchstart="onTouchStart"
+            @touchmove="onTouchMove"
+          >
             <div class="agent-main__messages-inner">
               <div class="agent-main__more">
                 <a-button
@@ -107,6 +122,8 @@ const {
                 :description="isLoggedIn ? '暂无消息，开始提问吧' : '登录后可开启智能体对话'"
               />
             </div>
+          </div>
+          <ChatJump :show="showJump" @jump="pinAndScroll" />
           </div>
 
           <div class="agent-main__composer">
@@ -238,10 +255,20 @@ const {
   background: #fff;
 }
 
+.agent-main__thread {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .agent-main__messages {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  overflow-anchor: none;
   padding: 16px 20px 8px;
   background: #fcfcfc;
 }
@@ -291,8 +318,12 @@ const {
   border-color: #d9d9d9;
 }
 
+.agent-main__input-box--disabled :deep(textarea.ant-input) {
+  background: transparent !important;
+}
+
 .agent-main__input-box--disabled .agent-main__actions {
-  background: #EBEBEB;
+  background: transparent;
 }
 
 .agent-main__textarea {

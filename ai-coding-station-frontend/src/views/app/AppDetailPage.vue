@@ -12,6 +12,7 @@ import {
 
 import BackButton from '@/components/common/backButton.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
+import ChatJump from '@/components/chat/ChatJump.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
 import IframePreview from '@/components/app-editor/IframePreview.vue'
 import SelectedElementDetail from '@/components/app-editor/SelectedElementDetail.vue'
@@ -26,7 +27,7 @@ import { streamChatGenCode } from '@/hooks/useSSEChat'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { apiLongId, idFromData } from '@/utils/id'
 import { getErrorMessage } from '@/utils/error'
-import { waitForStaticPreviewReady } from '@/features/app-editor/utils/appPreview'
+import { replyUpdatesPreview, waitForStaticPreviewReady } from '@/features/app-editor/utils/appPreview'
 import {
   parseFilenameFromContentDisposition,
   sanitizeDownloadFilename,
@@ -115,7 +116,7 @@ const formattedCreateTime = computed(() => {
   return d.isValid() ? d.format('YYYY-MM-DD HH:mm:ss') : t.replace('T', ' ')
 })
 
-const { onListScroll, scrollIfPinned, pinAndScroll } = useStickToBottom(listEl)
+const { showJump, onListScroll, onUserWheel, onTouchStart, onTouchMove, scrollIfPinned, pinAndScroll } = useStickToBottom(listEl)
 
 const withCacheBust = (url: string): string => {
   if (!url) return url
@@ -354,7 +355,8 @@ const runStream = async (text: string) => {
     }
 
     const app = appVo.value
-    if (app && showPreviewPanel.value) {
+    const assistantText = messages.value[idx]?.content ?? ''
+    if (app && showPreviewPanel.value && replyUpdatesPreview(assistantText)) {
       const cg = app.codeGenType || 'html'
       const ready = await waitForStaticPreviewReady(cg, idFromData(app.id), {
         signal: abortCtl.signal,
@@ -744,7 +746,16 @@ onBeforeUnmount(() => {
 
         <div class="app-detail__main">
           <div class="app-detail__chat">
-            <div ref="listEl" class="app-detail__messages" @scroll="onListScroll">
+            <div class="app-detail__thread">
+            <div
+              ref="listEl"
+              class="app-detail__messages"
+              data-chat-scroll
+              @scroll="onListScroll"
+              @wheel="onUserWheel"
+              @touchstart="onTouchStart"
+              @touchmove="onTouchMove"
+            >
               <div class="app-detail__more">
                 <a-button
                   v-if="hasMoreHistory"
@@ -769,6 +780,8 @@ onBeforeUnmount(() => {
                 class="app-detail__empty"
                 :description="canChat ? '暂无历史消息，快来发送第一条吧' : (canViewHistory ? '暂无历史消息' : '暂无可查看的历史消息')"
               />
+            </div>
+            <ChatJump :show="showJump" @jump="pinAndScroll" />
             </div>
             <a-tooltip :title="canChat ? '' : '亲，无法在别人的作品下对话哦~'">
               <div>
@@ -917,11 +930,21 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
+.app-detail__thread {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .app-detail__messages {
   flex: 1;
   min-width: 0;
   min-height: 0;
   overflow: auto;
+  overflow-anchor: none;
   padding: 16px;
 }
 
