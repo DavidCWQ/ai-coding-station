@@ -111,3 +111,42 @@ export async function updateSessionTitle(
     ...(options || {}),
   });
 }
+
+/** 更新用户发言并去掉其后的消息 POST /chat/history/rewrite */
+export async function rewriteHistory(
+  body: {
+    appId: number
+    sessionId: number
+    userMessageId: number
+    message?: string
+  },
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseString>("/chat/history/rewrite", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 导出到指定消息为止的 Markdown POST /chat/history/export */
+export async function exportHistory(
+  body: {
+    appId: number
+    sessionId: number
+    untilMessageId: number
+  },
+  options?: { [key: string]: any }
+) {
+  return request<any>("/chat/history/export", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}

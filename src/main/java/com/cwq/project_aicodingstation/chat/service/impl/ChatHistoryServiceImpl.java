@@ -9,10 +9,13 @@ import com.cwq.project_aicodingstation.chat.dto.ChatHistoryQueryRequest;
 import com.cwq.project_aicodingstation.chat.entity.ChatHistory;
 import com.cwq.project_aicodingstation.chat.entity.ChatSession;
 import com.cwq.project_aicodingstation.chat.enums.MessageTypeEnum;
+import com.cwq.project_aicodingstation.chat.export.ConversationMarkdown;
+import com.cwq.project_aicodingstation.chat.export.MarkdownFile;
 import com.cwq.project_aicodingstation.chat.mapper.ChatHistoryMapper;
 import com.cwq.project_aicodingstation.chat.service.ChatHistoryService;
 import com.cwq.project_aicodingstation.chat.service.ChatSessionService;
 import com.cwq.project_aicodingstation.chat.vo.ChatHistoryVO;
+import com.cwq.project_aicodingstation.feedback.service.MessageFeedbackService;
 import com.cwq.project_aicodingstation.common.auth.ResourceAuthHelper;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
@@ -29,10 +32,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.mybatisflex.core.query.QueryMethods.column;
@@ -55,6 +60,9 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
     @Resource
     private ResourceAuthHelper resourceAuthHelper;
+
+    @Resource
+    private MessageFeedbackService messageFeedbackService;
 
     /**
      * 校验是否可读取该会话下的历史：
@@ -147,7 +155,9 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         List<ChatHistory> rows = this.list(qw);
         List<ChatHistory> ordered = new ArrayList<>(rows);
         Collections.reverse(ordered);
-        return ordered.stream().map(this::toHistoryVO).collect(Collectors.toList());
+        List<ChatHistoryVO> vos = ordered.stream().map(this::toHistoryVO).collect(Collectors.toList());
+        attachVotes(vos, userVO);
+        return vos;
     }
 
     @Override
@@ -199,6 +209,102 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         } catch (Exception e) {
             // 加载失败不影响系统运行，只是没有历史上下文
             log.error("加载历史对话失败，sessionId: {}, error: {}", sessionId, e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public String prepareRewrite(Long appId, Long sessionId, Long userMessageId, String newContent, UserLoginVO userVO) {
+        BusinessAssert.notNull(userVO, ErrorCode.NOT_LOGIN, "用户未登录");
+        BusinessAssert.notNull(userVO.getId(), ErrorCode.NOT_LOGIN, "用户未登录");
+        BusinessAssert.notNull(appId, ErrorCode.PARAMS_MISSING, "应用 id 不能为空");
+        BusinessAssert.notNull(sessionId, ErrorCode.PARAMS_MISSING, "会话 id 不能为空");
+        BusinessAssert.notNull(userMessageId, ErrorCode.PARAMS_MISSING, "消息 id 不能为空");
+
+        ChatSession session = chatSessionService.getById(sessionId);
+        BusinessAssert.notNull(session, ErrorCode.NOT_FOUND, "会话不存在");
+        BusinessAssert.equals(session.getAppId(), appId, ErrorCode.PARAMS_ERROR, "会话与应用不匹配");
+        BusinessAssert.equals(session.getUserId(), userVO.getId(), ErrorCode.NO_PERMISSION, "只能修改自己的对话");
+
+        ChatHistory anchor = this.getById(userMessageId);
+        BusinessAssert.notNull(anchor, ErrorCode.NOT_FOUND, "消息不存在");
+        BusinessAssert.equals(anchor.getSessionId(), sessionId, ErrorCode.PARAMS_ERROR, "消息不属于该会话");
+        BusinessAssert.equals(MessageTypeEnum.USER.getValue(), anchor.getMessageType(),
+                ErrorCode.PARAMS_ERROR, "只能从用户发言重新生成");
+
+        String next = StrUtil.isBlank(newContent) ? anchor.getMessage() : newContent.trim();
+        BusinessAssert.notBlank(next, ErrorCode.PARAMS_MISSING, "消息不能为空");
+        BusinessAssert.requireTrue(next.length() <= 32000, ErrorCode.PARAMS_ERROR, "消息过长");
+        if (!next.equals(anchor.getMessage())) {
+            ChatHistory update = new ChatHistory();
+            update.setId(anchor.getId());
+            update.setMessage(next);
+            update.setUpdateTime(LocalDateTime.now());
+            BusinessAssert.requireTrue(this.updateById(update), ErrorCode.BUSINESS_ERROR, "更新发言失败");
+        }
+        removeAfter(sessionId, anchor.getCreateTime(), anchor.getId());
+        return next;
+    }
+
+    @Override
+    public MarkdownFile exportMarkdown(Long appId, Long sessionId, Long untilMessageId, UserLoginVO userVO) {
+        assertHistoryReadable(appId, sessionId, userVO);
+        BusinessAssert.notNull(untilMessageId, ErrorCode.PARAMS_MISSING, "消息 id 不能为空");
+        ChatHistory until = this.getById(untilMessageId);
+        BusinessAssert.notNull(until, ErrorCode.NOT_FOUND, "消息不存在");
+        BusinessAssert.equals(until.getAppId(), appId, ErrorCode.PARAMS_ERROR, "消息不属于该应用");
+        BusinessAssert.equals(until.getSessionId(), sessionId, ErrorCode.PARAMS_ERROR, "消息不属于该会话");
+
+        QueryCondition upTo = column("create_time").lt(until.getCreateTime())
+                .or(column("create_time").eq(until.getCreateTime()).and(column("id").le(until.getId())));
+        QueryWrapper qw = QueryWrapper.create()
+                .eq("app_id", appId)
+                .eq("session_id", sessionId)
+                .and(upTo)
+                .orderBy("create_time", false)
+                .orderBy("id", false)
+                .limit(ConversationMarkdown.MAX_TURNS + 1);
+        List<ChatHistory> rows = new ArrayList<>(this.list(qw));
+        boolean truncated = rows.size() > ConversationMarkdown.MAX_TURNS;
+        if (truncated) {
+            rows = new ArrayList<>(rows.subList(0, ConversationMarkdown.MAX_TURNS));
+        }
+        Collections.reverse(rows);
+
+        App app = appMapper.selectOneById(appId);
+        String appName = app == null ? "对话" : StrUtil.blankToDefault(StrUtil.trim(app.getAppName()), "对话");
+        LocalDateTime now = LocalDateTime.now();
+        List<ConversationMarkdown.Turn> turns = new ArrayList<>();
+        for (ChatHistory row : rows) {
+            turns.add(new ConversationMarkdown.Turn(row.getMessageType(), row.getMessage(), row.getReasoning()));
+        }
+        String markdown = ConversationMarkdown.render(
+                appName,
+                "应用「" + appName + "」",
+                now,
+                turns,
+                true,
+                truncated
+        );
+        return new MarkdownFile(
+                ConversationMarkdown.filename(appName, now),
+                markdown.getBytes(StandardCharsets.UTF_8)
+        );
+    }
+
+    private void removeAfter(Long sessionId, LocalDateTime createTime, Long id) {
+        QueryCondition after = column("create_time").gt(createTime)
+                .or(column("create_time").eq(createTime).and(column("id").gt(id)));
+        this.remove(QueryWrapper.create().eq("session_id", sessionId).and(after));
+    }
+
+    private void attachVotes(List<ChatHistoryVO> vos, UserLoginVO userVO) {
+        if (userVO == null || userVO.getId() == null || vos.isEmpty()) {
+            return;
+        }
+        List<Long> ids = vos.stream().map(ChatHistoryVO::getId).filter(id -> id != null).toList();
+        Map<Long, Integer> votes = messageFeedbackService.votesOf(userVO.getId(), MessageFeedbackService.SOURCE_APP, ids);
+        for (ChatHistoryVO vo : vos) {
+            vo.setVote(votes.get(vo.getId()));
         }
     }
 

@@ -2,6 +2,7 @@ package com.cwq.project_aicodingstation.chat.service;
 
 import com.cwq.project_aicodingstation.chat.dto.ChatHistoryQueryRequest;
 import com.cwq.project_aicodingstation.chat.entity.ChatHistory;
+import com.cwq.project_aicodingstation.chat.export.MarkdownFile;
 import com.cwq.project_aicodingstation.chat.vo.ChatHistoryVO;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import com.mybatisflex.core.service.IService;
@@ -68,4 +69,14 @@ public interface ChatHistoryService extends IService<ChatHistory> {
      * @param maxCount   对话条数上限
      * */
     void loadChatHistoryToMemory(Long sessionId, MessageWindowChatMemory chatMemory, int maxCount);
+
+    /**
+     * 更新用户发言（可沿用原文），并去掉这条之后的消息。返回实际采用的正文。
+     */
+    String prepareRewrite(Long appId, Long sessionId, Long userMessageId, String newContent, UserLoginVO userVO);
+
+    /**
+     * 导出从会话开头直到指定消息（含）的 Markdown。权限与查看该会话历史相同。
+     */
+    MarkdownFile exportMarkdown(Long appId, Long sessionId, Long untilMessageId, UserLoginVO userVO);
 }

@@ -114,7 +114,7 @@ export async function streamAgentChat(
   sessionId: string,
   message: string,
   onDelta: (delta: ChatStreamDelta) => void,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; rewriteUserMessageId?: string },
 ): Promise<void> {
   assertValidId(sessionId)
   const code = String(agentCode || '').trim()
@@ -135,6 +135,9 @@ export async function streamAgentChat(
       agentCode: code,
       sessionId: apiLongId(sessionId),
       message,
+      rewriteUserMessageId: options?.rewriteUserMessageId
+        ? apiLongId(options.rewriteUserMessageId)
+        : undefined,
     }),
   })
 

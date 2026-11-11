@@ -8,7 +8,10 @@ import css from 'highlight.js/lib/languages/css'
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
 
+import LineIcon from '@/components/icons/LineIcon.vue'
+import { confirmRewrite } from '@/features/chat/confirmRewrite'
 import { codeBlockIsLong } from '@/features/chat/codeBlock'
+import { copyText } from '@/utils/copyText'
 
 hljs.registerLanguage('html', xml)
 hljs.registerLanguage('xml', xml)
@@ -63,42 +66,68 @@ function renderCodeBlock(input: string, codeInnerHtml: string, lang: string): st
   )
 }
 
-const md = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true,
-  highlight(code: string, lang: string): string {
-    const input = (code || '').trimEnd()
-    const language = (lang || '').toLowerCase()
-    if (language && hljs.getLanguage(language)) {
-      try {
-        const out = hljs.highlight(input, { language }).value
-        return renderCodeBlock(input, out, lang)
-      } catch {
-        // fallback to escaped block
+function createMarkdown(allowHtml: boolean) {
+  const instance = new MarkdownIt({
+    html: allowHtml,
+    linkify: true,
+    typographer: true,
+    highlight(code: string, lang: string): string {
+      const input = (code || '').trimEnd()
+      const language = (lang || '').toLowerCase()
+      if (language && hljs.getLanguage(language)) {
+        try {
+          const out = hljs.highlight(input, { language }).value
+          return renderCodeBlock(input, out, lang)
+        } catch {
+          // fallback to escaped block
+        }
       }
-    }
-    const escaped = escapeHtml(input)
-    return renderCodeBlock(input, escaped, lang)
-  },
-})
-
-md.renderer.rules.fence = (tokens, idx, options) => {
-  const token = tokens[idx]
-  const info = (token?.info ?? '').trim()
-  const lang = info.split(/\s+/g)[0] || ''
-  const content = token?.content ?? ''
-  const rendered = options.highlight?.(content, lang, '') || ''
-  if (rendered) return `${rendered}\n`
-  const input = content.trimEnd()
-  return `${renderCodeBlock(input, escapeHtml(input), lang)}\n`
+      const escaped = escapeHtml(input)
+      return renderCodeBlock(input, escaped, lang)
+    },
+  })
+  instance.renderer.rules.fence = (tokens, idx, options) => {
+    const token = tokens[idx]
+    const info = (token?.info ?? '').trim()
+    const lang = info.split(/\s+/g)[0] || ''
+    const content = token?.content ?? ''
+    const rendered = options.highlight?.(content, lang, '') || ''
+    if (rendered) return `${rendered}\n`
+    const input = content.trimEnd()
+    return `${renderCodeBlock(input, escapeHtml(input), lang)}\n`
+  }
+  return instance
 }
 
-const props = defineProps<{
+const md = createMarkdown(true)
+const mdSafe = createMarkdown(false)
+
+export type ChatAction = 'copy' | 'retry' | 'like' | 'dislike' | 'download' | 'share' | 'edit'
+
+const props = withDefaults(defineProps<{
   role: 'user' | 'assistant'
   content: string
   reasoning?: string
   streaming?: boolean
+  actions?: ChatAction[]
+  vote?: 1 | -1 | null
+  pending?: boolean
+  dropLater?: boolean
+  trustHtml?: boolean
+}>(), {
+  actions: () => [],
+  vote: null,
+  pending: false,
+  dropLater: false,
+  trustHtml: true,
+})
+
+const emit = defineEmits<{
+  retry: []
+  edit: [text: string]
+  vote: [payload: { vote: 1 | -1 | 0; reason?: string }]
+  download: []
+  share: []
 }>()
 
 const rootEl = ref<HTMLElement | null>(null)
@@ -110,7 +139,7 @@ let reasonStarted = 0
 let reasonTimer: ReturnType<typeof setInterval> | undefined
 
 const safeUserHtml = computed(() => md.utils.escapeHtml(props.content || ''))
-const aiHtml = computed(() => md.render(props.content || ''))
+const aiHtml = computed(() => (props.trustHtml ? md : mdSafe).render(props.content || ''))
 const hasReasoning = computed(
   () => props.role === 'assistant' && !!(props.reasoning || '').trim(),
 )
@@ -175,6 +204,143 @@ watch(
 
 onBeforeUnmount(stopReasonTimer)
 
+const editing = ref(false)
+const draft = ref('')
+const editEl = ref<HTMLTextAreaElement | null>(null)
+const copied = ref(false)
+const dislikeNoteOpen = ref(false)
+const reasonText = ref('')
+let copyTimer: ReturnType<typeof setTimeout> | undefined
+
+const showActions = computed(
+  () => !editing.value && !props.streaming && !!props.content.trim() && props.actions.length > 0,
+)
+const has = (name: ChatAction) => props.actions.includes(name)
+
+const actionLabel: Record<ChatAction, string> = {
+  copy: '复制',
+  retry: '重新生成',
+  like: '有帮助',
+  dislike: '没帮助',
+  download: '下载对话',
+  share: '分享',
+  edit: '修改',
+}
+
+const flashCopied = () => {
+  copied.value = true
+  if (copyTimer) clearTimeout(copyTimer)
+  copyTimer = setTimeout(() => {
+    copied.value = false
+  }, 1500)
+}
+
+const onCopyMessage = async () => {
+  const ok = await copyText(props.content || '')
+  if (!ok) {
+    message.warning('复制失败，请重试')
+    return
+  }
+  flashCopied()
+  message.success('已复制')
+}
+
+const runGuarded = async (action: () => void) => {
+  if (props.pending) return
+  if (props.dropLater) {
+    const ok = await confirmRewrite()
+    if (!ok) return
+  }
+  action()
+}
+
+const onRetry = () => {
+  void runGuarded(() => emit('retry'))
+}
+
+const startEdit = async () => {
+  if (props.pending) return
+  draft.value = props.content
+  editing.value = true
+  await nextTick()
+  editEl.value?.focus()
+}
+
+const cancelEdit = () => {
+  editing.value = false
+  draft.value = ''
+}
+
+const submitEdit = () => {
+  const text = draft.value.trim()
+  if (!text || props.pending) return
+  void runGuarded(() => {
+    editing.value = false
+    emit('edit', text)
+  })
+}
+
+const onEditKey = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    cancelEdit()
+    return
+  }
+  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+    event.preventDefault()
+    submitEdit()
+  }
+}
+
+const onLike = () => {
+  if (props.pending) return
+  dislikeNoteOpen.value = false
+  emit('vote', { vote: props.vote === 1 ? 0 : 1 })
+}
+
+const closeDislikeNote = () => {
+  dislikeNoteOpen.value = false
+}
+
+const onDocPointerDown = (event: Event) => {
+  const target = event.target
+  if (!(target instanceof Node)) return
+  if (rootEl.value?.contains(target)) return
+  closeDislikeNote()
+}
+
+watch(dislikeNoteOpen, (open) => {
+  document.removeEventListener('pointerdown', onDocPointerDown, true)
+  if (open) document.addEventListener('pointerdown', onDocPointerDown, true)
+})
+
+const onDislike = () => {
+  if (props.pending) return
+  if (props.vote === -1 && !dislikeNoteOpen.value) {
+    emit('vote', { vote: 0 })
+    return
+  }
+  if (!dislikeNoteOpen.value) {
+    reasonText.value = ''
+    dislikeNoteOpen.value = true
+    if (props.vote !== -1) emit('vote', { vote: -1 })
+    return
+  }
+  closeDislikeNote()
+}
+
+const submitReason = () => {
+  const reason = reasonText.value.trim()
+  dislikeNoteOpen.value = false
+  if (!reason) return
+  emit('vote', { vote: -1, reason })
+}
+
+onBeforeUnmount(() => {
+  if (copyTimer) clearTimeout(copyTimer)
+  document.removeEventListener('pointerdown', onDocPointerDown, true)
+})
+
 watch(
   () => props.content,
   async () => {
@@ -233,7 +399,20 @@ const onContentClick = async (e: MouseEvent) => {
 <template>
   <!-- 时间线上的一块。以后的工具调用是同级的 data-chat-block="tool"，不放进助手正文。 -->
   <article ref="rootEl" class="msg" :class="role === 'user' ? 'msg--user' : 'msg--ai'" :data-chat-block="role">
-    <div class="msg__body">
+    <div v-if="editing" class="msg__edit">
+      <textarea
+        ref="editEl"
+        v-model="draft"
+        rows="3"
+        class="msg__edit-input"
+        @keydown="onEditKey"
+      />
+      <div class="msg__edit-bar">
+        <button type="button" class="msg__edit-cancel" @click="cancelEdit">取消</button>
+        <button type="button" class="msg__edit-send" :disabled="!draft.trim() || pending" @click="submitEdit">发送</button>
+      </div>
+    </div>
+    <div v-else class="msg__body">
       <div class="msg__content" @click="onContentClick">
         <div v-if="hasReasoning" class="msg__reason">
           <button
@@ -274,12 +453,76 @@ const onContentClick = async (e: MouseEvent) => {
         <pre v-else-if="role === 'user'" class="msg__text" v-html="safeUserHtml" />
       </div>
     </div>
+    <div v-if="showActions" class="msg__actions">
+      <a-tooltip v-if="has('copy')" :title="actionLabel.copy">
+        <button type="button" class="msg__action" :aria-label="actionLabel.copy" @click="onCopyMessage">
+          <LineIcon :name="copied ? 'check' : 'copy'" />
+        </button>
+      </a-tooltip>
+      <a-tooltip v-if="has('edit')" :title="actionLabel.edit">
+        <button type="button" class="msg__action" :disabled="pending" :aria-label="actionLabel.edit" @click="startEdit">
+          <LineIcon name="edit" />
+        </button>
+      </a-tooltip>
+      <a-tooltip v-if="has('retry')" :title="actionLabel.retry">
+        <button type="button" class="msg__action" :disabled="pending" :aria-label="actionLabel.retry" @click="onRetry">
+          <LineIcon name="retry" />
+        </button>
+      </a-tooltip>
+      <a-tooltip v-if="has('like')" :title="actionLabel.like">
+        <button
+          type="button"
+          class="msg__action"
+          :class="{ 'msg__action--on': vote === 1 }"
+          :disabled="pending"
+          :aria-pressed="vote === 1"
+          :aria-label="actionLabel.like"
+          @click="onLike"
+        >
+          <LineIcon name="thumbUp" :filled="vote === 1" />
+        </button>
+      </a-tooltip>
+      <span v-if="has('dislike')" class="msg__note-anchor">
+        <a-tooltip :title="actionLabel.dislike">
+          <button
+            type="button"
+            class="msg__action"
+            :class="{ 'msg__action--down': vote === -1 }"
+            :disabled="pending"
+            :aria-pressed="vote === -1"
+            :aria-label="actionLabel.dislike"
+            @click.stop="onDislike"
+          >
+            <LineIcon name="thumbDown" :filled="vote === -1" />
+          </button>
+        </a-tooltip>
+        <div v-if="dislikeNoteOpen" class="msg__note" @click.stop>
+          <div class="msg__note-title">哪里不好？可以跳过</div>
+          <textarea v-model="reasonText" maxlength="200" rows="3" class="msg__note-input" placeholder="选填，最多 200 字" />
+          <div class="msg__note-bar">
+            <button type="button" @click="closeDislikeNote">跳过</button>
+            <button type="button" class="msg__note-send" @click="submitReason">提交</button>
+          </div>
+        </div>
+      </span>
+      <a-tooltip v-if="has('download')" :title="actionLabel.download">
+        <button type="button" class="msg__action" :disabled="pending" :aria-label="actionLabel.download" @click="emit('download')">
+          <LineIcon name="download" />
+        </button>
+      </a-tooltip>
+      <a-tooltip v-if="has('share')" :title="actionLabel.share">
+        <button type="button" class="msg__action" :disabled="pending" :aria-label="actionLabel.share" @click="emit('share')">
+          <LineIcon name="share" />
+        </button>
+      </a-tooltip>
+    </div>
   </article>
 </template>
 
 <style scoped>
 .msg {
   display: flex;
+  flex-direction: column;
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -287,11 +530,16 @@ const onContentClick = async (e: MouseEvent) => {
 }
 
 .msg--user {
-  justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .msg--ai {
-  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.msg:has(.msg__note) {
+  position: relative;
+  z-index: 3;
 }
 
 .msg__body {
@@ -611,5 +859,135 @@ const onContentClick = async (e: MouseEvent) => {
   to {
     transform: rotate(360deg);
   }
+}
+
+.msg__actions {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.msg__note-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.msg__action {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.msg__action:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.msg__action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.msg__action--on {
+  color: #1677ff;
+}
+
+.msg__action--down {
+  color: #595959;
+}
+
+.msg__edit {
+  width: min(100%, 420px);
+  border: 1px solid rgba(22, 119, 255, 0.35);
+  border-radius: 14px;
+  background: #fff;
+  padding: 8px;
+}
+
+.msg__edit-input {
+  width: 100%;
+  border: 0;
+  resize: vertical;
+  outline: none;
+  font: inherit;
+  line-height: 1.55;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.msg__edit-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.msg__edit-cancel,
+.msg__edit-send,
+.msg__note button {
+  border: 0;
+  border-radius: 8px;
+  height: 28px;
+  padding: 0 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.msg__edit-cancel {
+  background: transparent;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.msg__edit-send,
+.msg__note-send {
+  background: #1677ff;
+  color: #fff;
+}
+
+.msg__edit-send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.msg__note {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 240px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.msg__note-title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.msg__note-input {
+  width: 100%;
+  border: 1px solid rgba(5, 5, 5, 0.12);
+  border-radius: 8px;
+  padding: 6px 8px;
+  resize: vertical;
+  font: inherit;
+}
+
+.msg__note-bar {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>

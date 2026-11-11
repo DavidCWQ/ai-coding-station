@@ -17,4 +17,5 @@ export type AgentChatRow = {
   reasoning?: string
   streaming?: boolean
   createTime?: string
+  vote?: 1 | -1 | null
 }

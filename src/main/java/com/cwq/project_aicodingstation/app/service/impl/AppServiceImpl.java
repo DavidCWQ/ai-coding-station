@@ -277,6 +277,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         BusinessAssert.notNull(userId, ErrorCode.PARAMS_MISSING, "应用 id 为空");
         appVO.setUser(userService.getVOById(userId));
         appVO.setViewCount(statsService.appPageViews(List.of(app.getId())).getOrDefault(app.getId(), 0L));
+        if (StrUtil.isNotBlank(app.getDeployKey())) {
+            appVO.setDeployUrl(publicDeployBase() + "/" + app.getDeployKey() + "/");
+        }
 
         return appVO;
     }
@@ -553,6 +556,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         });
     }
 
+    private String publicDeployBase() {
+        String internalBase = StrUtil.removeSuffix(StrUtil.trim(appDeployConfig.getDeployHost()), "/");
+        if (StrUtil.isNotBlank(appDeployConfig.getPublicDeployHost())) {
+            return StrUtil.removeSuffix(StrUtil.trim(appDeployConfig.getPublicDeployHost()), "/");
+        }
+        return internalBase;
+    }
+
     @Override
     public String deployApp(AppDeployRequest req, UserLoginVO userVO) {
 
@@ -589,9 +600,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 6. 部署目录&链接（对内截图 URL 与对外返回 URL 可分离，见 AppDeployConfig.publicDeployHost）
         String deployDirPath = appDeployConfig.getDeployDir() + File.separator + deployKey;
         String internalBase = StrUtil.removeSuffix(StrUtil.trim(appDeployConfig.getDeployHost()), "/");
-        String publicBase = StrUtil.isNotBlank(appDeployConfig.getPublicDeployHost())
-                ? StrUtil.removeSuffix(StrUtil.trim(appDeployConfig.getPublicDeployHost()), "/")
-                : internalBase;
+        String publicBase = publicDeployBase();
         String screenshotTargetUrl = internalBase + "/" + deployKey + "/";
         String appDeployUrl = publicBase + "/" + deployKey + "/";
         try {

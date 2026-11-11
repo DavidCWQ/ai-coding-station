@@ -7,6 +7,7 @@ import com.cwq.project_aicodingstation.agent.enums.AgentCodeEnum;
 import com.cwq.project_aicodingstation.agent.service.AgentChatAssistService;
 import com.cwq.project_aicodingstation.agent.service.AgentChatMessageService;
 import com.cwq.project_aicodingstation.agent.service.AgentChatSessionService;
+import com.cwq.project_aicodingstation.ai.AgentChatServiceFactory;
 import com.cwq.project_aicodingstation.ai.facade.AgentChatFacade;
 import com.cwq.project_aicodingstation.ai.model.StreamChunk;
 import com.cwq.project_aicodingstation.ai.guardrail.PromptGuard;
@@ -43,6 +44,9 @@ public class AgentChatAssistServiceImpl implements AgentChatAssistService {
     private AgentChatFacade agentChatFacade;
 
     @Resource
+    private AgentChatServiceFactory agentChatServiceFactory;
+
+    @Resource
     private TransactionTemplate transactionTemplate;
 
     @Resource
@@ -71,11 +75,18 @@ public class AgentChatAssistServiceImpl implements AgentChatAssistService {
         log.info("智能体流式对话开始 userId={}, agentCode={}, sessionId={}, messageLen={}",
                 userVO.getId(), agent.getCode(), sessionId, userText.length());
 
-        transactionTemplate.executeWithoutResult(status -> {
-            agentChatMessageService.addMessage(
-                    sessionId, agent.getCode(), ownerUserId, userText, MessageTypeEnum.USER.getValue());
-            agentChatSessionService.autoTitleFromUserMessage(sessionId, userText, userVO);
-        });
+        if (req.getRewriteUserMessageId() != null) {
+            transactionTemplate.executeWithoutResult(status ->
+                    agentChatMessageService.rewriteFromUserMessage(
+                            sessionId, req.getRewriteUserMessageId(), userText, ownerUserId));
+            agentChatServiceFactory.evictSession(sessionId);
+        } else {
+            transactionTemplate.executeWithoutResult(status -> {
+                agentChatMessageService.addMessage(
+                        sessionId, agent.getCode(), ownerUserId, userText, MessageTypeEnum.USER.getValue());
+                agentChatSessionService.autoTitleFromUserMessage(sessionId, userText, userVO);
+            });
+        }
 
         String systemPrompt = agentSystemPromptResolver.resolve(agent);
 

@@ -76,6 +76,16 @@ public class AICodeGeneratorServiceFactory {
         return serviceCache.get(sessionId, this::createService);
     }
 
+    /**
+     * 重新生成前丢掉这份会话的记忆缓存，下次从数据库重新装载。
+     */
+    public void evict(Long sessionId) {
+        if (sessionId == null) {
+            return;
+        }
+        serviceCache.invalidate(sessionId);
+    }
+
     @Bean // 默认提供一个 Bean
     public AICodeGeneratorService aiCodeGeneratorService() {
         return getAICodeGeneratorService(0L);

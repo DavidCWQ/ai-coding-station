@@ -49,7 +49,7 @@ export function useAgentStream(options: {
     }
   }
 
-  const runStream = async (text: string, sessionId: string) => {
+  const runStream = async (text: string, sessionId: string, rewriteUserMessageId?: string) => {
     abortCtl?.abort()
     abortCtl = new AbortController()
     chatLoading.value = true
@@ -57,7 +57,7 @@ export function useAgentStream(options: {
     appendAssistantStreaming(assistantKey)
     await pinAndScroll()
     const idx = messages.value.length - 1
-    let reloadHistory = false
+    let reloadHistory = !!rewriteUserMessageId
     try {
       await streamAgentChat(
         agentCode.value,
@@ -71,7 +71,7 @@ export function useAgentStream(options: {
           }
           void scrollIfPinned()
         },
-        { signal: abortCtl.signal },
+        { signal: abortCtl.signal, rewriteUserMessageId },
       )
       finishAssistant()
       await loadSessions()

@@ -8,6 +8,7 @@ import com.cwq.project_aicodingstation.agent.entity.AgentChatSession;
 import com.cwq.project_aicodingstation.agent.enums.AgentCodeEnum;
 import com.cwq.project_aicodingstation.agent.mapper.AgentChatSessionMapper;
 import com.cwq.project_aicodingstation.agent.service.AgentChatSessionService;
+import com.cwq.project_aicodingstation.agent.service.AgentChatShareService;
 import com.cwq.project_aicodingstation.agent.vo.AgentChatSessionVO;
 import com.cwq.project_aicodingstation.app.constant.AppConstant;
 import com.cwq.project_aicodingstation.common.auth.ResourceAuthHelper;
@@ -37,6 +38,9 @@ public class AgentChatSessionServiceImpl extends ServiceImpl<AgentChatSessionMap
 
     @Resource
     private ResourceAuthHelper resourceAuthHelper;
+
+    @Resource
+    private AgentChatShareService agentChatShareService;
 
     @Override
     public Long createSession(String agentCode, String title, UserLoginVO userVO) {
@@ -90,6 +94,7 @@ public class AgentChatSessionServiceImpl extends ServiceImpl<AgentChatSessionMap
     @Override
     public boolean deleteSession(Long sessionId, UserLoginVO userVO) {
         assertSessionOwned(sessionId, userVO);
+        agentChatShareService.revokeBySession(sessionId);
         return this.removeById(sessionId);
     }
 

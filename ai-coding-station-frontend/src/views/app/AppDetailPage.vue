@@ -13,16 +13,20 @@ import {
 import BackButton from '@/components/common/backButton.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import ChatJump from '@/components/chat/ChatJump.vue'
-import ChatMessage from '@/components/chat/ChatMessage.vue'
+import ChatMessage, { type ChatAction } from '@/components/chat/ChatMessage.vue'
+import LineIcon from '@/components/icons/LineIcon.vue'
 import IframePreview from '@/components/app-editor/IframePreview.vue'
 import SelectedElementDetail from '@/components/app-editor/SelectedElementDetail.vue'
 import AppDetail from '@/components/app/AppDetail.vue'
 import DeleteConfirm from '@/components/app/DeleteConfirm.vue'
 import SuccessfulDeploy from '@/components/app/SuccessfulDeploy.vue'
+import DeployHint from '@/components/share/DeployHint.vue'
+import ShareSheet from '@/components/share/ShareSheet.vue'
 import { adminDeleteApp } from '@/api/appAdminController'
 import { uploadAppImage, replaceAppImage } from '@/api/appAssetController'
 import { deleteApp, deployApp, downloadAppCode, getApp } from '@/api/appController'
-import { addMessage, createSession, listHistory, listSessions } from '@/api/chatController'
+import { addMessage, createSession, exportHistory, listHistory, listSessions, rewriteHistory } from '@/api/chatController'
+import { voteMessage } from '@/api/feedbackController'
 import { streamChatGenCode } from '@/hooks/useSSEChat'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { apiLongId, idFromData } from '@/utils/id'
@@ -45,6 +49,7 @@ type ChatRow = {
   reasoning?: string
   streaming?: boolean
   createTime?: string
+  vote?: 1 | -1 | null
 }
 
 const vm = getCurrentInstance()
@@ -66,6 +71,8 @@ const deployLoading = ref(false)
 const downloadLoading = ref(false)
 const deploySuccessOpen = ref(false)
 const deploySuccessUrl = ref('')
+const shareOpen = ref(false)
+const deployHintOpen = ref(false)
 const infoVisible = ref(false)
 const deleteConfirmOpen = ref(false)
 const deleteLoading = ref(false)
@@ -181,6 +188,7 @@ const mergeHistoryToMessages = (incoming: API.ChatHistoryVO[], mode: 'prepend' |
       reasoning: x.reasoning || undefined,
       createTime: x.createTime,
       streaming: false,
+      vote: x.vote === 1 || x.vote === -1 ? x.vote : null,
     }))
 
   if (mapped.length === 0) return
@@ -530,6 +538,7 @@ const onDeploy = async () => {
       message.success('部署成功')
       deploySuccessUrl.value = url
       deploySuccessOpen.value = true
+      if (appVo.value) appVo.value.deployUrl = url
     }
   } catch (e) {
     message.error(getErrorMessage(e))
@@ -586,6 +595,134 @@ const openPreviewInNewWindow = () => {
     return
   }
   window.open(previewUrl.value, '_blank', 'noopener,noreferrer')
+}
+
+const deployUrl = computed(() => (appVo.value?.deployUrl || '').trim())
+const showShare = computed(() => !!deployUrl.value || isOwner.value)
+const shareBlurb = computed(() => {
+  const name = appVo.value?.appName?.trim() || '未命名作品'
+  return `我在 AI 编程站做了一个页面：${name} ${deployUrl.value}`
+})
+
+const onShareApp = () => {
+  if (deployUrl.value) {
+    shareOpen.value = true
+    return
+  }
+  if (isOwner.value) deployHintOpen.value = true
+}
+
+const onDeployFromHint = async () => {
+  deployHintOpen.value = false
+  await onDeploy()
+}
+
+const previousUserIndex = (from: number) => {
+  for (let i = from; i >= 0; i -= 1) {
+    if (messages.value[i]?.role === 'user') return i
+  }
+  return -1
+}
+
+const actionsFor = (row: ChatRow): ChatAction[] => {
+  if (row.streaming || !row.content.trim()) return []
+  if (row.role === 'user') return canChat.value ? ['copy', 'edit'] : ['copy']
+  const actions: ChatAction[] = ['copy']
+  if (canChat.value) actions.push('retry', 'like', 'dislike')
+  actions.push('download')
+  return actions
+}
+
+const rewriteFrom = async (userIndex: number, nextText: string) => {
+  const user = messages.value[userIndex]
+  if (!user?.id || !sessionId.value) {
+    message.warning('这条消息还没保存完成，请稍后再试')
+    return
+  }
+  if (chatLoading.value) return
+  const text = nextText.trim()
+  if (!text) return
+  try {
+    await rewriteHistory({
+      appId: apiLongId(appId.value),
+      sessionId: apiLongId(sessionId.value),
+      userMessageId: apiLongId(user.id),
+      message: text,
+    })
+  } catch {
+    return
+  }
+  user.content = text
+  messages.value.splice(userIndex + 1)
+  await runStream(text)
+}
+
+const onRetry = async (index: number) => {
+  const userIndex = previousUserIndex(index)
+  if (userIndex < 0) {
+    message.warning('找不到对应的发言')
+    return
+  }
+  const user = messages.value[userIndex]
+  if (!user) return
+  await rewriteFrom(userIndex, user.content)
+}
+
+const onEditMessage = async (index: number, text: string) => {
+  await rewriteFrom(index, text)
+}
+
+const onVote = async (row: ChatRow, payload: { vote: 1 | -1 | 0; reason?: string }) => {
+  if (!row.id) {
+    message.warning('这条消息还没保存完成，请稍后再试')
+    return
+  }
+  const previous = row.vote
+  row.vote = payload.vote === 0 ? null : payload.vote
+  try {
+    await voteMessage({
+      source: 'app',
+      messageId: row.id,
+      vote: payload.vote,
+      reason: payload.reason,
+    })
+  } catch {
+    row.vote = previous
+  }
+}
+
+const onExportMessage = async (row: ChatRow) => {
+  if (!row.id || !sessionId.value) {
+    message.warning('这条消息还没保存完成，请稍后再试')
+    return
+  }
+  try {
+    const res = await exportHistory(
+      {
+        appId: apiLongId(appId.value),
+        sessionId: apiLongId(sessionId.value),
+        untilMessageId: apiLongId(row.id),
+      },
+      { responseType: 'blob' },
+    )
+    const blob = res.data as unknown as Blob
+    const ct = String(res.headers['content-type'] ?? '').toLowerCase()
+    if (ct.includes('application/json')) {
+      const text = await blob.text()
+      try {
+        const body = JSON.parse(text) as { message?: string }
+        message.error(body.message || '下载失败')
+      } catch {
+        message.error('下载失败')
+      }
+      return
+    }
+    const fromHeader = parseFilenameFromContentDisposition(res.headers['content-disposition'] as string | undefined)
+    const fallback = `${appVo.value?.appName?.trim() || '对话'}.md`
+    triggerBlobDownload(blob, sanitizeDownloadFilename(fromHeader || fallback))
+  } catch (e) {
+    message.error(getErrorMessage(e, '下载失败'))
+  }
 }
 
 const confirmDelete = async () => {
@@ -776,12 +913,20 @@ onBeforeUnmount(() => {
                 <a-spin v-else-if="!historyInited" size="small" />
               </div>
               <ChatMessage
-                v-for="m in messages"
+                v-for="(m, index) in messages"
                 :key="m.key"
                 :role="m.role"
                 :content="m.content"
                 :reasoning="m.reasoning"
                 :streaming="m.streaming"
+                :actions="actionsFor(m)"
+                :vote="m.vote"
+                :pending="chatLoading"
+                :drop-later="index < messages.length - 1"
+                @retry="onRetry(index)"
+                @edit="onEditMessage(index, $event)"
+                @vote="onVote(m, $event)"
+                @download="onExportMessage(m)"
               />
               <a-empty
                 v-if="historyInited && messages.length === 0"
@@ -833,6 +978,10 @@ onBeforeUnmount(() => {
                   <ExportOutlined />
                   <span>新窗口打开</span>
                 </button>
+                <button v-if="showShare" type="button" class="app-detail__preview-open app-detail__preview-share" @click="onShareApp">
+                  <LineIcon name="share" />
+                  <span>分享</span>
+                </button>
               </div>
             </div>
             <IframePreview
@@ -868,6 +1017,15 @@ onBeforeUnmount(() => {
       @confirm="confirmDelete"
     />
     <SuccessfulDeploy v-model:open="deploySuccessOpen" :url="deploySuccessUrl" />
+    <DeployHint v-model:open="deployHintOpen" :loading="deployLoading" @deploy="onDeployFromHint" />
+    <ShareSheet
+      v-model:open="shareOpen"
+      kind="app"
+      :title="appVo?.appName || '未命名作品'"
+      :url="deployUrl"
+      :blurb="shareBlurb"
+      :cover="appVo?.cover"
+    />
   </div>
 </template>
 
@@ -1014,6 +1172,11 @@ onBeforeUnmount(() => {
 .app-detail__preview-open:disabled {
   color: rgba(0, 0, 0, 0.25);
   cursor: not-allowed;
+}
+
+.app-detail__preview-share :deep(svg) {
+  width: 14px;
+  height: 14px;
 }
 
 .app-detail__preview-edit--exit:not(:disabled) {

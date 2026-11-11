@@ -66,4 +66,9 @@ public class ChatHistoryVO implements Serializable {
      * 更新时间
      */
     private LocalDateTime updateTime;
+
+    /**
+     * 当前用户的评价：1 有帮助，-1 没帮助，空表示未评价。
+     */
+    private Integer vote;
 }

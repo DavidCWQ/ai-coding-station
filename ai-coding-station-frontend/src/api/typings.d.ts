@@ -7,6 +7,7 @@ declare namespace API {
     message?: string;
     reasoning?: string;
     createTime?: string;
+    vote?: number;
   };
 
   type AgentChatSessionVO = {
@@ -23,6 +24,7 @@ declare namespace API {
     sessionId: number;
     agentCode: string;
     message: string;
+    rewriteUserMessageId?: number;
   };
 
   type AgentHistoryQueryRequest = {
@@ -112,6 +114,7 @@ declare namespace API {
     initPrompt?: string;
     codeGenType?: string;
     deployKey?: string;
+    deployUrl?: string;
     deployedTime?: string;
     priority?: number;
     userId?: number;
@@ -226,6 +229,7 @@ declare namespace API {
     parentId?: number;
     createTime?: string;
     updateTime?: string;
+    vote?: number;
   };
 
   type ChatSessionAddRequest = {
