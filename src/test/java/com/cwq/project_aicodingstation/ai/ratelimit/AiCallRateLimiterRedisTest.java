@@ -28,6 +28,8 @@ class AiCallRateLimiterRedisTest {
     private StringRedisTemplate redis;
     private AiCallRateLimiter limiter;
     private AiRateLimitProperties properties;
+    /** 只有 ping 成功才清理键。CI 没有 Redis 时 setUp 会中止，tearDown 不能再去连。 */
+    private boolean redisReady;
 
     @BeforeEach
     void setUp() {
@@ -44,6 +46,7 @@ class AiCallRateLimiterRedisTest {
         } catch (RuntimeException ex) {
             Assumptions.abort("local redis unavailable");
         }
+        redisReady = true;
         redis.delete(List.of(userKey(), ipKey()));
         properties = new AiRateLimitProperties();
         limiter = new AiCallRateLimiter(redis, properties);
@@ -51,7 +54,7 @@ class AiCallRateLimiterRedisTest {
 
     @AfterEach
     void tearDown() {
-        if (redis != null) {
+        if (redisReady) {
             redis.delete(List.of(userKey(), ipKey()));
         }
         if (factory != null) {
