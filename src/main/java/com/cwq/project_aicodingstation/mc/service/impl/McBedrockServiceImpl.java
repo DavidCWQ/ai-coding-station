@@ -16,6 +16,7 @@ import com.cwq.project_aicodingstation.mc.pack.McPackLibrary;
 import com.cwq.project_aicodingstation.mc.service.McBedrockService;
 import com.cwq.project_aicodingstation.mc.vo.McBackupVO;
 import com.cwq.project_aicodingstation.mc.vo.McConsoleVO;
+import com.cwq.project_aicodingstation.mc.vo.McDownload;
 import com.cwq.project_aicodingstation.mc.vo.McGameruleVO;
 import com.cwq.project_aicodingstation.mc.vo.McPackVO;
 import com.cwq.project_aicodingstation.mc.vo.McPlayerVO;
@@ -122,6 +123,21 @@ public class McBedrockServiceImpl implements McBedrockService {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "打包世界失败");
         }
         return new FileSystemResource(zip);
+    }
+
+    @Override
+    public McDownload downloadPack(String id) {
+        requireConfigured();
+        try {
+            McPackLibrary.PackArchive archive = packs.archive(id);
+            archive.file().toFile().deleteOnExit();
+            return new McDownload(new FileSystemResource(archive.file()), archive.filename());
+        } catch (BusinessException e) {
+            throw e;
+        } catch (IOException e) {
+            log.warn("pack archive failed: {}", e.getMessage());
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "打包附加包失败");
+        }
     }
 
     @Override

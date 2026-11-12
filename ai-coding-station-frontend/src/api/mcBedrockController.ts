@@ -173,6 +173,19 @@ export function postMcStop() {
   return unwrap(request.post('/mc/admin/server/stop')) as Promise<McOpResultVO>
 }
 
+export async function downloadMcPack(id: string, fallbackName: string) {
+  const url = `${APP_API_BASE_URL}/mc/admin/pack/download?id=${encodeURIComponent(id)}`
+  const res = await fetch(url, { credentials: 'include' })
+  if (!res.ok) {
+    throw new Error('下载失败')
+  }
+  const blob = await res.blob()
+  const name =
+    parseFilenameFromContentDisposition(res.headers.get('content-disposition') || undefined) ||
+    `${fallbackName}.mcpack`
+  triggerBlobDownload(blob, name)
+}
+
 export async function downloadMcWorld(folder: string) {
   const url = `${APP_API_BASE_URL}/mc/admin/world/download?folder=${encodeURIComponent(folder)}`
   const res = await fetch(url, { credentials: 'include' })
