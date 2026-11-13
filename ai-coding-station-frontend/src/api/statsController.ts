@@ -17,6 +17,8 @@ export type StatsOverview = {
   todayPv: number
   todayUv: number
   online: number
+  periodUv: number
+  returningUv: number
   days: number
   trend: StatsTrendPoint[]
   ranking: StatsAppRank[]

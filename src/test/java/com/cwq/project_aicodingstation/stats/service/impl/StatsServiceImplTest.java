@@ -193,6 +193,19 @@ class StatsServiceImplTest {
         assertThrows(BusinessException.class, () -> service.overview(14));
     }
 
+    @Test
+    void spanCountsAPersonOnceAndMarksAReturnVisit() {
+        VisitLog first = VisitLog.builder().visitorHash("a").statDate(LocalDate.of(2026, 11, 1)).build();
+        VisitLog again = VisitLog.builder().visitorHash("a").statDate(LocalDate.of(2026, 11, 2)).build();
+        VisitLog once = VisitLog.builder().visitorHash("b").statDate(LocalDate.of(2026, 11, 2)).build();
+        VisitLog blank = VisitLog.builder().visitorHash(" ").statDate(LocalDate.of(2026, 11, 2)).build();
+
+        long[] span = StatsServiceImpl.spanVisitors(List.of(first, again, once, blank));
+
+        assertEquals(2, span[0]);
+        assertEquals(1, span[1]);
+    }
+
     private static VisitHitRequest siteView(String path) {
         VisitHitRequest hit = new VisitHitRequest();
         hit.setKind("VIEW");
