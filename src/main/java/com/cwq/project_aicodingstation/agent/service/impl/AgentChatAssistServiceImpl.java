@@ -7,8 +7,11 @@ import com.cwq.project_aicodingstation.agent.enums.AgentCodeEnum;
 import com.cwq.project_aicodingstation.agent.service.AgentChatAssistService;
 import com.cwq.project_aicodingstation.agent.service.AgentChatMessageService;
 import com.cwq.project_aicodingstation.agent.service.AgentChatSessionService;
+import com.cwq.project_aicodingstation.ai.AgentChatServiceFactory;
 import com.cwq.project_aicodingstation.ai.facade.AgentChatFacade;
 import com.cwq.project_aicodingstation.ai.model.StreamChunk;
+import com.cwq.project_aicodingstation.ai.guardrail.PromptGuard;
+import com.cwq.project_aicodingstation.ai.ratelimit.AiCallRateLimiter;
 import com.cwq.project_aicodingstation.chat.enums.MessageTypeEnum;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
@@ -41,7 +44,16 @@ public class AgentChatAssistServiceImpl implements AgentChatAssistService {
     private AgentChatFacade agentChatFacade;
 
     @Resource
+    private AgentChatServiceFactory agentChatServiceFactory;
+
+    @Resource
     private TransactionTemplate transactionTemplate;
+
+    @Resource
+    private AiCallRateLimiter aiCallRateLimiter;
+
+    @Resource
+    private PromptGuard promptGuard;
 
     @Override
     public Flux<StreamChunk> chatStream(AgentChatStreamRequest req, UserLoginVO userVO) {
@@ -57,15 +69,24 @@ public class AgentChatAssistServiceImpl implements AgentChatAssistService {
                 sessionId, agent.getCode(), userVO);
         Long ownerUserId = session.getUserId();
         BusinessAssert.notNull(ownerUserId, ErrorCode.SYSTEM_ERROR, "会话用户异常");
+        promptGuard.check(userText, userVO.getId(), "agent");
+        aiCallRateLimiter.acquire(userVO.getId());
 
         log.info("智能体流式对话开始 userId={}, agentCode={}, sessionId={}, messageLen={}",
                 userVO.getId(), agent.getCode(), sessionId, userText.length());
 
-        transactionTemplate.executeWithoutResult(status -> {
-            agentChatMessageService.addMessage(
-                    sessionId, agent.getCode(), ownerUserId, userText, MessageTypeEnum.USER.getValue());
-            agentChatSessionService.autoTitleFromUserMessage(sessionId, userText, userVO);
-        });
+        if (req.getRewriteUserMessageId() != null) {
+            transactionTemplate.executeWithoutResult(status ->
+                    agentChatMessageService.rewriteFromUserMessage(
+                            sessionId, req.getRewriteUserMessageId(), userText, ownerUserId));
+            agentChatServiceFactory.evictSession(sessionId);
+        } else {
+            transactionTemplate.executeWithoutResult(status -> {
+                agentChatMessageService.addMessage(
+                        sessionId, agent.getCode(), ownerUserId, userText, MessageTypeEnum.USER.getValue());
+                agentChatSessionService.autoTitleFromUserMessage(sessionId, userText, userVO);
+            });
+        }
 
         String systemPrompt = agentSystemPromptResolver.resolve(agent);
 

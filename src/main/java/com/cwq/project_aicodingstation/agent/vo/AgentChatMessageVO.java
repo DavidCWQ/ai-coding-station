@@ -51,4 +51,9 @@ public class AgentChatMessageVO implements Serializable {
      * 创建时间
      */
     private LocalDateTime createTime;
+
+    /**
+     * 当前用户的评价：1 有帮助，-1 没帮助，空表示未评价。
+     */
+    private Integer vote;
 }

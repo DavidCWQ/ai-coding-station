@@ -8,6 +8,7 @@ import com.cwq.project_aicodingstation.common.response.BaseResponse;
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.extern.slf4j.Slf4j;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,7 +29,12 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BaseException.class)
-    public BaseResponse<?> handleBaseException(BaseException e) {
+    public BaseResponse<?> handleBaseException(BaseException e, HttpServletResponse response) {
+        if (e.getCode() == ErrorCode.TOO_MANY_REQUESTS.getCode()) {
+            response.setStatus(429);
+        } else if (e.getCode() == ErrorCode.PROMPT_BLOCKED.getCode()) {
+            response.setStatus(400);
+        }
         ErrorType type = e.getType();
         switch (type) { // logging strategy
             case SYSTEM -> log.error("System exception", e);

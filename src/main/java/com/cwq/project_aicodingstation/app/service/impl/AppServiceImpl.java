@@ -2,15 +2,18 @@ package com.cwq.project_aicodingstation.app.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.cwq.project_aicodingstation.ai.model.StreamChunk;
+import com.cwq.project_aicodingstation.ai.guardrail.PromptGuard;
+import com.cwq.project_aicodingstation.ai.ratelimit.AiCallRateLimiter;
 import com.cwq.project_aicodingstation.ai.AppTitleService;
 import com.cwq.project_aicodingstation.ai.enums.CodeGenTypeEnum;
 import com.cwq.project_aicodingstation.ai.result.AppTitleResult;
 import com.cwq.project_aicodingstation.ai.facade.AICodeGeneratorFacade;
 import com.cwq.project_aicodingstation.app.config.AppDeployConfig;
+import com.cwq.project_aicodingstation.app.version.CodeVersionFiles;
+import com.cwq.project_aicodingstation.app.version.CodeVersionService;
 import com.cwq.project_aicodingstation.app.constant.AppConstant;
 import com.cwq.project_aicodingstation.app.dto.*;
 import com.cwq.project_aicodingstation.app.entity.App;
@@ -42,6 +45,7 @@ import reactor.core.publisher.Flux;
 
 import java.io.File;
 import java.io.Serializable;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -61,6 +65,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private AppDeployConfig appDeployConfig;
 
     @Resource
+    private CodeVersionService codeVersionService;
+
+    @Resource
     private ChatHistoryService chatHistoryService;
 
     @Resource
@@ -74,6 +81,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private AppTitleService appTitleService;
+
+    @Resource
+    private AiCallRateLimiter aiCallRateLimiter;
+
+    @Resource
+    private PromptGuard promptGuard;
 
     /**
      * 删除应用时关联删除对话历史（兜底清理；即使外键 CASCADE 生效也不影响）。
@@ -122,6 +135,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         BusinessAssert.notNull(req, ErrorCode.PARAMS_MISSING, "创建应用请求为空");
         String initPrompt = req.getInitPrompt();
         BusinessAssert.notBlank(initPrompt, ErrorCode.PARAMS_MISSING, "初始化 prompt 不能为空");
+        Long userId = userVO == null ? null : userVO.getId();
+        promptGuard.check(initPrompt, userId, "create");
+        aiCallRateLimiter.acquire(userId);
 
         // 2. 构造对象并持久化 (应用名称默认 = prompt 前20位)
         App app = new App();
@@ -266,6 +282,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         BusinessAssert.notNull(userId, ErrorCode.PARAMS_MISSING, "应用 id 为空");
         appVO.setUser(userService.getVOById(userId));
         appVO.setViewCount(statsService.appPageViews(List.of(app.getId())).getOrDefault(app.getId(), 0L));
+        if (StrUtil.isNotBlank(app.getDeployKey())) {
+            appVO.setDeployUrl(publicDeployBase() + "/" + app.getDeployKey() + "/");
+        }
 
         return appVO;
     }
@@ -508,6 +527,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(app.getCodeGenType());
         BusinessAssert.notNull(codeGenTypeEnum, ErrorCode.SYSTEM_ERROR, "不支持的生成类型");
+        promptGuard.check(message, userVO.getId(), "generate");
+        aiCallRateLimiter.acquire(userVO.getId());
 
         return aiCodeGeneratorFacade.generateAndSaveCodeStream(
                 message,
@@ -540,6 +561,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         });
     }
 
+    private String publicDeployBase() {
+        String internalBase = StrUtil.removeSuffix(StrUtil.trim(appDeployConfig.getDeployHost()), "/");
+        if (StrUtil.isNotBlank(appDeployConfig.getPublicDeployHost())) {
+            return StrUtil.removeSuffix(StrUtil.trim(appDeployConfig.getPublicDeployHost()), "/");
+        }
+        return internalBase;
+    }
+
     @Override
     public String deployApp(AppDeployRequest req, UserLoginVO userVO) {
 
@@ -564,11 +593,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             deployKey = RandomUtil.randomString(6);
         }
 
-        // 5. 构建源目录
+        // 5. 构建源目录。指定版本时拷那一版快照，否则用当前工作目录。
         String sourceDirName = app.getCodeGenType() + "_" + appId;
         String sourceDirPath = appDeployConfig.getOutputDir() + File.separator + sourceDirName;
-
-        File sourceDir = new File(sourceDirPath);
+        File sourceDir = req.getMessageId() == null
+                ? new File(sourceDirPath)
+                : codeVersionService.requireSnapshot(app, req.getMessageId()).toFile();
         BusinessAssert.requireTrue((sourceDir.exists() && sourceDir.isDirectory()),
                 ErrorCode.SYSTEM_ERROR, "未找到生成代码，请先生成代码"
         );
@@ -576,16 +606,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 6. 部署目录&链接（对内截图 URL 与对外返回 URL 可分离，见 AppDeployConfig.publicDeployHost）
         String deployDirPath = appDeployConfig.getDeployDir() + File.separator + deployKey;
         String internalBase = StrUtil.removeSuffix(StrUtil.trim(appDeployConfig.getDeployHost()), "/");
-        String publicBase = StrUtil.isNotBlank(appDeployConfig.getPublicDeployHost())
-                ? StrUtil.removeSuffix(StrUtil.trim(appDeployConfig.getPublicDeployHost()), "/")
-                : internalBase;
+        String publicBase = publicDeployBase();
         String screenshotTargetUrl = internalBase + "/" + deployKey + "/";
         String appDeployUrl = publicBase + "/" + deployKey + "/";
         try {
-            // 先清空旧部署目录，避免历史残留文件影响最新版本
-            FileUtil.del(deployDirPath);
-            FileUtil.mkdir(deployDirPath);
-            FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
+            // 清空旧部署目录后再铺文件，并跳过 .versions，避免把历史快照发布出去。
+            CodeVersionFiles.replaceWithTreeExceptVersions(sourceDir.toPath(), Path.of(deployDirPath));
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "该应用部署失败");
         }

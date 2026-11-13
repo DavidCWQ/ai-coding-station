@@ -12,6 +12,7 @@ public enum ErrorCode {
     PARAMS_ERROR(10000, "请求参数错误", ErrorType.CLIENT),
     PARAMS_MISSING(10001, "缺少必要参数", ErrorType.CLIENT),
     PARAMS_INVALID(10002, "参数格式非法", ErrorType.CLIENT),
+    PROMPT_BLOCKED(10003, "这条内容无法发送", ErrorType.CLIENT),
 
     // ===== 用户 & 权限 2xxxx =====
     NOT_LOGIN(20000, "未登录", ErrorType.AUTH),
@@ -21,6 +22,7 @@ public enum ErrorCode {
     // ===== 业务错误 3xxxx =====
     BUSINESS_ERROR(30000, "业务处理失败", ErrorType.BUSINESS),
     DATA_CONFLICT(30001, "数据冲突", ErrorType.BUSINESS),
+    TOO_MANY_REQUESTS(42900, "操作太频繁，请稍后再试", ErrorType.BUSINESS),
 
     // ===== 资源错误 4xxxx =====
     NOT_FOUND(40000, "资源不存在", ErrorType.CLIENT),

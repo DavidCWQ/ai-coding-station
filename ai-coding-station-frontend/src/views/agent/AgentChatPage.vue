@@ -6,7 +6,9 @@ import {
 } from '@ant-design/icons-vue'
 
 import UserAvatar from '@/components/UserAvatar.vue'
+import ChatJump from '@/components/chat/ChatJump.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
+import ShareSheet from '@/components/share/ShareSheet.vue'
 import AgentSessionList from '@/components/agent/AgentSessionList.vue'
 import DeleteSessionModal from '@/components/agent/DeleteSessionModal.vue'
 import RenameSessionModal from '@/components/agent/RenameSessionModal.vue'
@@ -35,11 +37,36 @@ const {
   historyLoading,
   loadHistory,
   chatLoading,
+  showJump,
   onListScroll,
+  onUserWheel,
+  onTouchStart,
+  onTouchMove,
+  pinAndScroll,
   sendUser,
   onAttachmentClick,
   createNewConversation,
   selectSession,
+  selecting,
+  groups,
+  selectedGroupKeys,
+  selectedCount,
+  allGroupsSelected,
+  shareOpen,
+  shareUrl,
+  shareTitle,
+  shareBlurb,
+  actionsFor,
+  onRetry,
+  onEditMessage,
+  onVote,
+  startShare,
+  toggleGroup,
+  toggleAllGroups,
+  cancelSharePick,
+  downloadSelected,
+  createShareLink,
+  revokeShare,
 } = useAgentChatPageState()
 </script>
 
@@ -81,7 +108,16 @@ const {
         </aside>
 
         <section class="agent-main">
-          <div ref="listEl" class="agent-main__messages" @scroll="onListScroll">
+          <div class="agent-main__thread">
+          <div
+            ref="listEl"
+            class="agent-main__messages"
+            data-chat-scroll
+            @scroll="onListScroll"
+            @wheel="onUserWheel"
+            @touchstart="onTouchStart"
+            @touchmove="onTouchMove"
+          >
             <div class="agent-main__messages-inner">
               <div class="agent-main__more">
                 <a-button
@@ -93,14 +129,51 @@ const {
                   加载更多
                 </a-button>
               </div>
-              <ChatMessage
-                v-for="m in messages"
-                :key="m.key"
-                :role="m.role"
-                :content="m.content"
-                :reasoning="m.reasoning"
-                :streaming="m.streaming"
-              />
+              <template v-if="selecting">
+                <div
+                  v-for="group in groups"
+                  :key="group.key"
+                  class="pick-group"
+                  :class="{ 'pick-group--on': selectedGroupKeys.includes(group.key) }"
+                >
+                  <label class="pick-group__check">
+                    <input
+                      type="checkbox"
+                      :disabled="!group.selectable"
+                      :checked="selectedGroupKeys.includes(group.key)"
+                      @change="toggleGroup(group.key)"
+                    />
+                  </label>
+                  <div class="pick-group__body">
+                    <ChatMessage
+                      v-for="m in group.messages"
+                      :key="m.key"
+                      :role="m.role"
+                      :content="m.content"
+                      :reasoning="m.reasoning"
+                      :streaming="m.streaming"
+                    />
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <ChatMessage
+                  v-for="(m, index) in messages"
+                  :key="m.key"
+                  :role="m.role"
+                  :content="m.content"
+                  :reasoning="m.reasoning"
+                  :streaming="m.streaming"
+                  :actions="actionsFor(m)"
+                  :vote="m.vote"
+                  :pending="chatLoading"
+                  :drop-later="index < messages.length - 1"
+                  @retry="onRetry(index)"
+                  @edit="onEditMessage(index, $event)"
+                  @vote="onVote(m, $event)"
+                  @share="startShare(m.key)"
+                />
+              </template>
               <a-empty
                 v-if="messages.length === 0"
                 class="agent-main__empty"
@@ -108,8 +181,27 @@ const {
               />
             </div>
           </div>
+          <ChatJump :show="showJump" @jump="pinAndScroll" />
+          </div>
 
-          <div class="agent-main__composer">
+          <div v-if="selecting" class="agent-sharebar">
+            <div class="agent-sharebar__inner">
+              <label class="agent-sharebar__all">
+                <input type="checkbox" :checked="allGroupsSelected" @change="toggleAllGroups" />
+                全选
+              </label>
+              <span class="agent-sharebar__count">已选 {{ selectedCount }} 组</span>
+              <span class="agent-sharebar__hint">拿到链接的人只能看到勾选的内容</span>
+              <div class="agent-sharebar__actions">
+                <button type="button" @click="cancelSharePick">取消</button>
+                <button type="button" :disabled="selectedCount === 0" @click="downloadSelected">下载 Markdown</button>
+                <button type="button" class="agent-sharebar__primary" :disabled="selectedCount === 0" @click="createShareLink">
+                  创建链接
+                </button>
+              </div>
+            </div>
+          </div>
+          <div v-else class="agent-main__composer">
             <div class="agent-main__composer-inner">
               <div
                 class="agent-main__input-box"
@@ -165,6 +257,15 @@ const {
       @submit="submitRename"
     />
     <DeleteSessionModal v-model:open="deleteModalOpen" :on-confirm="runDeleteSession" />
+    <ShareSheet
+      v-model:open="shareOpen"
+      kind="agent"
+      :title="shareTitle"
+      :url="shareUrl"
+      :blurb="shareBlurb"
+      warning="拿到链接的人只能看到勾选的内容，看不到你的其他对话。"
+      @revoke="revokeShare"
+    />
   </div>
 </template>
 
@@ -238,10 +339,20 @@ const {
   background: #fff;
 }
 
+.agent-main__thread {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .agent-main__messages {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  overflow-anchor: none;
   padding: 16px 20px 8px;
   background: #fcfcfc;
 }
@@ -291,8 +402,12 @@ const {
   border-color: #d9d9d9;
 }
 
+.agent-main__input-box--disabled :deep(textarea.ant-input) {
+  background: transparent !important;
+}
+
 .agent-main__input-box--disabled .agent-main__actions {
-  background: #EBEBEB;
+  background: transparent;
 }
 
 .agent-main__textarea {
@@ -377,6 +492,94 @@ const {
 .agent-icon-btn--send:hover {
   background: rgba(22, 119, 255, 0.14);
   color: #0958d9;
+}
+
+.pick-group {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  padding: 8px 8px 0;
+  border-radius: 12px;
+}
+
+.pick-group--on {
+  background: #f0f7ff;
+}
+
+.pick-group__check {
+  padding-top: 8px;
+}
+
+.pick-group__check input {
+  width: 16px;
+  height: 16px;
+  accent-color: #1677ff;
+}
+
+.pick-group__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.agent-sharebar {
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
+  background: #fff;
+  padding: 12px 20px 16px;
+}
+
+.agent-sharebar__inner {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.agent-sharebar__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.agent-sharebar__count {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.agent-sharebar__hint {
+  flex: 1;
+  min-width: 180px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.agent-sharebar__actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.agent-sharebar__actions button {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(5, 5, 5, 0.12);
+  background: #fff;
+  cursor: pointer;
+}
+
+.agent-sharebar__actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.agent-sharebar__primary {
+  border-color: #1677ff !important;
+  background: #1677ff !important;
+  color: #fff;
 }
 
 @media (max-width: 960px) {

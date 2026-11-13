@@ -40,6 +40,22 @@ class CodeParserTest {
                 codeParser.executeParser(codeContent, CodeGenTypeEnum.HTML);
         Assertions.assertNotNull(parsed);
         Assertions.assertNotNull(parsed.getHtmlCode());
+        Assertions.assertTrue(parsed.getHtmlCode().contains("Hello World!"));
+    }
+
+    @Test
+    void plainReplyDoesNotReplaceHtml() {
+        HtmlFileCodeResult parsed = (HtmlFileCodeResult)
+                codeParser.executeParser("好的，页面保持现在这样。", CodeGenTypeEnum.HTML);
+        Assertions.assertTrue(parsed.getHtmlCode() == null || parsed.getHtmlCode().isBlank());
+    }
+
+    @Test
+    void rawHtmlDocumentIsKept() {
+        String page = "<!DOCTYPE html><html><body><h1>Hi</h1></body></html>";
+        HtmlFileCodeResult parsed = (HtmlFileCodeResult)
+                codeParser.executeParser(page, CodeGenTypeEnum.HTML);
+        Assertions.assertEquals(page, parsed.getHtmlCode());
     }
 
     @Test

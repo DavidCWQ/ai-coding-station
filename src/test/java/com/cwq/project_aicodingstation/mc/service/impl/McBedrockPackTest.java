@@ -3,6 +3,7 @@ package com.cwq.project_aicodingstation.mc.service.impl;
 import com.cwq.project_aicodingstation.common.exception.BusinessException;
 import com.cwq.project_aicodingstation.mc.config.McBedrockProperties;
 import com.cwq.project_aicodingstation.mc.dto.McPackToggleRequest;
+import com.cwq.project_aicodingstation.mc.vo.McDownload;
 import com.cwq.project_aicodingstation.mc.vo.McPackVO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -277,6 +278,43 @@ class McBedrockPackTest {
         entries.put("textures/bulk.bin", new byte[12 * 1024 * 1024 + 1]);
         service.uploadPack(file("big.mcpack", entries));
         assertTrue(onlyPack().isLargeForMobile());
+    }
+
+    @Test
+    void downloadPackWritesMcpackAndMcaddon() throws Exception {
+        service.uploadPack(file("星光.mcpack", Map.of(
+                "manifest.json", resourceManifest(RES, "[1, 0, 0]").getBytes(StandardCharsets.UTF_8),
+                "texts/zh_CN.lang", "pack.name=星光材质\npack.description=把草地换成星空\n".getBytes(StandardCharsets.UTF_8),
+                "pack_icon.png", PNG
+        )));
+        McPackVO resource = onlyPack();
+        McDownload resourceFile = service.downloadPack(resource.getId());
+        assertEquals("星光材质.mcpack", resourceFile.filename());
+        try (ZipFile zip = new ZipFile(resourceFile.resource().getFile())) {
+            assertTrue(zip.getEntry("manifest.json") != null);
+            assertTrue(zip.getEntry("texts/zh_CN.lang") != null);
+            assertTrue(zip.getEntry("pack_icon.png") != null);
+        }
+
+        service.uploadPack(file("星辉.mcaddon", Map.of(
+                "bp/manifest.json", behaviorManifest(BEH, "[1, 0, 0]", false, null).getBytes(StandardCharsets.UTF_8),
+                "bp/pack_icon.png", PNG,
+                "rp/manifest.json", resourceManifest("66666666-6666-6666-6666-666666666666", "[1, 2, 0]").getBytes(StandardCharsets.UTF_8),
+                "rp/texts/zh_CN.lang", "pack.name=资源之名\npack.description=外观\n".getBytes(StandardCharsets.UTF_8)
+        )));
+        McPackVO addon = service.adminConsole().getPacks().stream()
+                .filter(pack -> "addon".equals(pack.getKind()))
+                .findFirst()
+                .orElseThrow();
+        McDownload addonFile = service.downloadPack(addon.getId());
+        assertEquals("行为之名.mcaddon", addonFile.filename());
+        try (ZipFile zip = new ZipFile(addonFile.resource().getFile())) {
+            long manifests = zip.stream().filter(entry -> entry.getName().endsWith("manifest.json")).count();
+            assertEquals(2, manifests);
+            assertTrue(zip.getEntry("manifest.json") == null);
+            assertTrue(zip.stream().anyMatch(entry -> entry.getName().startsWith(BEH + "/")));
+            assertTrue(zip.stream().anyMatch(entry -> entry.getName().startsWith("66666666-6666-6666-6666-666666666666/")));
+        }
     }
 
     private McPackVO onlyPack() {

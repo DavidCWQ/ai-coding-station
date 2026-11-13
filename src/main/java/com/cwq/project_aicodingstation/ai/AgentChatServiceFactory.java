@@ -117,6 +117,16 @@ public class AgentChatServiceFactory {
     }
 
     /**
+     * 重新生成前丢掉该会话的记忆缓存，下次从数据库重新装载。
+     */
+    public void evictSession(Long sessionId) {
+        if (sessionId == null) {
+            return;
+        }
+        serviceCache.asMap().keySet().removeIf(key -> sessionId.equals(key.sessionId()));
+    }
+
+    /**
      * 默认 Bean（占位会话 id=0，与其它 Ai Bean 用法一致）
      *
      * @return 服务实例

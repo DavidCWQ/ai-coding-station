@@ -4,6 +4,7 @@ import { Modal, message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 
 import {
+  downloadMcPack,
   downloadMcWorld,
   getMcAdminConsole,
   getMcConsole,
@@ -326,6 +327,14 @@ const onDownload = async (w: McWorldVO) => {
   }
 }
 
+const onDownloadPack = async (pack: McPackVO) => {
+  try {
+    await downloadMcPack(pack.id, pack.name)
+  } catch (e) {
+    message.error(getErrorMessage(e, '下载失败'))
+  }
+}
+
 const onSaveSettings = () =>
   confirm('写入服务器设置', '视距、模拟距离等需要重启后完全生效。改之前建议先备份。', () =>
     runOp('设置', () => postMcSettings(settingsDraft as Partial<McSettingsVO>)),
@@ -375,35 +384,39 @@ onUnmounted(() => {
     <div class="realm__sky" />
     <div class="realm__haze" />
 
+    <div class="realm__frame">
     <header class="realm__mast">
-      <div>
-        <p class="realm__kicker">{{ isAdmin ? '管理员' : '访客' }}</p>
-        <h1 class="realm__title">
-          {{ consoleVo?.serverName || 'My World v6.0' }}
-        </h1>
-        <p class="realm__lead">
-          {{ consoleVo?.message || '管理存档、规则和备份。' }}
-        </p>
-      </div>
-      <div class="realm__status">
+      <p class="realm__kicker">{{ isAdmin ? '管理员' : '访客' }}</p>
+      <h1 class="realm__title">
+        {{ consoleVo?.serverName || 'My World v6.0' }}
+      </h1>
+      <p class="realm__lead">
+        {{ consoleVo?.message || '管理存档、规则和备份。' }}
+      </p>
+      <p class="realm__lead realm__lead--join">
+        下载 Minecraft 国际版，添加服务器，地址填 davidcwq.online，端口填 19132。
+      </p>
+    </header>
+    <div class="realm__status">
+      <div class="realm__status-lead">
         <span class="realm__lamp" :class="lampClass" />
         <div>
           <strong>{{ statusLabel }}</strong>
           <small>{{ consoleVo?.joinHint || 'NetherNet · 19132' }}</small>
         </div>
-        <template v-if="isAdmin">
-          <button class="realm__chip" :disabled="busy" @click="onStart">启动</button>
-          <button class="realm__chip realm__chip--warn" :disabled="busy" @click="onStop">停止</button>
-          <button class="realm__chip realm__chip--gold" :disabled="busy" @click="onBackup">冷备此刻</button>
-        </template>
       </div>
-    </header>
+      <div v-if="isAdmin" class="realm__status-actions">
+        <button class="realm__chip" :disabled="busy" @click="onStart">启动</button>
+        <button class="realm__chip realm__chip--warn" :disabled="busy" @click="onStop">停止</button>
+        <button class="realm__chip realm__chip--gold" :disabled="busy" @click="onBackup">冷备此刻</button>
+      </div>
+    </div>
 
     <p v-if="!consoleVo?.configured" class="realm__empty">
       {{ consoleVo?.message || '基岩目录尚未挂载。' }}
     </p>
 
-    <section v-else class="realm__board">
+    <template v-else>
       <div class="realm__shelf">
         <h2>{{ isAdmin ? '存档' : '当前世界' }}</h2>
         <p class="realm__hint">
@@ -514,6 +527,7 @@ onUnmounted(() => {
                   >
                     {{ packOn(pack) ? '卸下' : '启用' }}
                   </button>
+                  <button type="button" :disabled="busy" @click="onDownloadPack(pack)">下载</button>
                   <button type="button" class="is-danger" :disabled="busy" @click="onDeletePack(pack)">删除</button>
                 </div>
               </div>
@@ -656,7 +670,8 @@ onUnmounted(() => {
           当前是访客视角：可以查看正在运行的世界，不能改设置，也不能下载存档。
         </p>
       </aside>
-    </section>
+    </template>
+    </div>
   </div>
 </template>
 
@@ -696,19 +711,21 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-.realm__mast,
-.realm__board,
-.realm__empty {
+.realm__frame {
   position: relative;
   z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+  column-gap: 22px;
+  row-gap: 28px;
+  align-items: start;
 }
 
 .realm__mast {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  align-items: flex-end;
-  margin-bottom: 28px;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: end;
+  min-width: 0;
 }
 
 .realm__kicker {
@@ -732,14 +749,37 @@ onUnmounted(() => {
   color: var(--muted);
 }
 
+.realm__lead--join {
+  margin-top: 6px;
+}
+
 .realm__status {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
   padding: 12px 14px;
   background: rgba(18, 14, 11, 0.72);
   border: 1px solid rgba(226, 184, 76, 0.35);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.realm__status-lead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.realm__status-actions {
+  margin-left: auto;
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
 }
 
 .realm__status strong {
@@ -804,14 +844,16 @@ onUnmounted(() => {
 }
 
 .realm__empty {
+  grid-column: 1 / -1;
+  grid-row: 2;
   padding: 40px;
   border: 1px dashed rgba(244, 231, 200, 0.3);
 }
 
-.realm__board {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
-  gap: 22px;
+.realm__shelf {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
 }
 
 .realm__shelf h2,
@@ -966,6 +1008,9 @@ onUnmounted(() => {
 }
 
 .realm__lectern {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
   padding: 18px 18px 24px;
   background: linear-gradient(180deg, #2a2118 0%, #1a140f 100%);
   border: 1px solid rgba(226, 184, 76, 0.22);
@@ -1144,15 +1189,35 @@ onUnmounted(() => {
 }
 
 @media (max-width: 960px) {
-  .realm__board,
-  .realm__mast,
+  .realm__frame {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .realm__mast {
+    align-self: stretch;
+    text-align: left;
+    width: 100%;
+  }
   .realm__row,
   .realm__people li {
     display: block;
   }
   .realm__status {
-    flex-wrap: wrap;
-    margin-top: 16px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .realm__status-actions {
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+  .realm__status-actions .realm__chip {
+    width: 100%;
+    text-align: center;
+    padding: 8px 4px;
   }
 }
 </style>

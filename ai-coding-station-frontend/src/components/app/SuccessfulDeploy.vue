@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { CheckCircleOutlined, CopyOutlined } from '@ant-design/icons-vue'
+import { CheckCircleOutlined } from '@ant-design/icons-vue'
+
+import LineIcon from '@/components/icons/LineIcon.vue'
+import { copyText } from '@/utils/copyText'
 
 const props = defineProps<{
   open: boolean
@@ -17,6 +20,9 @@ const modalOpen = computed({
   set: (v: boolean) => emit('update:open', v),
 })
 
+const copied = ref(false)
+let copyTimer: ReturnType<typeof setTimeout> | undefined
+
 const onClose = () => {
   modalOpen.value = false
 }
@@ -30,12 +36,17 @@ const onVisit = () => {
 
 const onCopy = async () => {
   if (!props.url) return
-  try {
-    await navigator.clipboard.writeText(props.url)
-    message.success('链接已复制')
-  } catch {
+  const ok = await copyText(props.url)
+  if (!ok) {
     message.warning('复制失败，请手动复制')
+    return
   }
+  copied.value = true
+  if (copyTimer) clearTimeout(copyTimer)
+  copyTimer = setTimeout(() => {
+    copied.value = false
+  }, 1500)
+  message.success('已复制')
 }
 </script>
 
@@ -56,7 +67,7 @@ const onCopy = async () => {
       <div class="deploy-success-modal__link">
         <span class="deploy-success-modal__text">{{ url }}</span>
         <button class="ant-btn ant-btn-text ant-btn-icon-only" title="复制链接" @click="onCopy">
-          <CopyOutlined />
+          <LineIcon :name="copied ? 'check' : 'copy'" />
         </button>
       </div>
       <div class="deploy-success-modal__footer">

@@ -16,6 +16,7 @@ import com.cwq.project_aicodingstation.app.constant.AppConstant;
 import com.cwq.project_aicodingstation.chat.enums.MessageTypeEnum;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
+import com.cwq.project_aicodingstation.feedback.service.MessageFeedbackService;
 import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -32,6 +33,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.mybatisflex.core.query.QueryMethods.column;
@@ -49,6 +51,9 @@ public class AgentChatMessageServiceImpl extends ServiceImpl<AgentChatMessageMap
 
     @Resource
     private AgentChatSessionService agentChatSessionService;
+
+    @Resource
+    private MessageFeedbackService messageFeedbackService;
 
     @Override
     public Long addMessage(Long sessionId, String agentCode, Long userId, String text, String messageType) {
@@ -111,7 +116,16 @@ public class AgentChatMessageServiceImpl extends ServiceImpl<AgentChatMessageMap
         List<AgentChatMessage> rows = this.list(qw);
         List<AgentChatMessage> ordered = new ArrayList<>(rows);
         Collections.reverse(ordered);
-        return ordered.stream().map(this::toVO).collect(Collectors.toList());
+        List<AgentChatMessageVO> vos = ordered.stream().map(this::toVO).collect(Collectors.toList());
+        if (userVO.getId() != null && !vos.isEmpty()) {
+            List<Long> ids = vos.stream().map(AgentChatMessageVO::getId).filter(id -> id != null).toList();
+            Map<Long, Integer> votes = messageFeedbackService.votesOf(
+                    userVO.getId(), MessageFeedbackService.SOURCE_AGENT, ids);
+            for (AgentChatMessageVO vo : vos) {
+                vo.setVote(votes.get(vo.getId()));
+            }
+        }
+        return vos;
     }
 
     @Override
@@ -157,6 +171,35 @@ public class AgentChatMessageServiceImpl extends ServiceImpl<AgentChatMessageMap
         } catch (Exception e) {
             log.error("加载智能体历史对话失败，sessionId: {}, error: {}", sessionId, e.getMessage(), e);
         }
+    }
+
+    @Override
+    public void rewriteFromUserMessage(Long sessionId, Long userMessageId, String newText, Long ownerUserId) {
+        BusinessAssert.notNull(sessionId, ErrorCode.PARAMS_MISSING, "会话 id 不能为空");
+        BusinessAssert.notNull(userMessageId, ErrorCode.PARAMS_MISSING, "消息 id 不能为空");
+        BusinessAssert.notNull(ownerUserId, ErrorCode.NOT_LOGIN, "用户未登录");
+        String next = StrUtil.trim(newText);
+        BusinessAssert.notBlank(next, ErrorCode.PARAMS_MISSING, "消息不能为空");
+        BusinessAssert.requireTrue(next.length() <= 32000, ErrorCode.PARAMS_ERROR, "消息过长");
+
+        AgentChatMessage anchor = this.getById(userMessageId);
+        BusinessAssert.notNull(anchor, ErrorCode.NOT_FOUND, "消息不存在");
+        BusinessAssert.equals(anchor.getSessionId(), sessionId, ErrorCode.PARAMS_ERROR, "消息不属于该会话");
+        BusinessAssert.equals(anchor.getUserId(), ownerUserId, ErrorCode.NO_PERMISSION, "只能修改自己的对话");
+        BusinessAssert.equals(MessageTypeEnum.USER.getValue(), anchor.getMessageType(),
+                ErrorCode.PARAMS_ERROR, "只能从用户发言重新生成");
+
+        if (!next.equals(anchor.getMessage())) {
+            AgentChatMessage update = new AgentChatMessage();
+            update.setId(anchor.getId());
+            update.setMessage(next);
+            update.setUpdateTime(LocalDateTime.now());
+            BusinessAssert.requireTrue(this.updateById(update), ErrorCode.BUSINESS_ERROR, "更新发言失败");
+        }
+
+        QueryCondition after = column("create_time").gt(anchor.getCreateTime())
+                .or(column("create_time").eq(anchor.getCreateTime()).and(column("id").gt(anchor.getId())));
+        this.remove(QueryWrapper.create().eq("session_id", sessionId).and(after));
     }
 
     /**

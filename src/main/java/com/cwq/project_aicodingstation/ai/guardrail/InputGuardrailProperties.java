@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 用户输入护栏开关与扩展敏感词（默认词表见 {@link SafeInputGuardrail}）。
+ * 用户输入护栏开关与额外敏感词。注入说法和内置内容词见 {@link PromptGuard}。
  */
 @ConfigurationProperties(prefix = "ai.guardrail")
 public class InputGuardrailProperties {

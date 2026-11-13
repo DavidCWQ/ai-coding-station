@@ -195,8 +195,8 @@ onBeforeUnmount(() => {
 .global-header__brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-width: 200px;
+  gap: 4px;
+  min-width: 178px;
   color: rgba(0, 0, 0, 0.88);
   text-decoration: none;
 }

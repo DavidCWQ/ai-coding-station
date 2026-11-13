@@ -1,10 +1,15 @@
 package com.cwq.project_aicodingstation.chat.controller;
 
+import com.cwq.project_aicodingstation.ai.AICodeGeneratorServiceFactory;
+import com.cwq.project_aicodingstation.app.version.CodeVersionService;
+import com.cwq.project_aicodingstation.chat.dto.ChatExportRequest;
 import com.cwq.project_aicodingstation.chat.dto.ChatHistoryAddRequest;
 import com.cwq.project_aicodingstation.chat.dto.ChatHistoryQueryRequest;
+import com.cwq.project_aicodingstation.chat.dto.ChatRewriteRequest;
 import com.cwq.project_aicodingstation.chat.dto.ChatSessionAddRequest;
 import com.cwq.project_aicodingstation.chat.dto.ChatSessionQueryRequest;
 import com.cwq.project_aicodingstation.chat.dto.ChatSessionUpdateTitleRequest;
+import com.cwq.project_aicodingstation.chat.export.MarkdownFile;
 import com.cwq.project_aicodingstation.chat.service.ChatHistoryService;
 import com.cwq.project_aicodingstation.chat.service.ChatSessionService;
 import com.cwq.project_aicodingstation.chat.vo.ChatHistoryVO;
@@ -22,9 +27,14 @@ import com.cwq.project_aicodingstation.user.vo.UserLoginVO;
 import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -32,6 +42,7 @@ import java.util.List;
  *
  * @author <a href="https://github.com/DavidCWQ">DavidCWQ</a>
  */
+@Slf4j
 @RestController
 @RequestMapping("/chat")
 public class ChatController {
@@ -44,6 +55,12 @@ public class ChatController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private AICodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
+
+    @Resource
+    private CodeVersionService codeVersionService;
 
     /**
      * 按需获取登录用户：未登录时返回 null（用于匿名可读接口），其余异常继续抛出。
@@ -134,5 +151,39 @@ public class ChatController {
         UserLoginVO userVO = userService.getUserLoginVO(request);
         return ResultUtils.success(
                 chatSessionService.updateTitle(req.getSessionId(), req.getTitle(), userVO));
+    }
+
+    /**
+     * 更新一条用户发言，并去掉它后面的消息。调用方接着用返回的正文重新生成。
+     */
+    @PostMapping("/history/rewrite")
+    public BaseResponse<String> rewrite(@RequestBody @Valid ChatRewriteRequest req, HttpServletRequest request) {
+        UserLoginVO userVO = userService.getUserLoginVO(request);
+        String text = chatHistoryService.prepareRewrite(
+                req.getAppId(), req.getSessionId(), req.getUserMessageId(), req.getMessage(), userVO);
+        aiCodeGeneratorServiceFactory.evict(req.getSessionId());
+        try {
+            codeVersionService.pruneOrphans(req.getAppId(), req.getSessionId());
+        } catch (RuntimeException ex) {
+            log.warn("清理旧版本目录失败 appId={} sessionId={}", req.getAppId(), req.getSessionId(), ex);
+        }
+        return ResultUtils.success(text);
+    }
+
+    /**
+     * 把会话从开头导出到指定消息，Markdown 文件下载。
+     */
+    @PostMapping("/history/export")
+    public void export(@RequestBody @Valid ChatExportRequest req, HttpServletRequest request,
+                       HttpServletResponse response) throws IOException {
+        UserLoginVO userVO = resolveLoginUserOrNull(request);
+        MarkdownFile file = chatHistoryService.exportMarkdown(
+                req.getAppId(), req.getSessionId(), req.getUntilMessageId(), userVO);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setContentType("text/markdown; charset=UTF-8");
+        String encoded = URLEncoder.encode(file.filename(), StandardCharsets.UTF_8).replace("+", "%20");
+        response.setHeader("Content-Disposition",
+                "attachment; filename=\"conversation.md\"; filename*=UTF-8''" + encoded);
+        response.getOutputStream().write(file.body());
     }
 }

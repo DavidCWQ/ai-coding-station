@@ -2,9 +2,12 @@ package com.cwq.project_aicodingstation.app.controller;
 
 import com.cwq.project_aicodingstation.app.dto.AppAddRequest;
 import com.cwq.project_aicodingstation.app.dto.AppChatGenCodeRequest;
+import com.cwq.project_aicodingstation.app.dto.AppCodeVersionListRequest;
+import com.cwq.project_aicodingstation.app.dto.AppCodeVersionRequest;
 import com.cwq.project_aicodingstation.app.dto.AppDeployRequest;
 import com.cwq.project_aicodingstation.app.dto.AppQueryRequest;
 import com.cwq.project_aicodingstation.app.dto.AppUpdateRequest;
+import com.cwq.project_aicodingstation.app.version.CodeVersionService;
 import com.cwq.project_aicodingstation.app.config.AppDeployConfig;
 import com.cwq.project_aicodingstation.app.entity.App;
 import com.cwq.project_aicodingstation.app.service.AppService;
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.util.List;
 
 /**
  * @apiNote App Control Layer (普通用户)
@@ -52,6 +56,9 @@ public class AppController {
 
     @Resource
     private ProjectDownloadService projectDownloadService;
+
+    @Resource
+    private CodeVersionService codeVersionService;
 
     /* ======================= 用户接口 ======================= */
 
@@ -143,6 +150,38 @@ public class AppController {
     }
 
     /**
+     * 列出会话里可预览的版本。缺的快照会在这次请求里补上。
+     */
+    @PostMapping("/code/version/list")
+    public BaseResponse<List<Long>> listCodeVersions(@RequestBody @Valid AppCodeVersionListRequest req,
+                                                     HttpServletRequest request) {
+        return ResultUtils.success(codeVersionService.listVersions(
+                req.getAppId(), req.getSessionId(), userService.getUserLoginVO(request)));
+    }
+
+    /**
+     * 把刚写完的工作目录固定成这一条消息的版本。
+     */
+    @PostMapping("/code/version/pin")
+    public BaseResponse<Boolean> pinCodeVersion(@RequestBody @Valid AppCodeVersionRequest req,
+                                                HttpServletRequest request) {
+        codeVersionService.pin(req.getAppId(), req.getSessionId(), req.getMessageId(),
+                userService.getUserLoginVO(request));
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 从当前显示的版本继续改，并丢掉它之后的对话。
+     */
+    @PostMapping("/code/version/continue")
+    public BaseResponse<Boolean> continueCodeVersion(@RequestBody @Valid AppCodeVersionRequest req,
+                                                     HttpServletRequest request) {
+        codeVersionService.continueFrom(req.getAppId(), req.getSessionId(), req.getMessageId(),
+                userService.getUserLoginVO(request));
+        return ResultUtils.success(true);
+    }
+
+    /**
      * 应用部署
      */
     @PostMapping("/deploy")
@@ -161,7 +200,9 @@ public class AppController {
      * @param response 响应
      */
     @GetMapping("/download/{appId}")
-    public void downloadAppCode(@PathVariable Long appId, HttpServletRequest request,
+    public void downloadAppCode(@PathVariable Long appId,
+                                @RequestParam(value = "messageId", required = false) Long messageId,
+                                HttpServletRequest request,
                                 HttpServletResponse response) {
 
         // 1. 参数校验
@@ -177,12 +218,13 @@ public class AppController {
 
         String sourceDirName = app.getCodeGenType() + "_" + appId;
         String sourceDirPath = appDeployConfig.getOutputDir() + File.separator + sourceDirName;
-
-        File sourceDir = new File(sourceDirPath);
+        File sourceDir = messageId == null
+                ? new File(sourceDirPath)
+                : codeVersionService.requireSnapshot(app, messageId).toFile();
         BusinessAssert.requireTrue(sourceDir.exists() && sourceDir.isDirectory(),
                 ErrorCode.NOT_FOUND, "应用代码不存在，请先生成代码");
 
         String downloadFileName = String.valueOf(appId);
-        projectDownloadService.downloadProjectAsZip(sourceDirPath, downloadFileName, response);
+        projectDownloadService.downloadProjectAsZip(sourceDir.getAbsolutePath(), downloadFileName, response);
     }
 }

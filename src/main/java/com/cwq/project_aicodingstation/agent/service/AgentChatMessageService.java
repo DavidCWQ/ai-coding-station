@@ -61,4 +61,9 @@ public interface AgentChatMessageService extends IService<AgentChatMessage> {
      * @param maxCount   最大条数
      */
     void loadChatHistoryToMemory(Long sessionId, MessageWindowChatMemory chatMemory, int maxCount);
+
+    /**
+     * 把指定用户发言改成 newText，并去掉它后面的消息。
+     */
+    void rewriteFromUserMessage(Long sessionId, Long userMessageId, String newText, Long ownerUserId);
 }

@@ -49,6 +49,17 @@ class StaticResourceControllerTest {
     }
 
     @Test
+    void serveStaticResource_returnsVersionSnapshot() throws Exception {
+        Path page = previewRoot.resolve("html_1").resolve(".versions").resolve("9");
+        Files.createDirectories(page);
+        Files.writeString(page.resolve("index.html"), "<h1>v9</h1>", StandardCharsets.UTF_8);
+
+        mockMvc.perform(get("/static/html_1/.versions/9/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("<h1>v9</h1>"));
+    }
+
+    @Test
     void serveStaticResource_returnsNotFoundForMissingFile() throws Exception {
         mockMvc.perform(get("/static/demo/missing.js"))
                 .andExpect(status().isNotFound());

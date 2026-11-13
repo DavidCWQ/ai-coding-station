@@ -6,10 +6,13 @@
 
 package com.cwq.project_aicodingstation.ai.facade;
 
+import cn.hutool.core.util.StrUtil;
 import com.cwq.project_aicodingstation.ai.AICodeGeneratorService;
 import com.cwq.project_aicodingstation.ai.AICodeGeneratorServiceFactory;
 import com.cwq.project_aicodingstation.ai.enums.CodeGenTypeEnum;
 import com.cwq.project_aicodingstation.ai.model.StreamChunk;
+import com.cwq.project_aicodingstation.ai.result.HtmlFileCodeResult;
+import com.cwq.project_aicodingstation.ai.result.MultiFileCodeResult;
 import com.cwq.project_aicodingstation.ai.utils.TokenStreamSupport;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.utils.BusinessAssert;
@@ -74,11 +77,12 @@ public class AICodeGeneratorFacade {
                 .doOnComplete(() -> { // 流式返回完成后保存代码
                     try {
                         String full = builder.toString();
-                        // 使用执行器解析代码
                         Object parsed = codeParser.executeParser(full, codeGenType);
-                        // 使用执行器保存代码
+                        if (!hasSavableCode(parsed)) {
+                            log.info("回复里没有新的代码，保留已有页面, appId={}", appId);
+                            return;
+                        }
                         File dir = codeFileSaver.executeSaver(parsed, codeGenType, appId);
-                        // 保存成功，记录路径
                         log.info("(生成代码)保存成功: {}", dir.getAbsolutePath());
                     } catch (Exception e) {
                         log.error("(生成代码)保存失败", e);
@@ -102,6 +106,18 @@ public class AICodeGeneratorFacade {
                 TokenStreamSupport.flux(aiCodeGeneratorService.generateCodeStream(userMessage, codeGenType)),
                 codeGenType, appId
         );
+    }
+
+    private static boolean hasSavableCode(Object parsed) {
+        if (parsed instanceof HtmlFileCodeResult html) {
+            return StrUtil.isNotBlank(html.getHtmlCode());
+        }
+        if (parsed instanceof MultiFileCodeResult multi) {
+            return StrUtil.isNotBlank(multi.getHtmlCode())
+                    || StrUtil.isNotBlank(multi.getCssCode())
+                    || StrUtil.isNotBlank(multi.getJsCode());
+        }
+        return false;
     }
 
 }

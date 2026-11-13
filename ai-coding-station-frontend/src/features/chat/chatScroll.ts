@@ -12,35 +12,84 @@ export function isChatPinned(
 
 export function useStickToBottom(listEl: Ref<HTMLElement | null>) {
   const pinned = ref(true)
-  let ignoreScroll = 0
+  const showJump = ref(false)
+  let ignoreScroll = false
+  let touchStartY = 0
+  let touchInCode = false
 
-  const onListScroll = () => {
-    if (ignoreScroll > 0) return
-    pinned.value = isChatPinned(listEl.value)
+  const refreshJump = () => {
+    const el = listEl.value
+    showJump.value = !!el && el.scrollHeight - el.clientHeight > 8 && !isChatPinned(el, 8)
   }
 
-  const scrollToEnd = async () => {
+  const onListScroll = () => {
+    if (ignoreScroll || listEl.value?.dataset.chatScrollHold) return
+    pinned.value = isChatPinned(listEl.value)
+    refreshJump()
+  }
+
+  // 滚轮、触摸和方向键表示读者要离开底部。生成中的程序化滚动不能把它盖掉。
+  const releasePin = () => {
+    pinned.value = false
+    refreshJump()
+  }
+
+  const onUserWheel = (event: WheelEvent) => {
+    if (event.deltaY >= 0) return
+    const target = event.target
+    if (target instanceof Element) {
+      const code = target.closest('.msg__code') as HTMLElement | null
+      if (code && code.scrollTop > 0) return
+    }
+    releasePin()
+  }
+
+  const onTouchStart = (event: TouchEvent) => {
+    const target = event.target
+    touchInCode = target instanceof Element && !!target.closest('.msg__code')
+    touchStartY = event.touches[0]?.clientY ?? 0
+  }
+
+  const onTouchMove = (event: TouchEvent) => {
+    const y = event.touches[0]?.clientY ?? touchStartY
+    if (!touchInCode && y - touchStartY > 12) releasePin()
+    touchStartY = y
+  }
+
+  const scrollToEnd = async (force = false) => {
     await nextTick()
+    if (!force && !pinned.value) return
     const el = listEl.value
     if (!el) return
-    ignoreScroll += 1
+    ignoreScroll = true
     el.scrollTop = el.scrollHeight
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        ignoreScroll = Math.max(0, ignoreScroll - 1)
-      })
+      ignoreScroll = false
+      refreshJump()
     })
   }
 
   const scrollIfPinned = async () => {
-    if (!pinned.value) return
+    if (!pinned.value) {
+      refreshJump()
+      return
+    }
     await scrollToEnd()
   }
 
   const pinAndScroll = async () => {
     pinned.value = true
-    await scrollToEnd()
+    await scrollToEnd(true)
   }
 
-  return { pinned, onListScroll, scrollIfPinned, pinAndScroll }
+  return {
+    pinned,
+    showJump,
+    onListScroll,
+    onUserWheel,
+    onTouchStart,
+    onTouchMove,
+    scrollIfPinned,
+    pinAndScroll,
+  }
 }

@@ -19,6 +19,21 @@ function emitSseData(raw: string, onDelta: (delta: ChatStreamDelta) => void) {
   }
 }
 
+async function readErrorMessage(res: Response): Promise<string> {
+  const text = (await res.text().catch(() => '')).trim()
+  if (text.startsWith('{')) {
+    try {
+      const body = JSON.parse(text) as { message?: unknown }
+      if (typeof body.message === 'string' && body.message.trim()) {
+        return body.message.trim()
+      }
+    } catch {
+      // 响应不是 JSON 时沿用原文
+    }
+  }
+  return text || `请求失败 ${res.status}`
+}
+
 function buildChatGenCodeUrl(): string {
   return getApiUrl('/app/chat/genCode')
 }
@@ -53,8 +68,7 @@ export async function streamChatGenCode(
   })
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(text || `请求失败 ${res.status}`)
+    throw new Error(await readErrorMessage(res))
   }
 
   const reader = res.body?.getReader()
@@ -100,7 +114,7 @@ export async function streamAgentChat(
   sessionId: string,
   message: string,
   onDelta: (delta: ChatStreamDelta) => void,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; rewriteUserMessageId?: string },
 ): Promise<void> {
   assertValidId(sessionId)
   const code = String(agentCode || '').trim()
@@ -121,12 +135,14 @@ export async function streamAgentChat(
       agentCode: code,
       sessionId: apiLongId(sessionId),
       message,
+      rewriteUserMessageId: options?.rewriteUserMessageId
+        ? apiLongId(options.rewriteUserMessageId)
+        : undefined,
     }),
   })
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(text || `请求失败 ${res.status}`)
+    throw new Error(await readErrorMessage(res))
   }
 
   const reader = res.body?.getReader()

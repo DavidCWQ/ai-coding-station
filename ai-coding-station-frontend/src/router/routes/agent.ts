@@ -2,6 +2,18 @@ import { ACCESS_ENUM } from '@/access/accessEnum'
 
 export const agentRoutes = [
   {
+    path: '/s/:token',
+    name: 'agent-share',
+    component: () => import('@/views/agent/AgentSharePage.vue'),
+    meta: {
+      layout: 'basic',
+      title: '对话分享',
+      access: ACCESS_ENUM.NOT_LOGIN,
+      fullWidth: true,
+      noContentCard: true,
+    },
+  },
+  {
     path: '/agents',
     name: 'agent-list',
     component: () => import('@/views/agent/AgentListPage.vue'),

@@ -11,7 +11,13 @@ import { useLoginUserStore } from '@/stores/loginUser'
 import { findAgentCard } from '@/constants/agents'
 import { getErrorMessage } from '@/utils/error'
 import { agentCreateSession } from '@/api/agentController'
+import { voteMessage } from '@/api/feedbackController'
+import { createAgentShare, revokeAgentShare } from '@/api/shareController'
+import type { ChatAction } from '@/components/chat/ChatMessage.vue'
+import { groupKeyOf, groupTurns } from '@/features/chat/chatGroups'
+import { conversationFilename, renderConversationMarkdown } from '@/features/chat/conversationMarkdown'
 import type { AgentChatRow } from '@/types/agent'
+import { triggerBlobDownload } from '@/utils/fileDownload'
 import { useAgentHistory } from './useAgentHistory'
 import { useAgentSession } from './useAgentSession'
 import { useAgentStream } from './useAgentStream'
@@ -178,6 +184,168 @@ export function useAgentChatPageState() {
 
   const sendUser = () => stream.sendUser(ensureLoginForSend)
 
+  const selecting = ref(false)
+  const selectedGroupKeys = ref<string[]>([])
+  const shareOpen = ref(false)
+  const shareToken = ref('')
+  const shareTitle = ref('')
+
+  const groups = computed(() => groupTurns(messages.value))
+  const selectableGroups = computed(() => groups.value.filter((group) => group.selectable))
+  const selectedCount = computed(() => selectedGroupKeys.value.length)
+  const allGroupsSelected = computed(() =>
+    selectableGroups.value.length > 0
+    && selectableGroups.value.every((group) => selectedGroupKeys.value.includes(group.key)),
+  )
+  const shareUrl = computed(() => (shareToken.value ? `${window.location.origin}/s/${shareToken.value}` : ''))
+  const shareBlurb = computed(() => `来自「${agentMeta.value?.title || '智能体'}」的一段对话 ${shareUrl.value}`.trim())
+
+  watch(
+    () => session.activeSessionId.value,
+    () => {
+      selecting.value = false
+      selectedGroupKeys.value = []
+    },
+  )
+
+  const previousUserIndex = (from: number) => {
+    for (let i = from; i >= 0; i -= 1) {
+      if (messages.value[i]?.role === 'user') return i
+    }
+    return -1
+  }
+
+  const rewriteFrom = async (userIndex: number, text: string) => {
+    const user = messages.value[userIndex]
+    const sid = session.activeSessionId.value
+    if (!user?.id || !sid) {
+      message.warning('这条消息还没保存完成，请稍后再试')
+      return
+    }
+    if (stream.chatLoading.value) return
+    const next = text.trim()
+    if (!next) return
+    selecting.value = false
+    user.content = next
+    messages.value.splice(userIndex + 1)
+    await stream.runStream(next, sid, user.id)
+  }
+
+  const onRetry = async (index: number) => {
+    const userIndex = previousUserIndex(index)
+    const user = userIndex >= 0 ? messages.value[userIndex] : undefined
+    if (!user) {
+      message.warning('找不到对应的发言')
+      return
+    }
+    await rewriteFrom(userIndex, user.content)
+  }
+
+  const onEditMessage = (index: number, text: string) => rewriteFrom(index, text)
+
+  const onVote = async (row: AgentChatRow, payload: { vote: 1 | -1 | 0; reason?: string }) => {
+    if (!row.id) {
+      message.warning('这条消息还没保存完成，请稍后再试')
+      return
+    }
+    const previous = row.vote
+    row.vote = payload.vote === 0 ? null : payload.vote
+    try {
+      await voteMessage({
+        source: 'agent',
+        messageId: row.id,
+        vote: payload.vote,
+        reason: payload.reason,
+      })
+    } catch {
+      row.vote = previous
+    }
+  }
+
+  const actionsFor = (row: AgentChatRow): ChatAction[] => {
+    if (selecting.value || row.streaming || !row.content.trim()) return []
+    if (!isLoggedIn.value) return row.role === 'assistant' ? ['copy'] : ['copy']
+    if (row.role === 'user') return ['copy', 'edit']
+    return ['copy', 'retry', 'like', 'dislike', 'share']
+  }
+
+  const startShare = (messageKey: string) => {
+    const groupKey = groupKeyOf(messages.value, messageKey)
+    if (!groupKey) return
+    selectedGroupKeys.value = [groupKey]
+    selecting.value = true
+  }
+
+  const toggleGroup = (key: string) => {
+    const next = new Set(selectedGroupKeys.value)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    selectedGroupKeys.value = [...next]
+  }
+
+  const toggleAllGroups = () => {
+    selectedGroupKeys.value = allGroupsSelected.value
+      ? []
+      : selectableGroups.value.map((group) => group.key)
+  }
+
+  const selectedRows = () => {
+    const keys = new Set(selectedGroupKeys.value)
+    return groups.value.filter((group) => keys.has(group.key)).flatMap((group) => group.messages)
+  }
+
+  const cancelSharePick = () => {
+    selecting.value = false
+    selectedGroupKeys.value = []
+  }
+
+  const downloadSelected = () => {
+    const rows = selectedRows()
+    if (!rows.length) return
+    const title = agentMeta.value?.title || '对话'
+    const now = new Date()
+    const markdown = renderConversationMarkdown({
+      title,
+      source: `智能体「${title}」`,
+      exportedAt: now,
+      includeReasoning: true,
+      turns: rows.map((row) => ({ role: row.role, content: row.content, reasoning: row.reasoning })),
+    })
+    triggerBlobDownload(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }), conversationFilename(title, now))
+  }
+
+  const createShareLink = async () => {
+    const sid = session.activeSessionId.value
+    const rows = selectedRows()
+    if (!sid || !rows.length) return
+    if (rows.some((row) => !row.id)) {
+      message.warning('有消息还没保存完成，请稍后再分享')
+      return
+    }
+    try {
+      const res = await createAgentShare(sid, rows.map((row) => row.id as string))
+      const token = res.data?.data?.token
+      if (!token) return
+      shareToken.value = token
+      shareTitle.value = res.data?.data?.title || agentMeta.value?.title || '对话分享'
+      shareOpen.value = true
+      selecting.value = false
+    } catch {
+      // 请求拦截器已经提示失败原因
+    }
+  }
+
+  const revokeShare = async () => {
+    if (!shareToken.value) return
+    try {
+      await revokeAgentShare(shareToken.value)
+      shareOpen.value = false
+      message.success('已停止分享')
+    } catch {
+      // 请求拦截器已经提示失败原因
+    }
+  }
+
   return {
     router,
     route,
@@ -204,10 +372,35 @@ export function useAgentChatPageState() {
     historyLoading: history.historyLoading,
     loadHistory: history.loadHistory,
     chatLoading: stream.chatLoading,
+    showJump: stream.showJump,
     onListScroll: stream.onListScroll,
+    onUserWheel: stream.onUserWheel,
+    onTouchStart: stream.onTouchStart,
+    onTouchMove: stream.onTouchMove,
+    pinAndScroll: stream.pinAndScroll,
     sendUser,
     onAttachmentClick: stream.onAttachmentClick,
     createNewConversation,
     selectSession,
+    selecting,
+    groups,
+    selectedGroupKeys,
+    selectedCount,
+    allGroupsSelected,
+    shareOpen,
+    shareUrl,
+    shareTitle,
+    shareBlurb,
+    actionsFor,
+    onRetry,
+    onEditMessage,
+    onVote,
+    startShare,
+    toggleGroup,
+    toggleAllGroups,
+    cancelSharePick,
+    downloadSelected,
+    createShareLink,
+    revokeShare,
   }
 }

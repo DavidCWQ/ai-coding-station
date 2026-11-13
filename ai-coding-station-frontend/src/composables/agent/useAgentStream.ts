@@ -30,7 +30,8 @@ export function useAgentStream(options: {
 
   const chatLoading = ref(false)
   let abortCtl: AbortController | null = null
-  const { pinned, onListScroll, scrollIfPinned, pinAndScroll } = useStickToBottom(listEl)
+  const { pinned, showJump, onListScroll, onUserWheel, onTouchStart, onTouchMove, scrollIfPinned, pinAndScroll } =
+    useStickToBottom(listEl)
 
   const appendAssistantStreaming = (key: string) => {
     messages.value.push({ key, role: 'assistant', content: '', streaming: true })
@@ -41,7 +42,14 @@ export function useAgentStream(options: {
     if (last?.role === 'assistant') last.streaming = false
   }
 
-  const runStream = async (text: string, sessionId: string) => {
+  const dropEmptyAssistant = (index: number) => {
+    const row = messages.value[index]
+    if (row?.role === 'assistant' && !row.content.trim() && !row.reasoning?.trim()) {
+      messages.value.splice(index, 1)
+    }
+  }
+
+  const runStream = async (text: string, sessionId: string, rewriteUserMessageId?: string) => {
     abortCtl?.abort()
     abortCtl = new AbortController()
     chatLoading.value = true
@@ -49,7 +57,7 @@ export function useAgentStream(options: {
     appendAssistantStreaming(assistantKey)
     await pinAndScroll()
     const idx = messages.value.length - 1
-    let reloadHistory = false
+    let reloadHistory = !!rewriteUserMessageId
     try {
       await streamAgentChat(
         agentCode.value,
@@ -63,7 +71,7 @@ export function useAgentStream(options: {
           }
           void scrollIfPinned()
         },
-        { signal: abortCtl.signal },
+        { signal: abortCtl.signal, rewriteUserMessageId },
       )
       finishAssistant()
       await loadSessions()
@@ -77,6 +85,7 @@ export function useAgentStream(options: {
         await jumpToLogin()
         return
       }
+      dropEmptyAssistant(idx)
       message.error(getErrorMessage(e))
       finishAssistant()
     } finally {
@@ -116,7 +125,11 @@ export function useAgentStream(options: {
 
   return {
     chatLoading,
+    showJump,
     onListScroll,
+    onUserWheel,
+    onTouchStart,
+    onTouchMove,
     pinAndScroll,
     runStream,
     sendUser,

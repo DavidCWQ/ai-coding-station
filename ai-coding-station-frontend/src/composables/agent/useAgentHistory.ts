@@ -46,6 +46,7 @@ export function useAgentHistory(options: {
         reasoning: x.reasoning || undefined,
         createTime: x.createTime,
         streaming: false,
+        vote: x.vote === 1 || x.vote === -1 ? x.vote : null,
       }))
 
     if (mapped.length === 0) return

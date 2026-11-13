@@ -77,7 +77,7 @@ const onPressEnter = (e: Event) => {
 </script>
 
 <template>
-  <div class="chat-input">
+  <div class="chat-input" :class="{ 'chat-input--locked': loading || disabled }">
     <div v-if="selectedImageName" class="chat-input__attachment chat-input__attachment--top">
       <span class="chat-input__attachment-name">已选图片：{{ selectedImageName }}</span>
       <button
@@ -140,6 +140,16 @@ const onPressEnter = (e: Event) => {
   border-radius: 12px;
   padding: 10px 12px;
   background: #fff;
+}
+
+.chat-input--locked {
+  background: rgba(0, 0, 0, 0.04);
+  transition: none;
+}
+
+.chat-input--locked :deep(textarea.ant-input) {
+  background: transparent !important;
+  transition: none !important;
 }
 
 .chat-input__area {

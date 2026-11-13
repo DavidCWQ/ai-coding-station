@@ -38,4 +38,9 @@ public class AgentChatStreamRequest implements Serializable {
     @NotBlank(message = "消息不能为空")
     @Size(max = 32000, message = "消息过长")
     private String message;
+
+    /**
+     * 从这条已有的用户发言重新生成。有值时不再另存一条用户消息，并去掉它后面的消息。
+     */
+    private Long rewriteUserMessageId;
 }

@@ -17,6 +17,11 @@ public class AppReplaceImageRequest implements Serializable {
     @NotNull
     private Long appId;
 
+    /**
+     * 要改的那一版。空则改当前工作目录。
+     */
+    private Long messageId;
+
     @NotBlank
     private String newImagePath;
 

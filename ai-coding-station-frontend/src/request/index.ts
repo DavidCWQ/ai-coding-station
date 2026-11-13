@@ -2,6 +2,13 @@ import axios, {type AxiosError, type AxiosInstance, type AxiosResponse, type Int
 import {message} from 'ant-design-vue'
 import {APP_API_BASE_URL} from '@/config/env'
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /** 为 true 时，失败响应不再弹出全局错误提示，由页面自己说明。 */
+    quiet?: boolean
+  }
+}
+
 export interface ApiResponse<T = any> {
   code: number
   data: T
@@ -47,7 +54,7 @@ request.interceptors.response.use(
     const isSuccess = code === undefined || code === 0 || code === 200
 
     if (!isSuccess) {
-      if (res?.message) message.error(res.message)
+      if (res?.message && !response.config.quiet) message.error(res.message)
       return Promise.reject(res)
     }
 
@@ -60,9 +67,10 @@ request.interceptors.response.use(
     if (isNotLoginResponse(resp?.data ?? null)) {
       return Promise.reject(error)
     }
-    if (resp?.data?.message) {
+    const quiet = Boolean(error.config?.quiet)
+    if (!quiet && resp?.data?.message) {
       message.error(resp.data.message)
-    } else if (error.message) {
+    } else if (!quiet && error.message) {
       message.error(error.message)
     }
     return Promise.reject(error)

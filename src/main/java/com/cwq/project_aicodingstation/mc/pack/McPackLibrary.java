@@ -37,6 +37,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 /**
  * 基岩附加包库。文件放在 data/resource_packs 与 data/behavior_packs，
@@ -64,6 +65,10 @@ public class McPackLibrary {
     }
 
     public record PackChange(String name, boolean changed) {
+    }
+
+    /** 打好的附加包。单个包是 .mcpack，行为和资源在一起时是 .mcaddon。 */
+    public record PackArchive(Path file, String filename) {
     }
 
     public List<McPackVO> list(boolean admin) {
@@ -189,6 +194,36 @@ public class McPackLibrary {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除附加包失败");
         }
         return new PackChange(loaded.name, changedCurrent);
+    }
+
+    public PackArchive archive(String id) throws IOException {
+        Disk disk = readDisk();
+        Loaded loaded = require(id, disk);
+        LinkedHashMap<String, Part> unique = new LinkedHashMap<>();
+        for (Part part : loaded.parts) {
+            unique.putIfAbsent(part.uuid, part);
+        }
+        boolean addon = unique.size() > 1;
+        Path zip = Files.createTempFile("mc-pack-", ".zip");
+        try {
+            try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zip))) {
+                if (addon) {
+                    for (Part part : unique.values()) {
+                        zipTree(part.root, part.uuid + "/", zos);
+                    }
+                } else {
+                    zipTree(unique.values().iterator().next().root, "", zos);
+                }
+            }
+            return new PackArchive(zip, downloadName(loaded.name, addon));
+        } catch (IOException | RuntimeException e) {
+            try {
+                Files.deleteIfExists(zip);
+            } catch (IOException ignored) {
+                // temp cleanup
+            }
+            throw e;
+        }
     }
 
     public boolean resourcePackActive(String worldFolder) {
@@ -1276,6 +1311,40 @@ public class McPackLibrary {
 
     private static String fmt(int[] version) {
         return version[0] + "." + version[1] + "." + version[2];
+    }
+
+    private void zipTree(Path root, String prefix, ZipOutputStream zos) throws IOException {
+        BusinessAssert.requireTrue(root != null && Files.isDirectory(root),
+                ErrorCode.NOT_FOUND, "附加包文件不在了");
+        Path base = root.toAbsolutePath().normalize();
+        try (Stream<Path> walk = Files.walk(base)) {
+            for (Path path : walk.toList()) {
+                if (Files.isSymbolicLink(path) || !Files.isRegularFile(path)) {
+                    continue;
+                }
+                Path abs = path.toAbsolutePath().normalize();
+                if (!abs.startsWith(base)) {
+                    continue;
+                }
+                String rel = prefix + base.relativize(abs).toString().replace('\\', '/');
+                zos.putNextEntry(new ZipEntry(rel));
+                Files.copy(path, zos);
+                zos.closeEntry();
+            }
+        }
+    }
+
+    private static String downloadName(String raw, boolean addon) {
+        String base = raw == null ? "" : raw.trim();
+        base = base.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "").trim();
+        base = base.replaceAll("\\s+", " ");
+        if (base.isBlank() || ".".equals(base) || "..".equals(base)) {
+            base = "pack";
+        }
+        if (base.length() > 60) {
+            base = base.substring(0, 60).trim();
+        }
+        return base + (addon ? ".mcaddon" : ".mcpack");
     }
 
     private static String clip(String value, int max) {

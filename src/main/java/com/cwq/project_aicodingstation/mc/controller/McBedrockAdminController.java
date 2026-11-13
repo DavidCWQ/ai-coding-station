@@ -12,6 +12,7 @@ import com.cwq.project_aicodingstation.mc.dto.McSettingsUpdateRequest;
 import com.cwq.project_aicodingstation.mc.dto.McWorldActivateRequest;
 import com.cwq.project_aicodingstation.mc.service.McBedrockService;
 import com.cwq.project_aicodingstation.mc.vo.McConsoleVO;
+import com.cwq.project_aicodingstation.mc.vo.McDownload;
 import com.cwq.project_aicodingstation.user.constant.UserConstant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -124,6 +125,17 @@ public class McBedrockAdminController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<McOpResultVO> deletePack(@RequestParam String id) {
         return ResultUtils.success(mcBedrockService.deletePack(id));
+    }
+
+    @GetMapping("/pack/download")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public ResponseEntity<Resource> downloadPack(@RequestParam String id) {
+        McDownload download = mcBedrockService.downloadPack(id);
+        String filename = URLEncoder.encode(download.filename(), StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + filename)
+                .body(download.resource());
     }
 
     @GetMapping("/pack/icon")

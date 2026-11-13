@@ -7,6 +7,7 @@ declare namespace API {
     message?: string;
     reasoning?: string;
     createTime?: string;
+    vote?: number;
   };
 
   type AgentChatSessionVO = {
@@ -23,6 +24,7 @@ declare namespace API {
     sessionId: number;
     agentCode: string;
     message: string;
+    rewriteUserMessageId?: number;
   };
 
   type AgentHistoryQueryRequest = {
@@ -72,10 +74,12 @@ declare namespace API {
 
   type AppDeployRequest = {
     appId: number;
+    messageId?: number;
   };
 
   type AppReplaceImageRequest = {
     appId: number;
+    messageId?: number;
     newImagePath: string;
     targetXpath?: string;
     targetTag?: string;
@@ -112,6 +116,7 @@ declare namespace API {
     initPrompt?: string;
     codeGenType?: string;
     deployKey?: string;
+    deployUrl?: string;
     deployedTime?: string;
     priority?: number;
     userId?: number;
@@ -226,6 +231,7 @@ declare namespace API {
     parentId?: number;
     createTime?: string;
     updateTime?: string;
+    vote?: number;
   };
 
   type ChatSessionAddRequest = {
@@ -267,6 +273,7 @@ declare namespace API {
 
   type downloadAppCodeParams = {
     appId: number;
+    messageId?: number;
   };
 
   type getAppParams = {
