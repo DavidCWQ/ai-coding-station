@@ -24,6 +24,69 @@ const activeIndex = ref<number | null>(null)
 
 const countText = (value: number) => Number(value).toLocaleString('zh-CN')
 
+type PlotPoint = { x: number; y: number }
+
+/** 过每个点的单调三次曲线，拐弯不冲出相邻点的高低。 */
+const smoothPath = (points: PlotPoint[]) => {
+  if (points.length === 0) return ''
+  const first = points[0]
+  if (!first) return ''
+  if (points.length === 1) return `M ${first.x} ${first.y}`
+  const slopes: number[] = []
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const current = points[i]
+    const next = points[i + 1]
+    if (!current || !next) continue
+    const dx = next.x - current.x
+    slopes.push(dx === 0 ? 0 : (next.y - current.y) / dx)
+  }
+  const tangents = points.map((_, index) => {
+    if (index === 0) return slopes[0] ?? 0
+    if (index === points.length - 1) return slopes[slopes.length - 1] ?? 0
+    const left = slopes[index - 1] ?? 0
+    const right = slopes[index] ?? 0
+    if (left * right <= 0) return 0
+    return (left + right) / 2
+  })
+  for (let i = 0; i < slopes.length; i += 1) {
+    const slope = slopes[i] ?? 0
+    if (slope === 0) {
+      tangents[i] = 0
+      tangents[i + 1] = 0
+      continue
+    }
+    const a = (tangents[i] ?? 0) / slope
+    const b = (tangents[i + 1] ?? 0) / slope
+    const size = a * a + b * b
+    if (size > 9) {
+      const scale = 3 / Math.sqrt(size)
+      tangents[i] = scale * a * slope
+      tangents[i + 1] = scale * b * slope
+    }
+  }
+  const round = (value: number) => Math.round(value * 10) / 10
+  let path = `M ${round(first.x)} ${round(first.y)}`
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const current = points[i]
+    const next = points[i + 1]
+    if (!current || !next) continue
+    const dx = next.x - current.x
+    const c1x = current.x + dx / 3
+    const c1y = current.y + (tangents[i] ?? 0) * dx / 3
+    const c2x = next.x - dx / 3
+    const c2y = next.y - (tangents[i + 1] ?? 0) * dx / 3
+    path += ` C ${round(c1x)} ${round(c1y)}, ${round(c2x)} ${round(c2y)}, ${round(next.x)} ${round(next.y)}`
+  }
+  return path
+}
+
+const areaPath = (line: string, points: PlotPoint[], bottom: number) => {
+  const first = points[0]
+  const last = points[points.length - 1]
+  if (!line || !first || !last) return ''
+  return `${line} L ${last.x} ${bottom} L ${first.x} ${bottom} Z`
+}
+
 const formatTrendDate = (iso: string, withYear: boolean) => {
   const [year, month, day] = iso.split('-')
   if (!year || !month || !day) return iso
@@ -72,15 +135,24 @@ const chart = computed(() => {
       hitWidth: Math.max(next - prev, 1),
     }
   })
+  const pvPoints = items.map((item) => ({ x: item.x, y: item.yPv }))
+  const uvPoints = items.map((item) => ({ x: item.x, y: item.yUv }))
+  const pvLine = smoothPath(pvPoints)
+  const uvLine = smoothPath(uvPoints)
+  const mid = padTop + (plotBottom - padTop) / 2
   return {
     width,
     height,
     padLeft,
     padTop,
     plotBottom,
+    plotRight,
     max: countText(max),
-    pvLine: items.map((item) => `${item.x},${item.yPv}`).join(' '),
-    uvLine: items.map((item) => `${item.x},${item.yUv}`).join(' '),
+    gridYs: [padTop, mid, plotBottom],
+    pvLine,
+    uvLine,
+    pvArea: areaPath(pvLine, pvPoints, plotBottom),
+    uvArea: areaPath(uvLine, uvPoints, plotBottom),
     items,
   }
 })
@@ -151,9 +223,15 @@ onMounted(() => {
           <a-col :xs="24" :sm="8">
             <a-statistic title="当前在线" :value="overview?.online ?? 0" />
           </a-col>
+          <a-col :xs="24" :sm="8">
+            <a-statistic :title="`近 ${days} 日独立访客`" :value="overview?.periodUv ?? 0" />
+          </a-col>
+          <a-col :xs="24" :sm="8">
+            <a-statistic title="其中回访" :value="overview?.returningUv ?? 0" />
+          </a-col>
         </a-row>
         <p class="visit-stats__note">
-          全站数字只含首页、关于和应用工坊。应用详情单独计入下方排行。在线人数是最近 5 分钟内有心跳的会话，概览最多缓存 1 分钟。
+          全站数字只含首页、关于和应用工坊。应用详情单独计入下方排行。在线人数是最近 5 分钟内有心跳的会话，概览最多缓存 1 分钟。近 {{ days }} 日的独立访客按人合并，同一个人来多天只计一次；回访是至少来过两天的人。明细只保存 IP 与浏览器的摘要，不留原始地址，所以不按地区拆分。
         </p>
 
         <h3 class="visit-stats__heading">全站趋势</h3>
@@ -165,10 +243,29 @@ onMounted(() => {
               :aria-label="chartLabel"
               @pointerleave="onPlotLeave"
             >
+              <defs>
+                <linearGradient id="visit-stats-pv-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#1677ff" stop-opacity="0.28" />
+                  <stop offset="100%" stop-color="#1677ff" stop-opacity="0.02" />
+                </linearGradient>
+                <linearGradient id="visit-stats-uv-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#52c41a" stop-opacity="0.22" />
+                  <stop offset="100%" stop-color="#52c41a" stop-opacity="0.02" />
+                </linearGradient>
+              </defs>
               <text :x="chart.padLeft - 8" :y="chart.padTop + 4" text-anchor="end" class="visit-stats__label">
                 {{ chart.max }}
               </text>
               <text :x="chart.padLeft - 8" :y="chart.plotBottom" text-anchor="end" class="visit-stats__label">0</text>
+              <line
+                v-for="(y, index) in chart.gridYs"
+                :key="`grid-${index}`"
+                :x1="chart.padLeft"
+                :x2="chart.plotRight"
+                :y1="y"
+                :y2="y"
+                class="visit-stats__grid"
+              />
               <rect
                 v-if="active"
                 :x="active.hitX"
@@ -185,8 +282,10 @@ onMounted(() => {
                 :y2="chart.plotBottom"
                 class="visit-stats__guide"
               />
-              <polyline :points="chart.pvLine" class="visit-stats__line visit-stats__line--pv" />
-              <polyline :points="chart.uvLine" class="visit-stats__line visit-stats__line--uv" />
+              <path v-if="chart.pvArea" :d="chart.pvArea" fill="url(#visit-stats-pv-fill)" class="visit-stats__area" />
+              <path v-if="chart.uvArea" :d="chart.uvArea" fill="url(#visit-stats-uv-fill)" class="visit-stats__area" />
+              <path :d="chart.pvLine" class="visit-stats__line visit-stats__line--pv" />
+              <path :d="chart.uvLine" class="visit-stats__line visit-stats__line--uv" />
               <template v-for="(item, index) in chart.items" :key="`dot-${index}`">
                 <circle
                   :cx="item.x"
@@ -288,6 +387,14 @@ onMounted(() => {
   height: auto;
 }
 
+.visit-stats__grid {
+  stroke: rgba(0, 0, 0, 0.08);
+}
+
+.visit-stats__area {
+  pointer-events: none;
+}
+
 .visit-stats__band {
   fill: rgba(22, 119, 255, 0.06);
 }
@@ -305,7 +412,9 @@ onMounted(() => {
 
 .visit-stats__line {
   fill: none;
-  stroke-width: 2;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .visit-stats__line--pv,

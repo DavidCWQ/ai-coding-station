@@ -231,7 +231,32 @@ public class StatsServiceImpl implements StatsService {
         }
         overview.setTrend(trend);
         overview.setRanking(rankApps(appTotals));
+        long[] span = spanVisitors(visitLogMapper.listSiteVisitorDays(from, today));
+        overview.setPeriodUv(span[0]);
+        overview.setReturningUv(span[1]);
         return overview;
+    }
+
+    /**
+     * 第一项是去重后的人数，第二项是至少出现在两个统计日的人数。
+     */
+    static long[] spanVisitors(List<VisitLog> rows) {
+        Map<String, Integer> daysByVisitor = new HashMap<>();
+        if (rows != null) {
+            for (VisitLog row : rows) {
+                if (row.getVisitorHash() == null || row.getVisitorHash().isBlank() || row.getStatDate() == null) {
+                    continue;
+                }
+                daysByVisitor.merge(row.getVisitorHash(), 1, Integer::sum);
+            }
+        }
+        long returning = 0L;
+        for (int days : daysByVisitor.values()) {
+            if (days > 1) {
+                returning++;
+            }
+        }
+        return new long[]{daysByVisitor.size(), returning};
     }
 
     private List<StatsAppRankVO> rankApps(Map<Long, long[]> appTotals) {

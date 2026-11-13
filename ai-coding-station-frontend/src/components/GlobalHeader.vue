@@ -197,6 +197,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   min-width: 178px;
+  margin-left: 15px;
   color: rgba(0, 0, 0, 0.88);
   text-decoration: none;
 }
@@ -204,6 +205,7 @@ onBeforeUnmount(() => {
 .global-header__logo {
   width: 28px;
   height: 28px;
+  transform: translateY(2px);
 }
 
 .global-header__title {
