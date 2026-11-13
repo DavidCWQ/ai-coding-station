@@ -76,6 +76,11 @@ public interface ChatHistoryService extends IService<ChatHistory> {
     String prepareRewrite(Long appId, Long sessionId, Long userMessageId, String newContent, UserLoginVO userVO);
 
     /**
+     * 以一条 AI 回复为锚点，删掉它之后的消息，返回被删消息的 id。只能改自己的会话。
+     */
+    List<Long> truncateAfterAi(Long appId, Long sessionId, Long anchorMessageId, UserLoginVO userVO);
+
+    /**
      * 导出从会话开头直到指定消息（含）的 Markdown。权限与查看该会话历史相同。
      */
     MarkdownFile exportMarkdown(Long appId, Long sessionId, Long untilMessageId, UserLoginVO userVO);

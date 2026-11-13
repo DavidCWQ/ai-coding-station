@@ -2,7 +2,6 @@ package com.cwq.project_aicodingstation.app.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.cwq.project_aicodingstation.ai.model.StreamChunk;
@@ -13,6 +12,8 @@ import com.cwq.project_aicodingstation.ai.enums.CodeGenTypeEnum;
 import com.cwq.project_aicodingstation.ai.result.AppTitleResult;
 import com.cwq.project_aicodingstation.ai.facade.AICodeGeneratorFacade;
 import com.cwq.project_aicodingstation.app.config.AppDeployConfig;
+import com.cwq.project_aicodingstation.app.version.CodeVersionFiles;
+import com.cwq.project_aicodingstation.app.version.CodeVersionService;
 import com.cwq.project_aicodingstation.app.constant.AppConstant;
 import com.cwq.project_aicodingstation.app.dto.*;
 import com.cwq.project_aicodingstation.app.entity.App;
@@ -44,6 +45,7 @@ import reactor.core.publisher.Flux;
 
 import java.io.File;
 import java.io.Serializable;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -61,6 +63,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private AppDeployConfig appDeployConfig;
+
+    @Resource
+    private CodeVersionService codeVersionService;
 
     @Resource
     private ChatHistoryService chatHistoryService;
@@ -588,11 +593,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             deployKey = RandomUtil.randomString(6);
         }
 
-        // 5. 构建源目录
+        // 5. 构建源目录。指定版本时拷那一版快照，否则用当前工作目录。
         String sourceDirName = app.getCodeGenType() + "_" + appId;
         String sourceDirPath = appDeployConfig.getOutputDir() + File.separator + sourceDirName;
-
-        File sourceDir = new File(sourceDirPath);
+        File sourceDir = req.getMessageId() == null
+                ? new File(sourceDirPath)
+                : codeVersionService.requireSnapshot(app, req.getMessageId()).toFile();
         BusinessAssert.requireTrue((sourceDir.exists() && sourceDir.isDirectory()),
                 ErrorCode.SYSTEM_ERROR, "未找到生成代码，请先生成代码"
         );
@@ -604,10 +610,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String screenshotTargetUrl = internalBase + "/" + deployKey + "/";
         String appDeployUrl = publicBase + "/" + deployKey + "/";
         try {
-            // 先清空旧部署目录，避免历史残留文件影响最新版本
-            FileUtil.del(deployDirPath);
-            FileUtil.mkdir(deployDirPath);
-            FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
+            // 清空旧部署目录后再铺文件，并跳过 .versions，避免把历史快照发布出去。
+            CodeVersionFiles.replaceWithTreeExceptVersions(sourceDir.toPath(), Path.of(deployDirPath));
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "该应用部署失败");
         }

@@ -16,6 +16,11 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/** 某一版快照的页面地址，和当前工作目录同属静态资源。 */
+export function getVersionPreviewIndexUrl(codeGenType: string, appId: string, messageId: string): string {
+  return `${getStaticPreviewUrl(codeGenType, appId)}.versions/${encodeURIComponent(messageId)}/index.html`
+}
+
 /**
  * 流式生成结束后磁盘写入可能略晚于 SSE 结束；若直接给 iframe 赋值，易加载到错误 JSON。
  * 轮询 GET 直至拿到 HTML 或非 JSON 成功响应，避免把接口错误页嵌进 iframe。

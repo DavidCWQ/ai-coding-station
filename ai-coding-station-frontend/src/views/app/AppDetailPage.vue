@@ -8,6 +8,8 @@ import {
   EditOutlined,
   ExportOutlined,
   InfoCircleOutlined,
+  LeftOutlined,
+  RightOutlined,
 } from '@ant-design/icons-vue'
 
 import BackButton from '@/components/common/backButton.vue'
@@ -25,13 +27,14 @@ import ShareSheet from '@/components/share/ShareSheet.vue'
 import { adminDeleteApp } from '@/api/appAdminController'
 import { uploadAppImage, replaceAppImage } from '@/api/appAssetController'
 import { deleteApp, deployApp, downloadAppCode, getApp } from '@/api/appController'
+import { continueCodeVersion, listCodeVersions, pinCodeVersion } from '@/api/codeVersionController'
 import { addMessage, createSession, exportHistory, listHistory, listSessions, rewriteHistory } from '@/api/chatController'
 import { voteMessage } from '@/api/feedbackController'
 import { streamChatGenCode } from '@/hooks/useSSEChat'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { apiLongId, idFromData } from '@/utils/id'
 import { getErrorMessage } from '@/utils/error'
-import { replyUpdatesPreview, waitForStaticPreviewReady } from '@/features/app-editor/utils/appPreview'
+import { getVersionPreviewIndexUrl, replyUpdatesPreview, waitForStaticPreviewReady } from '@/features/app-editor/utils/appPreview'
 import {
   parseFilenameFromContentDisposition,
   sanitizeDownloadFilename,
@@ -67,6 +70,8 @@ const messages = ref<ChatRow[]>([])
 const listEl = ref<HTMLElement | null>(null)
 const previewUrl = ref('')
 const previewFailed = ref(false)
+const versionIds = ref<string[]>([])
+const versionIndex = ref(0)
 const deployLoading = ref(false)
 const downloadLoading = ref(false)
 const deploySuccessOpen = ref(false)
@@ -110,6 +115,15 @@ const canViewHistory = computed(() => {
   return Number.isFinite(p) && p >= 99
 })
 const showPreviewPanel = computed(() => historyInited.value && messages.value.length >= 2)
+const currentVersionId = computed(() => versionIds.value[versionIndex.value] ?? '')
+const canPrevVersion = computed(() => !chatLoading.value && versionIndex.value > 0)
+const canNextVersion = computed(() => !chatLoading.value && versionIndex.value < versionIds.value.length - 1)
+const prevVersionTip = computed(() => (
+  !chatLoading.value && versionIndex.value <= 0 ? '已是最早版本' : '上一版'
+))
+const nextVersionTip = computed(() => (
+  !chatLoading.value && versionIndex.value >= versionIds.value.length - 1 ? '已是最新版本' : '下一版'
+))
 const selectedIsImage = computed(() => selectedElement.value?.tag === 'img')
 const canReplaceImage = computed(() => canChat.value
   && selectedIsImage.value
@@ -131,11 +145,53 @@ const withCacheBust = (url: string): string => {
   return `${url}${sep}_t=${Date.now()}`
 }
 
+const showCurrentVersion = () => {
+  const app = appVo.value
+  const id = currentVersionId.value
+  if (!app || !id) return false
+  previewUrl.value = withCacheBust(
+    getVersionPreviewIndexUrl(app.codeGenType || 'html', idFromData(app.id), id),
+  )
+  previewFailed.value = false
+  return true
+}
+
+const refreshVersions = async () => {
+  if (!sessionId.value || !appVo.value) return false
+  try {
+    const res = await listCodeVersions({
+      appId: apiLongId(appId.value),
+      sessionId: apiLongId(sessionId.value),
+    })
+    const ids = (res.data?.data ?? []).map((id) => String(id)).filter((id) => /^\d+$/.test(id))
+    versionIds.value = ids
+    versionIndex.value = Math.max(0, ids.length - 1)
+    if (ids.length === 0) {
+      previewUrl.value = ''
+      return false
+    }
+    return showCurrentVersion()
+  } catch {
+    return false
+  }
+}
+
+const stepVersion = (delta: number) => {
+  const next = versionIndex.value + delta
+  if (chatLoading.value || next < 0 || next >= versionIds.value.length) return
+  versionIndex.value = next
+  selectedElement.value = null
+  showCurrentVersion()
+}
+
 const tryRestorePreview = async (silent = true) => {
   const app = appVo.value
   if (!app || !showPreviewPanel.value) {
     previewUrl.value = ''
     previewFailed.value = false
+    return
+  }
+  if (sessionId.value && (await refreshVersions())) {
     return
   }
   try {
@@ -371,12 +427,29 @@ const runStream = async (text: string) => {
 
     const app = appVo.value
     const assistantText = messages.value[idx]?.content ?? ''
+    const savedId = messages.value[idx]?.id
     if (app && showPreviewPanel.value && replyUpdatesPreview(assistantText)) {
       const cg = app.codeGenType || 'html'
       const ready = await waitForStaticPreviewReady(cg, idFromData(app.id), {
         signal: abortCtl.signal,
       })
-      if (ready.ok) {
+      if (ready.ok && savedId && sessionId.value && canChat.value) {
+        try {
+          await pinCodeVersion({
+            appId: apiLongId(appId.value),
+            sessionId: apiLongId(sessionId.value),
+            messageId: apiLongId(savedId),
+          })
+          if (!versionIds.value.includes(savedId)) {
+            versionIds.value = [...versionIds.value, savedId]
+          }
+          versionIndex.value = versionIds.value.length - 1
+          showCurrentVersion()
+        } catch {
+          previewUrl.value = withCacheBust(ready.url)
+          previewFailed.value = false
+        }
+      } else if (ready.ok) {
         previewUrl.value = withCacheBust(ready.url)
         previewFailed.value = false
       } else if (!cancelledByUser) {
@@ -410,6 +483,34 @@ const sendUser = async (text: string) => {
   const t = text.trim()
   if (!t || chatLoading.value) return
   await ensureSession()
+
+  const cursor = currentVersionId.value
+  const tip = versionIds.value[versionIds.value.length - 1]
+  if (cursor && tip && cursor !== tip && sessionId.value) {
+    try {
+      await continueCodeVersion({
+        appId: apiLongId(appId.value),
+        sessionId: apiLongId(sessionId.value),
+        messageId: apiLongId(cursor),
+      })
+    } catch (e) {
+      message.error(getErrorMessage(e, '无法从这一版继续'))
+      return
+    }
+    const anchorIndex = messages.value.findIndex((row) => row.id === cursor)
+    if (anchorIndex >= 0) {
+      messages.value.splice(anchorIndex + 1)
+    } else {
+      messages.value = []
+      historyInited.value = false
+      await loadHistory('initial')
+    }
+    const cut = versionIds.value.indexOf(cursor)
+    if (cut >= 0) {
+      versionIds.value = versionIds.value.slice(0, cut + 1)
+      versionIndex.value = cut
+    }
+  }
 
   const selectedSnapshot = selectedElement.value
   const streamMessage =
@@ -532,7 +633,10 @@ const maybeRunInitial = async () => {
 const onDeploy = async () => {
   try {
     deployLoading.value = true
-    const res = await deployApp({ appId: apiLongId(appId.value) })
+    const res = await deployApp({
+      appId: apiLongId(appId.value),
+      messageId: currentVersionId.value ? apiLongId(currentVersionId.value) : undefined,
+    })
     const url = res.data?.data
     if (url) {
       message.success('部署成功')
@@ -552,7 +656,10 @@ const onDownloadCode = async () => {
   try {
     downloadLoading.value = true
     const res = await downloadAppCode(
-      { appId: apiLongId(appId.value) },
+      {
+        appId: apiLongId(appId.value),
+        messageId: currentVersionId.value ? apiLongId(currentVersionId.value) : undefined,
+      },
       { responseType: 'blob' },
     )
     const blob = res.data as unknown as Blob
@@ -654,6 +761,7 @@ const rewriteFrom = async (userIndex: number, nextText: string) => {
   }
   user.content = text
   messages.value.splice(userIndex + 1)
+  await refreshVersions()
   await runStream(text)
 }
 
@@ -804,6 +912,7 @@ const onReplaceImage = async () => {
     imageReplacing.value = true
     await replaceAppImage({
       appId: apiLongId(appId.value),
+      messageId: currentVersionId.value ? apiLongId(currentVersionId.value) : undefined,
       newImagePath: uploadedImagePath.value,
       targetXpath: selectedElement.value.xpath,
       targetTag: selectedElement.value.tag,
@@ -841,6 +950,8 @@ watch(appId, async () => {
   messages.value = []
   previewUrl.value = ''
   previewFailed.value = false
+  versionIds.value = []
+  versionIndex.value = 0
   visualEditMode.value = false
   selectedElement.value = null
   clearUploadedImage()
@@ -962,7 +1073,35 @@ onBeforeUnmount(() => {
           </div>
           <div v-if="showPreviewPanel" class="app-detail__preview">
             <div class="app-detail__preview-title">
-              <span>生成预览</span>
+              <div class="app-detail__preview-lead">
+                <span>生成预览</span>
+                <div class="app-detail__preview-versions">
+                  <a-tooltip :title="prevVersionTip">
+                    <button
+                      type="button"
+                      class="app-detail__version-arrow"
+                      :class="{ 'is-inactive': !canPrevVersion }"
+                      :aria-label="prevVersionTip"
+                      :aria-disabled="!canPrevVersion"
+                      @click="stepVersion(-1)"
+                    >
+                      <LeftOutlined />
+                    </button>
+                  </a-tooltip>
+                  <a-tooltip :title="nextVersionTip">
+                    <button
+                      type="button"
+                      class="app-detail__version-arrow"
+                      :class="{ 'is-inactive': !canNextVersion }"
+                      :aria-label="nextVersionTip"
+                      :aria-disabled="!canNextVersion"
+                      @click="stepVersion(1)"
+                    >
+                      <RightOutlined />
+                    </button>
+                  </a-tooltip>
+                </div>
+              </div>
               <div class="app-detail__preview-actions">
                 <button
                   type="button"
@@ -1149,6 +1288,44 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.app-detail__preview-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-detail__preview-versions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.app-detail__version-arrow {
+  border: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.65);
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 4px;
+}
+
+.app-detail__version-arrow:not(.is-inactive):hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #1677ff;
+}
+
+.app-detail__version-arrow.is-inactive {
+  color: rgba(0, 0, 0, 0.25);
+  cursor: default;
 }
 
 .app-detail__preview-actions {

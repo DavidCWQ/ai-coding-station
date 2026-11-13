@@ -393,6 +393,9 @@ onUnmounted(() => {
       <p class="realm__lead">
         {{ consoleVo?.message || '管理存档、规则和备份。' }}
       </p>
+      <p class="realm__lead realm__lead--join">
+        下载 Minecraft 国际版，添加服务器，地址填 davidcwq.online，端口填 19132。
+      </p>
     </header>
     <div class="realm__status">
       <div class="realm__status-lead">
@@ -744,6 +747,10 @@ onUnmounted(() => {
   margin: 10px 0 0;
   max-width: 42em;
   color: var(--muted);
+}
+
+.realm__lead--join {
+  margin-top: 6px;
 }
 
 .realm__status {

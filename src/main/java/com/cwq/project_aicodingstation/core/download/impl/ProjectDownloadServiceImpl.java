@@ -36,7 +36,8 @@ public class ProjectDownloadServiceImpl implements ProjectDownloadService {
             "target",
             ".mvn",
             ".idea",
-            ".vscode"
+            ".vscode",
+            ".versions"
     );
 
     /**

@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.mybatisflex.core.query.QueryMethods.column;
@@ -246,6 +247,28 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     }
 
     @Override
+    public List<Long> truncateAfterAi(Long appId, Long sessionId, Long anchorMessageId, UserLoginVO userVO) {
+        BusinessAssert.notNull(userVO, ErrorCode.NOT_LOGIN, "用户未登录");
+        BusinessAssert.notNull(userVO.getId(), ErrorCode.NOT_LOGIN, "用户未登录");
+        BusinessAssert.notNull(appId, ErrorCode.PARAMS_MISSING, "应用 id 不能为空");
+        BusinessAssert.notNull(sessionId, ErrorCode.PARAMS_MISSING, "会话 id 不能为空");
+        BusinessAssert.notNull(anchorMessageId, ErrorCode.PARAMS_MISSING, "消息 id 不能为空");
+
+        ChatSession session = chatSessionService.getById(sessionId);
+        BusinessAssert.notNull(session, ErrorCode.NOT_FOUND, "会话不存在");
+        BusinessAssert.equals(session.getAppId(), appId, ErrorCode.PARAMS_ERROR, "会话与应用不匹配");
+        BusinessAssert.equals(session.getUserId(), userVO.getId(), ErrorCode.NO_PERMISSION, "只能修改自己的对话");
+
+        ChatHistory anchor = this.getById(anchorMessageId);
+        BusinessAssert.notNull(anchor, ErrorCode.NOT_FOUND, "消息不存在");
+        BusinessAssert.equals(anchor.getAppId(), appId, ErrorCode.PARAMS_ERROR, "消息不属于该应用");
+        BusinessAssert.equals(anchor.getSessionId(), sessionId, ErrorCode.PARAMS_ERROR, "消息不属于该会话");
+        BusinessAssert.equals(MessageTypeEnum.AI.getValue(), anchor.getMessageType(),
+                ErrorCode.PARAMS_ERROR, "只能从一次生成结果继续");
+        return removeAfter(sessionId, anchor.getCreateTime(), anchor.getId());
+    }
+
+    @Override
     public MarkdownFile exportMarkdown(Long appId, Long sessionId, Long untilMessageId, UserLoginVO userVO) {
         assertHistoryReadable(appId, sessionId, userVO);
         BusinessAssert.notNull(untilMessageId, ErrorCode.PARAMS_MISSING, "消息 id 不能为空");
@@ -291,10 +314,18 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         );
     }
 
-    private void removeAfter(Long sessionId, LocalDateTime createTime, Long id) {
+    private List<Long> removeAfter(Long sessionId, LocalDateTime createTime, Long id) {
         QueryCondition after = column("create_time").gt(createTime)
                 .or(column("create_time").eq(createTime).and(column("id").gt(id)));
-        this.remove(QueryWrapper.create().eq("session_id", sessionId).and(after));
+        QueryWrapper query = QueryWrapper.create().eq("session_id", sessionId).and(after);
+        List<Long> removed = this.list(query).stream()
+                .map(ChatHistory::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (!removed.isEmpty()) {
+            this.remove(query);
+        }
+        return removed;
     }
 
     private void attachVotes(List<ChatHistoryVO> vos, UserLoginVO userVO) {

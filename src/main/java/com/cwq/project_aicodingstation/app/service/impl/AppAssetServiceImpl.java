@@ -9,6 +9,7 @@ import com.cwq.project_aicodingstation.app.dto.AppReplaceImageRequest;
 import com.cwq.project_aicodingstation.app.entity.App;
 import com.cwq.project_aicodingstation.app.service.AppAssetService;
 import com.cwq.project_aicodingstation.app.service.AppService;
+import com.cwq.project_aicodingstation.app.version.CodeVersionService;
 import com.cwq.project_aicodingstation.common.auth.ResourceAuthHelper;
 import com.cwq.project_aicodingstation.common.error.ErrorCode;
 import com.cwq.project_aicodingstation.common.exception.BusinessException;
@@ -61,6 +62,9 @@ public class AppAssetServiceImpl implements AppAssetService {
 
     @Resource
     private AppDeployConfig appDeployConfig;
+
+    @Resource
+    private CodeVersionService codeVersionService;
 
     @Resource
     private AppAssetConfig appAssetConfig;
@@ -221,7 +225,15 @@ public class AppAssetServiceImpl implements AppAssetService {
         String normalizedNewImagePath = normalizeWebImagePath(req.getNewImagePath());
         ensureImageExistsInAppDir(appCodeDir, normalizedNewImagePath);
 
-        File indexFile = new File(appCodeDir, "index.html");
+        Path snapshot = null;
+        File indexFile;
+        if (req.getMessageId() == null) {
+            indexFile = new File(appCodeDir, "index.html");
+        } else {
+            snapshot = codeVersionService.requireSnapshot(app, req.getMessageId());
+            codeVersionService.copyImageIntoSnapshot(app, snapshot, normalizedNewImagePath);
+            indexFile = snapshot.resolve("index.html").toFile();
+        }
         BusinessAssert.requireTrue(indexFile.exists() && indexFile.isFile(),
                 ErrorCode.NOT_FOUND, "未找到 index.html，无法替换图片");
 
@@ -255,7 +267,11 @@ public class AppAssetServiceImpl implements AppAssetService {
 
         BusinessAssert.requireTrue(replaced, ErrorCode.BUSINESS_ERROR, "目标元素不是可替换图片节点");
 
-        FileUtil.writeString(document.outerHtml(), indexFile, StandardCharsets.UTF_8);
+        String html = document.outerHtml();
+        FileUtil.writeString(html, indexFile, StandardCharsets.UTF_8);
+        if (snapshot != null && codeVersionService.isLatestCodeVersion(app, req.getMessageId())) {
+            FileUtil.writeString(html, new File(appCodeDir, "index.html"), StandardCharsets.UTF_8);
+        }
         log.info("app image replaced, appId={}, userId={}, newImagePath={}",
                 req.getAppId(), userVO.getId(), normalizedNewImagePath);
         return true;

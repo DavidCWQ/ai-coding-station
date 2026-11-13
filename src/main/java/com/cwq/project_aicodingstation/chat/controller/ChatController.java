@@ -1,6 +1,7 @@
 package com.cwq.project_aicodingstation.chat.controller;
 
 import com.cwq.project_aicodingstation.ai.AICodeGeneratorServiceFactory;
+import com.cwq.project_aicodingstation.app.version.CodeVersionService;
 import com.cwq.project_aicodingstation.chat.dto.ChatExportRequest;
 import com.cwq.project_aicodingstation.chat.dto.ChatHistoryAddRequest;
 import com.cwq.project_aicodingstation.chat.dto.ChatHistoryQueryRequest;
@@ -28,6 +29,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -40,6 +42,7 @@ import java.util.List;
  *
  * @author <a href="https://github.com/DavidCWQ">DavidCWQ</a>
  */
+@Slf4j
 @RestController
 @RequestMapping("/chat")
 public class ChatController {
@@ -55,6 +58,9 @@ public class ChatController {
 
     @Resource
     private AICodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
+
+    @Resource
+    private CodeVersionService codeVersionService;
 
     /**
      * 按需获取登录用户：未登录时返回 null（用于匿名可读接口），其余异常继续抛出。
@@ -156,6 +162,11 @@ public class ChatController {
         String text = chatHistoryService.prepareRewrite(
                 req.getAppId(), req.getSessionId(), req.getUserMessageId(), req.getMessage(), userVO);
         aiCodeGeneratorServiceFactory.evict(req.getSessionId());
+        try {
+            codeVersionService.pruneOrphans(req.getAppId(), req.getSessionId());
+        } catch (RuntimeException ex) {
+            log.warn("清理旧版本目录失败 appId={} sessionId={}", req.getAppId(), req.getSessionId(), ex);
+        }
         return ResultUtils.success(text);
     }
 

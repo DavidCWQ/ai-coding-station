@@ -74,10 +74,12 @@ declare namespace API {
 
   type AppDeployRequest = {
     appId: number;
+    messageId?: number;
   };
 
   type AppReplaceImageRequest = {
     appId: number;
+    messageId?: number;
     newImagePath: string;
     targetXpath?: string;
     targetTag?: string;
@@ -271,6 +273,7 @@ declare namespace API {
 
   type downloadAppCodeParams = {
     appId: number;
+    messageId?: number;
   };
 
   type getAppParams = {

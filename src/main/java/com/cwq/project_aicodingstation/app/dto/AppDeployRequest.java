@@ -17,4 +17,9 @@ public class AppDeployRequest implements Serializable {
 
     @NotNull
     private Long appId;
+
+    /**
+     * 要部署的那一版。空则部署当前工作目录。
+     */
+    private Long messageId;
 }
