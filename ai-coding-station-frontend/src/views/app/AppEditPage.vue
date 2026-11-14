@@ -153,11 +153,9 @@ onMounted(() => {
             />
           </a-form-item>
 
-          <a-form-item>
-            <a-space>
-              <a-button type="primary" html-type="submit" :loading="saving">保存</a-button>
-              <a-button @click="router.push(`/app/${appIdStr}`)">进入对话</a-button>
-            </a-space>
+          <a-form-item class="app-edit__actions">
+            <a-button type="primary" html-type="submit" :loading="saving">保存</a-button>
+            <a-button @click="router.push(`/app/${appIdStr}`)">进入对话</a-button>
           </a-form-item>
         </a-form>
       </a-card>
@@ -175,5 +173,21 @@ onMounted(() => {
 
 .app-edit__card {
   border-radius: 12px;
+}
+
+.app-edit__actions :deep(.ant-form-item-control-input-content) {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .app-edit__actions :deep(.ant-form-item-control-input-content) {
+    flex-direction: column;
+  }
+
+  .app-edit__actions :deep(.ant-btn) {
+    width: 100%;
+    min-height: 40px;
+  }
 }
 </style>

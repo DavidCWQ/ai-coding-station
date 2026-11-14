@@ -270,6 +270,7 @@ onBeforeUnmount(() => {
 
   .global-header__brand {
     min-width: 0;
+    margin-left: 4px;
   }
 
   .global-header__mobile-btn {

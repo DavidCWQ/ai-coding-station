@@ -102,7 +102,7 @@ const onPressEnter = (e: Event) => {
       <div class="chat-input__hints">
         <span class="chat-input__hint">Enter 发送 · Shift+Enter 换行</span>
       </div>
-      <a-space :size="8">
+      <div class="chat-input__tools">
         <input
           ref="fileInput"
           type="file"
@@ -111,25 +111,28 @@ const onPressEnter = (e: Event) => {
           @change="onFileChange"
         />
         <a-button
+          aria-label="上传图片"
           :loading="imageUploading"
           :disabled="loading || disabled || replaceLoading"
           @click="openFilePicker"
         >
           <template #icon><PaperClipOutlined /></template>
-          上传图片
+          <span class="chat-input__label">上传图片</span>
         </a-button>
         <a-tooltip :title="!canReplaceImage ? '进入编辑后，选中图片替换' : ''">
           <a-button
+            aria-label="替换图片"
             :loading="replaceLoading"
             :disabled="!canReplaceImage || loading || disabled || imageUploading"
             @click="onReplaceImage"
           >
-            替换图片
+            <span class="chat-input__label">替换图片</span>
+            <span class="chat-input__icon-only" aria-hidden="true">替换</span>
           </a-button>
         </a-tooltip>
         <a-button v-if="loading" danger @click="onCancel">停止</a-button>
         <a-button type="primary" :loading="loading" :disabled="disabled" @click="onSubmit">发送</a-button>
-      </a-space>
+      </div>
     </div>
   </div>
 </template>
@@ -175,6 +178,56 @@ const onPressEnter = (e: Event) => {
 .chat-input__hint {
   font-size: 12px;
   color: rgba(0, 0, 0, 0.45);
+}
+
+.chat-input__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.chat-input__icon-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .chat-input {
+    padding: 8px 10px;
+  }
+
+  .chat-input__hint {
+    display: none;
+  }
+
+  .chat-input__hints {
+    display: none;
+  }
+
+  .chat-input__bar {
+    margin-top: 2px;
+  }
+
+  .chat-input__tools {
+    width: 100%;
+  }
+
+  .chat-input__tools :deep(.ant-btn) {
+    min-height: 40px;
+  }
+
+  .chat-input__tools :deep(.ant-btn-primary),
+  .chat-input__tools :deep(.ant-btn-dangerous) {
+    margin-left: auto;
+  }
+
+  .chat-input__label {
+    display: none;
+  }
+
+  .chat-input__icon-only {
+    display: inline;
+  }
 }
 
 .chat-input__attachment {

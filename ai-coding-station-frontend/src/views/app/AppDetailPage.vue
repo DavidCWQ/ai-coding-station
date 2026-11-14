@@ -84,6 +84,7 @@ const deleteLoading = ref(false)
 
 /** 预览 iframe 内点选元素（可视化编辑） */
 const visualEditMode = ref(false)
+const mobilePane = ref<'chat' | 'preview'>('chat')
 const selectedElement = ref<VisualEditorSelectedElement | null>(null)
 const uploadedImagePath = ref('')
 const uploadedImageName = ref('')
@@ -953,6 +954,7 @@ watch(appId, async () => {
   versionIds.value = []
   versionIndex.value = 0
   visualEditMode.value = false
+  mobilePane.value = 'chat'
   selectedElement.value = null
   clearUploadedImage()
   historyInited.value = false
@@ -980,25 +982,47 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="app-detail">
+  <div class="app-detail" :class="{ 'is-preview': mobilePane === 'preview' }">
     <a-spin :spinning="pageLoading">
       <template v-if="appVo">
         <header class="app-detail__header">
           <BackButton @click="router.push('/app')" />
           <span class="app-detail__name">{{ appVo.appName || '应用' }}</span>
-          <a-button @click="infoVisible = true">
+          <a-button class="app-detail__tool" aria-label="详情" @click="infoVisible = true">
             <template #icon><InfoCircleOutlined /></template>
-            详情
+            <span class="app-detail__tool-label">详情</span>
           </a-button>
-          <a-button :loading="downloadLoading" @click="onDownloadCode">
+          <a-button class="app-detail__tool" aria-label="下载" :loading="downloadLoading" @click="onDownloadCode">
             <template #icon><CloudDownloadOutlined /></template>
-            下载
+            <span class="app-detail__tool-label">下载</span>
           </a-button>
-          <a-button type="primary" :loading="deployLoading" @click="onDeploy">
+          <a-button class="app-detail__tool" type="primary" aria-label="部署" :loading="deployLoading" @click="onDeploy">
             <template #icon><CloudUploadOutlined /></template>
-            部署
+            <span class="app-detail__tool-label">部署</span>
           </a-button>
         </header>
+        <div v-if="showPreviewPanel" class="app-detail__switch" role="tablist" aria-label="对话或预览">
+          <button
+            type="button"
+            role="tab"
+            class="app-detail__switch-btn"
+            :class="{ 'is-on': mobilePane === 'chat' }"
+            :aria-selected="mobilePane === 'chat'"
+            @click="mobilePane = 'chat'"
+          >
+            对话
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="app-detail__switch-btn"
+            :class="{ 'is-on': mobilePane === 'preview' }"
+            :aria-selected="mobilePane === 'preview'"
+            @click="mobilePane = 'preview'"
+          >
+            预览
+          </button>
+        </div>
 
         <div class="app-detail__main">
           <div class="app-detail__chat">
@@ -1218,10 +1242,104 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
+.app-detail__tool-label {
+  margin-inline-start: 6px;
+}
+
+.app-detail__switch {
+  display: none;
+}
+
 @media (max-width: 960px) {
+  .app-detail__header {
+    gap: 4px;
+    padding: 8px 10px 8px 4px;
+  }
+
+  .app-detail__header :deep(.back-button__inner > span) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .app-detail__name {
+    font-size: 15px;
+  }
+
+  .app-detail__tool {
+    padding-inline: 8px;
+  }
+
+  .app-detail__tool-label {
+    display: none;
+  }
+
+  .app-detail__switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    flex-shrink: 0;
+    margin: 8px 12px 0;
+    padding: 4px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .app-detail__switch-btn {
+    min-height: 36px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .app-detail__switch-btn.is-on {
+    background: #fff;
+    color: rgba(0, 0, 0, 0.88);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  }
+
   .app-detail__main {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .app-detail.is-preview .app-detail__chat,
+  .app-detail:not(.is-preview) .app-detail__preview {
+    display: none;
+  }
+
+  .app-detail__messages {
+    padding: 12px;
+  }
+
+  .app-detail__chat :deep(.chat-input) {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .app-detail__preview-title {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .app-detail__preview-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 4px;
+  }
+
+  .app-detail__preview-open {
+    justify-content: center;
+    min-height: 40px;
+    border-radius: 8px;
+    background: rgba(22, 119, 255, 0.06);
   }
 }
 
@@ -1370,6 +1488,28 @@ onBeforeUnmount(() => {
 
 .app-detail__preview :deep(.ant-empty) {
   margin: auto;
+}
+
+@media (max-width: 960px) {
+  .app-detail__preview-title {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .app-detail__preview-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 4px;
+  }
+
+  .app-detail__preview-open {
+    justify-content: center;
+    min-height: 40px;
+    border-radius: 8px;
+    background: rgba(22, 119, 255, 0.06);
+  }
 }
 
 </style>
