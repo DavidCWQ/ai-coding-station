@@ -123,6 +123,17 @@ const onViewWork = () => {
         </a-space>
       </div>
     </div>
+    <div class="app-card__touch" @click.stop>
+      <button type="button" class="app-card__touch-btn" @click="onViewChat">查看对话</button>
+      <button
+        v-if="app.deployKey"
+        type="button"
+        class="app-card__touch-btn app-card__touch-btn--primary"
+        @click="onViewWork"
+      >
+        查看作品
+      </button>
+    </div>
     <div class="app-card__body">
       <div class="app-card__title-row">
         <div class="app-card__title">{{ app.appName || '未命名应用' }}</div>
@@ -274,5 +285,43 @@ const onViewWork = () => {
   border-color: #1677ff !important;
   background: #1677ff !important;
   color: #fff !important;
+}
+
+.app-card__touch {
+  display: none;
+}
+
+@media (hover: none), (max-width: 768px) {
+  .app-card__actions {
+    display: none;
+  }
+
+  .app-card__touch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 0 12px 12px;
+  }
+
+  .app-card__touch:has(.app-card__touch-btn:only-child) {
+    grid-template-columns: 1fr;
+  }
+
+  .app-card__touch-btn {
+    min-height: 36px;
+    border: 1px solid rgba(5, 5, 5, 0.12);
+    border-radius: 8px;
+    background: #fff;
+    color: rgba(0, 0, 0, 0.75);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .app-card__touch-btn--primary {
+    border-color: #1677ff;
+    background: #1677ff;
+    color: #fff;
+  }
 }
 </style>

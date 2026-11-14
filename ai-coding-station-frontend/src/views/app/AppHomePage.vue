@@ -131,8 +131,10 @@ onMounted(() => {
         />
         <div class="app-home__composer-bar">
           <div class="app-home__composer-left">
-            <a-button type="text" disabled>上传</a-button>
-            <a-button type="text" disabled>优化</a-button>
+            <span class="app-home__extras">
+              <a-button type="text" disabled>上传</a-button>
+              <a-button type="text" disabled>优化</a-button>
+            </span>
             <a-tooltip title="生成方式">
               <a-radio-group
                 v-model:value="createCodeGenType"
@@ -184,16 +186,15 @@ onMounted(() => {
     <section v-if="isLoggedIn" class="app-home__section">
       <div class="app-home__section-head">
         <h2 class="app-home__h2">我的应用</h2>
-        <a-space wrap>
+        <form class="app-home__filter" @submit.prevent="myList.doSearch">
           <a-input
             v-model:value="myList.query.appName"
             allow-clear
             placeholder="按名称筛选"
-            style="width: 200px"
-            @press-enter="myList.doSearch"
+            class="app-home__filter-input"
           />
-          <a-button type="primary" @click="myList.doSearch">搜索</a-button>
-        </a-space>
+          <a-button type="primary" html-type="submit">搜索</a-button>
+        </form>
       </div>
       <a-spin :spinning="myList.loading">
         <a-empty v-if="!myList.records.length" description="暂无应用，试试上方创建" />
@@ -218,16 +219,15 @@ onMounted(() => {
     <section class="app-home__section app-home__section--featured">
       <div class="app-home__section-head">
         <h2 class="app-home__h2">精选应用</h2>
-        <a-space wrap>
+        <form class="app-home__filter" @submit.prevent="featuredList.doSearch">
           <a-input
             v-model:value="featuredList.query.appName"
             allow-clear
             placeholder="按名称搜索"
-            style="width: 200px"
-            @press-enter="featuredList.doSearch"
+            class="app-home__filter-input"
           />
-          <a-button type="primary" @click="featuredList.doSearch">搜索</a-button>
-        </a-space>
+          <a-button type="primary" html-type="submit">搜索</a-button>
+        </form>
       </div>
       <a-spin :spinning="featuredList.loading">
         <a-empty v-if="!featuredList.records.length" description="暂无精选" />
@@ -260,6 +260,74 @@ onMounted(() => {
 @media (max-width: 768px) {
   .app-home {
     margin: -16px -16px 0;
+  }
+
+  .app-home__hero {
+    padding: 20px 16px 16px;
+  }
+
+  .app-home__composer {
+    margin-top: 16px;
+    padding: 12px 12px 10px;
+    text-align: left;
+  }
+
+  .app-home__extras {
+    display: none;
+  }
+
+  .app-home__composer-bar {
+    align-items: flex-end;
+  }
+
+  .app-home__gen-radio {
+    margin-left: 0;
+  }
+
+  .app-home__pills {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    max-width: none;
+    margin: 16px -16px 0;
+    padding: 0 16px 4px;
+    scrollbar-width: none;
+  }
+
+  .app-home__pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-home__pill {
+    flex-shrink: 0;
+    min-height: 36px;
+  }
+
+  .app-home__section {
+    padding: 24px 16px 0;
+  }
+
+  .app-home__section-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .app-home__filter {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .app-home__filter-input {
+    flex: 1;
+    width: auto;
+  }
+
+  .app-home__pager {
+    justify-content: center;
+  }
+
+  .app-home__pager :deep(.ant-pagination-options) {
+    display: none;
   }
 }
 
@@ -374,6 +442,17 @@ onMounted(() => {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 20px;
+}
+
+.app-home__filter {
+  display: flex;
+  gap: 8px;
+  min-width: min(100%, 280px);
+  justify-content: flex-end;
+}
+
+.app-home__filter-input {
+  width: 200px;
 }
 
 .app-home__h2 {

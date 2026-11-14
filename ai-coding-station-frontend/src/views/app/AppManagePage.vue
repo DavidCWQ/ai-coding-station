@@ -84,18 +84,19 @@ const getAdminPriorityButtons = (priority: number): PriorityBtn[] => {
   return [{ text: '取消锁定', priority: 0, danger: false }]
 }
 
-const getPriorityInfo = (priority: number) => {
+const getPriorityInfo = (priority: number | undefined) => {
+  const level = priority ?? 0
   let tag: { color: string; text: string }
-  if (priority >= PINNED_PRIORITY) {
+  if (level >= PINNED_PRIORITY) {
     tag = { color: 'gold', text: '置顶' }
-  } else if (priority >= FEATURED_PRIORITY) {
+  } else if (level >= FEATURED_PRIORITY) {
     tag = { color: 'green', text: '精选' }
-  } else if (priority >= 0) {
+  } else if (level >= 0) {
     tag = { color: 'gray', text: '普通' }
   } else {
     tag = { color: 'red', text: '锁定' }
   }
-  const buttons = isAdmin.value ? getAdminPriorityButtons(priority) : []
+  const buttons = isAdmin.value ? getAdminPriorityButtons(level) : []
   return { tag, buttons }
 }
 
@@ -208,24 +209,53 @@ onMounted(() => {
     <a-card title="应用管理" :bordered="false">
       <a-form :model="searchParams" layout="inline" class="app-manage__search" @finish="doSearch">
         <a-form-item label="应用名">
-          <a-input v-model:value="searchParams.appName" allow-clear style="width: 180px" />
+          <a-input v-model:value="searchParams.appName" allow-clear class="app-manage__control" />
         </a-form-item>
         <a-form-item v-if="isAdmin" label="用户ID">
-          <a-input v-model:value="searchParams.userId" allow-clear style="width: 140px" />
+          <a-input v-model:value="searchParams.userId" allow-clear class="app-manage__control app-manage__control--id" />
         </a-form-item>
         <a-form-item label="优先级">
           <a-select
             v-model:value="searchParams.priorityFilter"
-            style="width: 120px"
+            class="app-manage__control app-manage__control--priority"
             :options="priorityFilterOptions"
           />
         </a-form-item>
         <a-form-item>
-          <a-button type="primary" html-type="submit">搜索</a-button>
+          <a-button type="primary" html-type="submit" class="app-manage__submit">搜索</a-button>
         </a-form-item>
       </a-form>
 
+      <div class="app-manage__cards">
+        <article v-for="record in data" :key="idFromData(record.id)" class="app-manage__card">
+          <div class="app-manage__card-top">
+            <h3 class="app-manage__card-name">{{ record.appName || '未命名应用' }}</h3>
+            <a-tag :color="getPriorityInfo(record.priority).tag.color">
+              {{ getPriorityInfo(record.priority).tag.text }}
+            </a-tag>
+          </div>
+          <p class="app-manage__card-meta">{{ fmt(record.updateTime || record.createTime) }}</p>
+          <p v-if="isAdmin" class="app-manage__card-meta">用户 {{ record.userId != null ? String(record.userId) : '—' }}</p>
+          <div class="app-manage__card-actions">
+            <a-button @click="goEdit(idFromData(record.id))">编辑</a-button>
+            <a-button
+              v-for="btn in getPriorityInfo(record.priority).buttons"
+              :key="btn.text"
+              :danger="btn.danger"
+              @click="setPriority(idFromData(record.id), btn.priority)"
+            >
+              {{ btn.text }}
+            </a-button>
+            <a-popconfirm title="确定删除？" @confirm="doDelete(idFromData(record.id))">
+              <a-button danger>删除</a-button>
+            </a-popconfirm>
+          </div>
+        </article>
+        <a-empty v-if="!loading && data.length === 0" description="没有应用" />
+      </div>
+
       <a-table
+        class="app-manage__table"
         row-key="id"
         :columns="columns"
         :data-source="data"
@@ -280,5 +310,96 @@ onMounted(() => {
 
 .app-manage__search {
   margin-bottom: 16px;
+}
+
+.app-manage__control {
+  width: 180px;
+}
+
+.app-manage__control--id {
+  width: 140px;
+}
+
+.app-manage__control--priority {
+  width: 120px;
+}
+
+.app-manage__cards {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .app-manage__search {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-manage__search :deep(.ant-form-item) {
+    margin-inline-end: 0;
+    margin-bottom: 12px;
+  }
+
+  .app-manage__search :deep(.ant-form-item-row) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .app-manage__control,
+  .app-manage__control--id,
+  .app-manage__control--priority,
+  .app-manage__search :deep(.ant-select) {
+    width: 100% !important;
+  }
+
+  .app-manage__submit {
+    width: 100%;
+  }
+
+  .app-manage__table {
+    display: none;
+  }
+
+  .app-manage__cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .app-manage__card {
+    padding: 14px;
+    border: 1px solid rgba(5, 5, 5, 0.06);
+    border-radius: 12px;
+    background: #fafafa;
+  }
+
+  .app-manage__card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .app-manage__card-name {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+
+  .app-manage__card-meta {
+    margin: 6px 0 0;
+    color: rgba(0, 0, 0, 0.45);
+    font-size: 13px;
+  }
+
+  .app-manage__card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .app-manage__card-actions :deep(.ant-btn) {
+    min-height: 36px;
+  }
 }
 </style>
