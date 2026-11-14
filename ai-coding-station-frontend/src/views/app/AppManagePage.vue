@@ -84,18 +84,19 @@ const getAdminPriorityButtons = (priority: number): PriorityBtn[] => {
   return [{ text: '取消锁定', priority: 0, danger: false }]
 }
 
-const getPriorityInfo = (priority: number) => {
+const getPriorityInfo = (priority: number | undefined) => {
+  const level = priority ?? 0
   let tag: { color: string; text: string }
-  if (priority >= PINNED_PRIORITY) {
+  if (level >= PINNED_PRIORITY) {
     tag = { color: 'gold', text: '置顶' }
-  } else if (priority >= FEATURED_PRIORITY) {
+  } else if (level >= FEATURED_PRIORITY) {
     tag = { color: 'green', text: '精选' }
-  } else if (priority >= 0) {
+  } else if (level >= 0) {
     tag = { color: 'gray', text: '普通' }
   } else {
     tag = { color: 'red', text: '锁定' }
   }
-  const buttons = isAdmin.value ? getAdminPriorityButtons(priority) : []
+  const buttons = isAdmin.value ? getAdminPriorityButtons(level) : []
   return { tag, buttons }
 }
 
