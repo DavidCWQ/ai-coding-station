@@ -296,6 +296,16 @@ public class McBedrockServiceImpl implements McBedrockService {
     @Override
     public McOpResultVO backupNow() {
         requireConfigured();
+        if (serverRunning()) {
+            writeRuntimePhase("BACKING_UP", true, "正在备份，不会停服");
+            McOpResultVO queued = enqueue("BACKUP", Map.of("mode", "hot"));
+            return McOpResultVO.builder()
+                    .opId(queued.getOpId())
+                    .action("BACKUP")
+                    .status("QUEUED")
+                    .message("已开始备份。不会停服，写好后存档里会多一张卡片，右侧也会多一份压缩包。")
+                    .build();
+        }
         Path backups = home().resolve("backups");
         String stamp = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                 .withZone(java.time.ZoneId.systemDefault())
@@ -308,8 +318,7 @@ public class McBedrockServiceImpl implements McBedrockService {
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成备份失败");
         }
-        boolean running = readRuntime().running();
-        writeRuntimePhase(running ? "RUNNING" : "SLEEPING", running, "");
+        writeRuntimePhase("SLEEPING", false, "");
         return McOpResultVO.builder()
                 .opId("inline")
                 .action("BACKUP")
@@ -1115,7 +1124,7 @@ public class McBedrockServiceImpl implements McBedrockService {
     private void cloneCurrentWorld(String stamp) throws IOException {
         String current = currentLevelName();
         if (!StringUtils.hasText(current)) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "还没有当前世界，无法冷备");
+            throw new BusinessException(ErrorCode.NOT_FOUND, "还没有当前世界，无法备份");
         }
         Path src = dataDir().resolve("worlds").resolve(current);
         if (!Files.isDirectory(src)) {

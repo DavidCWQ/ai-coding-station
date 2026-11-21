@@ -93,7 +93,7 @@ const statusLabel = computed(() => {
     case 'STOPPING':
       return '正在停止'
     case 'BACKING_UP':
-      return '正在冷备'
+      return '正在备份'
     default:
       return '世界沉睡'
   }
@@ -230,8 +230,8 @@ const confirm = (title: string, content: string, fn: () => void) => {
 }
 
 const onBackup = () =>
-  confirm('冷备此刻', '会短暂停服 10–30 秒，在线玩家会被踢出。完成后会在存档里多一张卡片，右侧也会留一份压缩备份。', () =>
-    runOp('冷备', postMcBackup),
+  confirm('备份', '不会停服，也不会把在线玩家踢掉。会先暂停写入几秒，再复制一张存档卡片和一份压缩包。', () =>
+    runOp('备份', postMcBackup),
   )
 
 const onStop = () => confirm('关闭世界', '玩家会立即掉线。', () => runOp('停服', postMcStop))
@@ -408,7 +408,7 @@ onUnmounted(() => {
       <div v-if="isAdmin" class="realm__status-actions">
         <button class="realm__chip" :disabled="busy" @click="onStart">启动</button>
         <button class="realm__chip realm__chip--warn" :disabled="busy" @click="onStop">停止</button>
-        <button class="realm__chip realm__chip--gold" :disabled="busy" @click="onBackup">冷备此刻</button>
+        <button class="realm__chip realm__chip--gold" :disabled="busy" @click="onBackup">备份</button>
       </div>
     </div>
 
@@ -420,7 +420,7 @@ onUnmounted(() => {
       <div class="realm__shelf">
         <h2>{{ isAdmin ? '存档' : '当前世界' }}</h2>
         <p class="realm__hint">
-          {{ isAdmin ? '点一张卡片进入存档，金边是正在运行的世界。冷备会在这里多出一张卡片。' : '你是访客：只能查看管理员选中的当前世界。' }}
+          {{ isAdmin ? '点一张卡片进入存档，金边是正在运行的世界。备份会在这里多出一张卡片。' : '你是访客：只能查看管理员选中的当前世界。' }}
         </p>
         <div v-if="isAdmin" class="realm__shelf-ops">
           <button type="button" class="realm__chip" :disabled="busy" @click="uploadRef?.click()">
@@ -555,7 +555,7 @@ onUnmounted(() => {
             <dd>{{ fmtTime(current.lastModifiedEpochMs) }}</dd>
           </div>
           <div v-if="isAdmin">
-            <dt>上次冷备</dt>
+            <dt>上次备份</dt>
             <dd>{{ fmtTime(current.lastBackupEpochMs || consoleVo?.lastBackupEpochMs) }}</dd>
           </div>
         </dl>
@@ -651,7 +651,7 @@ onUnmounted(() => {
           </ul>
 
           <h3>备份</h3>
-          <p class="realm__hint">每天 04:48 UTC(+8) 会自动备份一份。点「冷备此刻」会在存档里加一张可切换的卡片，这里再留一份压缩包。</p>
+          <p class="realm__hint">每天 04:48 UTC(+8) 会自动备份一份。点「备份」不会停服，会在存档里加一张可切换的卡片，这里再留一份压缩包。</p>
           <div class="realm__backup-cards">
             <article v-for="b in consoleVo.backups" :key="b.filename" class="backup-card">
               <div class="backup-card__art" />
@@ -662,7 +662,7 @@ onUnmounted(() => {
                 <button type="button" class="is-danger" :disabled="busy" @click="onDeleteBackup(b)">删除</button>
               </div>
             </article>
-            <p v-if="!consoleVo.backups.length" class="is-empty">还没有备份。点上方「冷备此刻」会生成第一张。</p>
+            <p v-if="!consoleVo.backups.length" class="is-empty">还没有备份。点上方「备份」会生成第一张。</p>
           </div>
         </template>
 

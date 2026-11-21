@@ -91,6 +91,20 @@ class McBedrockServiceImplTest {
     }
 
     @Test
+    void backupWhileRunningQueuesHotCopyWithoutCloningYet() throws Exception {
+        Path runtime = home.resolve("ops").resolve("runtime.json");
+        Files.createDirectories(runtime.getParent());
+        Files.writeString(runtime, "{\"running\":true,\"phase\":\"RUNNING\",\"joinHint\":\"x\"}\n",
+                StandardCharsets.UTF_8);
+        var result = service.backupNow();
+        assertEquals("QUEUED", result.getStatus());
+        assertEquals("BACKUP", result.getAction());
+        assertEquals(1, service.adminConsole().getWorlds().size());
+        assertTrue(service.adminConsole().getBackups().isEmpty());
+        assertEquals("BACKING_UP", service.adminConsole().getRunPhase());
+    }
+
+    @Test
     void backupCreatesWorldCardAndZipThenDeleteWorks() {
         service.backupNow();
         McConsoleVO after = service.adminConsole();
