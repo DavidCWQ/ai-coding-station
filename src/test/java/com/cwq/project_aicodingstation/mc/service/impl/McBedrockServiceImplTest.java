@@ -279,7 +279,9 @@ class McBedrockServiceImplTest {
                 [{"xuid":"2535453759799999","name":"AlexOnServer","online":true}]
                 """, StandardCharsets.UTF_8);
         assertTrue(service.adminConsole().getPlayers().stream()
-                .anyMatch(p -> "AlexOnServer".equals(p.getName()) && "2535453759799999".equals(p.getXuid())));
+                .anyMatch(p -> "AlexOnServer".equals(p.getName())
+                        && "2535453759799999".equals(p.getXuid())
+                        && "visitor".equals(p.getPermission())));
         assertEquals(0, service.adminConsole().getOnlineCount());
 
         Files.writeString(home.resolve("ops").resolve("runtime.json"), """

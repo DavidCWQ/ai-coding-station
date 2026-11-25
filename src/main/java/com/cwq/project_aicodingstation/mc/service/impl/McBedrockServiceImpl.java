@@ -73,6 +73,8 @@ public class McBedrockServiceImpl implements McBedrockService {
     private static final byte[] LAST_PLAYED = "LastPlayed".getBytes(StandardCharsets.US_ASCII);
     private static final byte[] LAST_PLAYED_CAMEL = "lastPlayed".getBytes(StandardCharsets.US_ASCII);
     private static final long MAX_UPLOAD_BYTES = 512L * 1024 * 1024;
+    /** 还没写进 permissions.json 的人。与服务器 default-player-permission-level=visitor 一致。 */
+    private static final String UNLISTED_PERMISSION = "visitor";
 
     private final McBedrockProperties properties;
     private final ObjectMapper objectMapper;
@@ -655,7 +657,7 @@ public class McBedrockServiceImpl implements McBedrockService {
                     byXuid.put(xuid, McPlayerVO.builder()
                             .xuid(xuid)
                             .name(n.path("name").asText(""))
-                            .permission("member")
+                            .permission(UNLISTED_PERMISSION)
                             .allowlisted(true)
                             .build());
                 } else {
@@ -691,7 +693,7 @@ public class McBedrockServiceImpl implements McBedrockService {
                     byXuid.put(xuid, McPlayerVO.builder()
                             .xuid(xuid)
                             .name(n.path("name").asText(""))
-                            .permission("member")
+                            .permission(UNLISTED_PERMISSION)
                             .allowlisted(false)
                             .online(online)
                             .build());
